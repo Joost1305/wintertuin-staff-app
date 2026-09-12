@@ -35,6 +35,10 @@
   }
   .toolbar button:hover { background: #c9963e; }
 
+  [contenteditable="true"] { border-radius: 4px; transition: background 0.15s; cursor: text; }
+  [contenteditable="true"]:hover { background: rgba(217,164,65,0.12); }
+  [contenteditable="true"]:focus { outline: 1.5px dashed var(--crust); background: rgba(217,164,65,0.16); }
+
   .strand-legend { display:flex; gap:20px; flex-wrap:wrap; margin-bottom: 26px; font-size:12.5px; color:var(--bean-light); }
   .strand-legend span.sw { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
 
@@ -56,95 +60,95 @@
   footer { font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--bean-light); border-top:1px solid rgba(59,42,34,0.15); padding-top:18px; margin-top:8px; }
 
   @media (max-width:640px){ .hero h1 { font-size:34px; } }
-  @media print { .toolbar { display:none; } body { background:#fff; } .page { max-width:100%; padding:0 24px; } }
+  @media print { .toolbar { display:none; } body { background:#fff; } .page { max-width:100%; padding:0 24px; } [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; outline: none; } }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <a href="Wintertuin-Intro.html">&larr; Terug naar de introductie</a>
+  <a href="Wintertuin-Intro.html">&larr; Terug naar de introductie &middot; klik op tekst om te bewerken</a>
   <button onclick="window.print()">Print / opslaan als PDF</button>
 </div>
 
 <div class="page">
 
   <div class="hero">
-    <p class="eyebrow">Achtergrond &middot; geschiedenis</p>
-    <h1>De Wintertuin &amp; het Cantonspark</h1>
-    <p>Twee verhalen in één, het park om de kas heen en de kas zelf. Beide beginnen bij dezelfde man, in hetzelfde jaar, en zijn sindsdien onlosmakelijk met elkaar verbonden.</p>
+    <p class="eyebrow" contenteditable="true">Achtergrond &middot; geschiedenis</p>
+    <h1 contenteditable="true">De Wintertuin &amp; het Cantonspark</h1>
+    <p contenteditable="true">Twee verhalen in één, het park om de kas heen en de kas zelf. Beide beginnen bij dezelfde man, in hetzelfde jaar, en zijn sindsdien onlosmakelijk met elkaar verbonden.</p>
   </div>
 
   <section>
     <div class="strand-legend">
-      <div><span class="sw" style="background:var(--ink);"></span>Het Cantonspark, het landgoed en park eromheen</div>
-      <div><span class="sw" style="background:var(--crust);"></span>De Wintertuin, de kas zelf</div>
+      <div><span class="sw" style="background:var(--ink);"></span><span contenteditable="true">Het Cantonspark, het landgoed en park eromheen</span></div>
+      <div><span class="sw" style="background:var(--crust);"></span><span contenteditable="true">De Wintertuin, de kas zelf</span></div>
     </div>
 
     <div class="timeline">
 
-      <div class="tl-item park"><div class="tl-year">1800</div><div class="tl-text">Richard Scheerenberg laat Huize Schoonoord bouwen.<span class="sub">Het latere landgoed waarvan een deel ooit het Cantonspark wordt.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1800</div><div class="tl-text" contenteditable="true">Richard Scheerenberg laat Huize Schoonoord bouwen.<span class="sub">Het latere landgoed waarvan een deel ooit het Cantonspark wordt.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1817</div><div class="tl-text">Landgoed gekocht door jhr. Gerbrand Faas Elias.<span class="sub">Blijft in de familie tot 1902.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1817</div><div class="tl-text" contenteditable="true">Landgoed gekocht door jhr. Gerbrand Faas Elias.<span class="sub">Blijft in de familie tot 1902.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1902</div><div class="tl-text">Laatste telg, freule A. Faas Elias, overlijdt kinderloos.<span class="sub">Geen erfgenamen, het landgoed valt uiteen.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1902</div><div class="tl-text" contenteditable="true">Laatste telg, freule A. Faas Elias, overlijdt kinderloos.<span class="sub">Geen erfgenamen, het landgoed valt uiteen.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1905&ndash;1915</div><div class="tl-text">August Janssen legt een overtuin aan op een deel van de voormalige grond.<span class="sub">Janssen (1865&ndash;1918) was rijk geworden in het toenmalig Nederlands-Indi&euml; en bezat de villa's Peking, Java en Canton, vandaar de naam.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1905&ndash;1915</div><div class="tl-text" contenteditable="true">August Janssen legt een overtuin aan op een deel van de voormalige grond.<span class="sub">Janssen (1865&ndash;1918) was rijk geworden in het toenmalig Nederlands-Indi&euml; en bezat de villa's Peking, Java en Canton, vandaar de naam.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">1914</div><div class="tl-text">De Wintertuin wordt gebouwd, een kas van glas en staal.<span class="sub">Zuidgericht voor winterlicht, om zijn collectie tropische planten uit Indi&euml; te huisvesten.</span></div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">1914</div><div class="tl-text" contenteditable="true">De Wintertuin wordt gebouwd, een kas van glas en staal.<span class="sub">Zuidgericht voor winterlicht, om zijn collectie tropische planten uit Indi&euml; te huisvesten.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1915</div><div class="tl-text">Janssen koopt op een veiling de natuurstenen colonnade voor het park.</div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1915</div><div class="tl-text" contenteditable="true">Janssen koopt op een veiling de natuurstenen colonnade voor het park.</div></div>
 
-      <div class="tl-item park"><div class="tl-year">1916</div><div class="tl-text">Janssen financiert de bouw van een zwembad aan de Eem.<span class="sub">Een van zijn sociale projecten in Baarn, de straat ernaast is naar hem vernoemd.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1916</div><div class="tl-text" contenteditable="true">Janssen financiert de bouw van een zwembad aan de Eem.<span class="sub">Een van zijn sociale projecten in Baarn, de straat ernaast is naar hem vernoemd.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1918</div><div class="tl-text">August Janssen overlijdt.<span class="sub">De Universiteit Utrecht wordt eigenaar en richt het park in als botanische tuin.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1918</div><div class="tl-text" contenteditable="true">August Janssen overlijdt.<span class="sub">De Universiteit Utrecht wordt eigenaar en richt het park in als botanische tuin.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">1918&ndash;1987</div><div class="tl-text">De Wintertuin dient als botanisch laboratorium en leslokaal van de universiteit.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">1918&ndash;1987</div><div class="tl-text" contenteditable="true">De Wintertuin dient als botanisch laboratorium en leslokaal van de universiteit.</div></div>
 
-      <div class="tl-item park"><div class="tl-year">Jaren '60&ndash;'70</div><div class="tl-text">De universiteit verhuist naar de Uithof, met een nieuwe, moderne botanische tuin.<span class="sub">Kasplanten en kassen gaan mee, het klaslokaal verdwijnt. Alleen de Wintertuin zelf blijft staan.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">Jaren '60&ndash;'70</div><div class="tl-text" contenteditable="true">De universiteit verhuist naar de Uithof, met een nieuwe, moderne botanische tuin.<span class="sub">Kasplanten en kassen gaan mee, het klaslokaal verdwijnt. Alleen de Wintertuin zelf blijft staan.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">1987</div><div class="tl-text">Het park wordt voor &eacute;&eacute;n gulden overgedragen aan de gemeente Baarn.<span class="sub">Voorwaarde: de bijzondere botanische waarde moet behouden blijven. Vanaf nu openbaar park.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1987</div><div class="tl-text" contenteditable="true">Het park wordt voor &eacute;&eacute;n gulden overgedragen aan de gemeente Baarn.<span class="sub">Voorwaarde: de bijzondere botanische waarde moet behouden blijven. Vanaf nu openbaar park.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">1987</div><div class="tl-text">De Wintertuin wordt rijksmonument, net als het park zelf.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">1987</div><div class="tl-text" contenteditable="true">De Wintertuin wordt rijksmonument, net als het park zelf.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">1987&ndash;2012</div><div class="tl-text">De Wintertuin staat grotendeels leeg, af en toe gebruikt als galerie.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">1987&ndash;2012</div><div class="tl-text" contenteditable="true">De Wintertuin staat grotendeels leeg, af en toe gebruikt als galerie.</div></div>
 
-      <div class="tl-item park"><div class="tl-year">1995</div><div class="tl-text">De Stichting Vrienden van het Cantonspark wordt opgericht.<span class="sub">Adviseert de gemeente over onderhoud en beplanting, tot op de dag van vandaag.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">1995</div><div class="tl-text" contenteditable="true">De Stichting Vrienden van het Cantonspark wordt opgericht.<span class="sub">Adviseert de gemeente over onderhoud en beplanting, tot op de dag van vandaag.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">2012</div><div class="tl-text">De Wintertuin wordt gerestaureerd met rijkssubsidie.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">2012</div><div class="tl-text" contenteditable="true">De Wintertuin wordt gerestaureerd met rijkssubsidie.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">2013</div><div class="tl-text">Horeca gecombineerd met een vlindertuin in de Wintertuin, sluit snel weer.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">2013</div><div class="tl-text" contenteditable="true">Horeca gecombineerd met een vlindertuin in de Wintertuin, sluit snel weer.</div></div>
 
-      <div class="tl-item park"><div class="tl-year">2015</div><div class="tl-text">Het Cantonspark viert zijn 100-jarig bestaan.<span class="sub">De Stichting Vrienden zet de volledige geschiedenis van het park online.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">2015</div><div class="tl-text" contenteditable="true">Het Cantonspark viert zijn 100-jarig bestaan.<span class="sub">De Stichting Vrienden zet de volledige geschiedenis van het park online.</span></div></div>
 
-      <div class="tl-item park"><div class="tl-year">2018</div><div class="tl-text">Restauratie van het park zelf begint.<span class="sub">Gericht op het terugbrengen van de oorspronkelijke sfeer, met nieuwe Aziatische bomen en heesters.</span></div></div>
+      <div class="tl-item park"><div class="tl-year" contenteditable="true">2018</div><div class="tl-text" contenteditable="true">Restauratie van het park zelf begint.<span class="sub">Gericht op het terugbrengen van de oorspronkelijke sfeer, met nieuwe Aziatische bomen en heesters.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">2019</div><div class="tl-text">Wintertuin Experience opent: theetuin, terras, twee escaperooms.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">2019</div><div class="tl-text" contenteditable="true">Wintertuin Experience opent: theetuin, terras, twee escaperooms.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">2020&ndash;2022</div><div class="tl-text">Coronasluitingen en een oplopend onderhoudsgeschil met de gemeente raken de zaak.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">2020&ndash;2022</div><div class="tl-text" contenteditable="true">Coronasluitingen en een oplopend onderhoudsgeschil met de gemeente raken de zaak.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">2022</div><div class="tl-text">Gasprijzen stijgen ongeveer 8&times;, de gemeente springt bij met ruim &euro;120.000 steun.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">2022</div><div class="tl-text" contenteditable="true">Gasprijzen stijgen ongeveer 8&times;, de gemeente springt bij met ruim &euro;120.000 steun.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">10 jul 2023</div><div class="tl-text">De horeca in de Wintertuin sluit definitief, het gebouw is sindsdien niet meer publiek toegankelijk geweest voor die functie.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">10 jul 2023</div><div class="tl-text" contenteditable="true">De horeca in de Wintertuin sluit definitief, het gebouw is sindsdien niet meer publiek toegankelijk geweest voor die functie.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">Dec 2025</div><div class="tl-text">Verzakking van de fundering van de Wintertuin voor het eerst gemeld.</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">Dec 2025</div><div class="tl-text" contenteditable="true">Verzakking van de fundering van de Wintertuin voor het eerst gemeld.</div></div>
 
-      <div class="tl-item crust"><div class="tl-year">Jul 2026</div><div class="tl-text">De Wintertuin wordt met onmiddellijke ingang gesloten wegens de fundering.<span class="sub">De gemeente trekt &euro;100.000 uit voor herstel.</span></div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">Jul 2026</div><div class="tl-text" contenteditable="true">De Wintertuin wordt met onmiddellijke ingang gesloten wegens de fundering.<span class="sub">De gemeente trekt &euro;100.000 uit voor herstel.</span></div></div>
 
-      <div class="tl-item crust"><div class="tl-year">Mrt 2026</div><div class="tl-text">Huur van de Wintertuin gegund aan Stichting De Wintertuin (Mette te Velde e.a.).</div></div>
+      <div class="tl-item crust"><div class="tl-year" contenteditable="true">Mrt 2026</div><div class="tl-text" contenteditable="true">Huur van de Wintertuin gegund aan Stichting De Wintertuin (Mette te Velde e.a.).</div></div>
 
-      <div class="tl-item now"><div class="tl-year">Nu</div><div class="tl-text"><b>Een nieuw horecaconcept wordt uitgewerkt binnen de Wintertuin</b>, in een park dat al meer dan honderd jaar zijn eigen weg zoekt tussen verval en herstel.</div></div>
+      <div class="tl-item now"><div class="tl-year" contenteditable="true">Nu</div><div class="tl-text" contenteditable="true"><b>Een nieuw horecaconcept wordt uitgewerkt binnen de Wintertuin</b>, in een park dat al meer dan honderd jaar zijn eigen weg zoekt tussen verval en herstel.</div></div>
 
     </div>
   </section>
 
   <section style="margin-bottom:24px;">
-    <h2 style="font-size:18px; margin-bottom:10px;">Bronnen</h2>
-    <p class="sources">
+    <h2 style="font-size:18px; margin-bottom:10px;" contenteditable="true">Bronnen</h2>
+    <p class="sources" contenteditable="true">
       Wikipedia, "Cantonspark" &middot; Stichting Vrienden van het Cantonspark (cantonspark.nl) &middot; svjmedia.nl, "De geschiedenis van het Cantonspark" &middot; Eemland1 &middot; koloniaalerfgoedtevoet.nl &middot; opdeheuvelrug.nl &middot; RTV Utrecht &middot; Gemeente Baarn (baarn.nl) &middot; BaarnscheCourant
     </p>
   </section>
 
-  <footer>Wintertuin &amp; Cantonspark, Baarn &middot; achtergrond voor overleg</footer>
+  <footer contenteditable="true">Wintertuin &amp; Cantonspark, Baarn &middot; achtergrond voor overleg</footer>
 </div>
 </body>
 </html>

@@ -71,7 +71,10 @@ function renderSops() {
   if (isManager()) {
     html += `<div class="managerBox">
       <h3>Nieuwe SOP toevoegen</h3>
-      <div class="field"><label>Categorie</label><input id="newSopCat" placeholder="bijv. opening, sluiting, algemeen"></div>
+      <div class="field"><label>Categorie</label>
+        <select id="newSopCat" onchange="toggleNewCatField('newSopCatNew', this.value)">${sopCategoryOptions(null)}</select>
+        <input id="newSopCatNew" placeholder="Naam nieuwe categorie" style="margin-top:6px; display:${sopsCache.length === 0 ? "block" : "none"};">
+      </div>
       <div class="field"><label>Titel</label><input id="newSopTitle" placeholder="bijv. Ochtendcheck keuken"></div>
       <div class="field"><label>Tekst (optioneel)</label><textarea id="newSopContent"></textarea></div>
       <div class="field"><label>Checklist items (één per regel, optioneel)</label><textarea id="newSopItems" placeholder="Koffiemachine aanzetten&#10;Terraskussens buiten leggen"></textarea></div>
@@ -99,6 +102,12 @@ function renderSopCard(s) {
   </div>`;
 }
 
+function sopCategoryOptions(selected) {
+  const cats = [...new Set(sopsCache.map(s => s.category))].sort();
+  return cats.map(c => `<option value="${esc(c)}" ${c === selected ? "selected" : ""}>${esc(c)}</option>`).join("")
+    + `<option value="__new__">+ Nieuwe categorie&hellip;</option>`;
+}
+
 function renderSopEditForm(s) {
   const draft = loadSopDraft(s.id);
   const vals = draft || {
@@ -109,7 +118,10 @@ function renderSopEditForm(s) {
   };
   return `<div class="card" data-sop-id="${s.id}" style="border: 1px solid var(--crust);">
     ${draft ? `<p style="font-size:12px; color:var(--crust); margin:0 0 10px 0;">Niet-opgeslagen concept hersteld.</p>` : ""}
-    <div class="field"><label>Categorie</label><input id="editSopCat-${s.id}" value="${esc(vals.category)}" oninput="captureSopDraftFromForm('${s.id}')"></div>
+    <div class="field"><label>Categorie</label>
+      <select id="editSopCat-${s.id}" onchange="toggleNewCatField('editSopCatNew-${s.id}', this.value)">${sopCategoryOptions(vals.category)}</select>
+      <input id="editSopCatNew-${s.id}" placeholder="Naam nieuwe categorie" style="margin-top:6px; display:none;" oninput="captureSopDraftFromForm('${s.id}')">
+    </div>
     <div class="field"><label>Titel</label><input id="editSopTitle-${s.id}" value="${esc(vals.title)}" oninput="captureSopDraftFromForm('${s.id}')"></div>
     <div class="field"><label>Tekst</label><textarea id="editSopContent-${s.id}" oninput="captureSopDraftFromForm('${s.id}')">${esc(vals.content)}</textarea></div>
     <div class="field"><label>Checklist items (één per regel)</label><textarea id="editSopItems-${s.id}" oninput="captureSopDraftFromForm('${s.id}')">${esc(vals.items)}</textarea></div>
@@ -121,6 +133,13 @@ function renderSopEditForm(s) {
       <button class="btn warn" onclick="deleteSop('${s.id}')">Verwijderen</button>
     </div>
   </div>`;
+}
+
+function toggleNewCatField(inputId, selectValue) {
+  const input = el(inputId);
+  if (!input) return;
+  input.style.display = selectValue === "__new__" ? "block" : "none";
+  if (selectValue === "__new__") input.focus();
 }
 
 function editSop(id) {
@@ -184,7 +203,8 @@ async function printSops() {
 }
 
 async function saveSopEdit(id) {
-  const category = el(`editSopCat-${id}`).value.trim() || "algemeen";
+  const catSelectVal = el(`editSopCat-${id}`).value;
+  const category = (catSelectVal === "__new__" ? el(`editSopCatNew-${id}`).value.trim() : catSelectVal) || "algemeen";
   const title = el(`editSopTitle-${id}`).value.trim();
   const content = el(`editSopContent-${id}`).value.trim();
   const items = el(`editSopItems-${id}`).value.split("\n").map(s => s.trim()).filter(Boolean);
@@ -210,7 +230,8 @@ async function deleteSop(id) {
 }
 
 async function addSop() {
-  const category = el("newSopCat").value.trim() || "algemeen";
+  const catSelectVal = el("newSopCat").value;
+  const category = (catSelectVal === "__new__" ? el("newSopCatNew").value.trim() : catSelectVal) || "algemeen";
   const title = el("newSopTitle").value.trim();
   const content = el("newSopContent").value.trim();
   const items = el("newSopItems").value.split("\n").map(s => s.trim()).filter(Boolean);

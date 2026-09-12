@@ -1,7 +1,7 @@
 // ============================================================
 // Wintertuin staff app
 // ============================================================
-console.log("Wintertuin staff app — build 2026-09-12-9 (herstellen uit back-up)");
+console.log("Wintertuin staff app — build 2026-09-12-10 (SOP categorie-dropdown, intro/geschiedenis bewerkbaar)");
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

@@ -63,6 +63,9 @@ Vervang `'Joost'` door de naam die je bij het aanmaken van je account hebt ingev
 
 - **Herstellen uit back-up**: naast de downloadknop in het Team-scherm staat nu ook "Herstellen uit bestand". Kies een eerder gedownload `.json` back-upbestand, je krijgt eerst een samenvatting te zien (hoeveel SOP's, menu-items, etc. erin zitten en van wanneer de back-up is) voordat er iets gebeurt. Items met hetzelfde ID worden overschreven met de inhoud uit het bestand, nieuwe items worden toegevoegd, niets wordt automatisch verwijderd. Dit werkt het betrouwbaarst als je herstelt in hetzelfde project waar de back-up ook vandaan kwam.
 
+- **Categorie kiezen of toevoegen bij SOP's**: het categorieveld is nu een keuzelijst met bestaande categorie&euml;n, plus een optie "+ Nieuwe categorie&hellip;" die een tekstveld opent voor een geheel nieuwe categorie.
+- **Introductie- en geschiedenispagina bewerkbaar**: net als de andere Wintertuin-documenten kun je in `Wintertuin-Intro.html` en `Wintertuin-Cantonspark-Geschiedenis.html` direct op de tekst klikken om die aan te passen. Let op: dit is puur lokaal in die ene browsertab, er wordt niets opgeslagen; gebruik "Print / opslaan als PDF" om een aangepaste versie te bewaren.
+
 ## Wat nog een vervolgstap is
 
 - Echte e-mail- of pushmeldingen buiten de app om (zie hierboven).

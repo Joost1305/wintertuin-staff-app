@@ -29,6 +29,10 @@
     padding: 8px 14px; font-family:'Work Sans'; font-size: 13px; font-weight: 600; cursor: pointer;
   }
 
+  [contenteditable="true"] { border-radius: 4px; transition: background 0.15s; cursor: text; }
+  [contenteditable="true"]:hover { background: rgba(217,164,65,0.12); }
+  [contenteditable="true"]:focus { outline: 1.5px dashed var(--crust); background: rgba(217,164,65,0.16); }
+
   .hero { margin: 44px 0 52px 0; text-align: center; }
   .hero h1 { font-size: 58px; line-height: 1; margin-bottom: 16px; }
   .hero p { font-size: 18px; color: var(--bean-light); max-width: 560px; margin: 0 auto; }
@@ -60,45 +64,45 @@
     .facts { grid-template-columns: 1fr; }
     .history-card { flex-direction: column; align-items: flex-start; text-align: left; }
   }
-  @media print { .toolbar { display:none; } body { background:#fff; } }
+  @media print { .toolbar { display:none; } body { background:#fff; } [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; outline: none; } }
 </style>
 </head>
 <body>
 
 <div class="toolbar">
-  <span>Wintertuin &middot; introductie</span>
+  <span>Klik op tekst om te bewerken &middot; wijzigingen zijn alleen zichtbaar in dit browsertabblad</span>
   <button onclick="window.print()">Print / opslaan als PDF</button>
 </div>
 
 <div class="page">
 
   <div class="hero">
-    <p class="eyebrow">Baarn &middot; Cantonspark</p>
-    <h1>Wintertuin</h1>
-    <p>Een kas van glas en staal uit 1914, gebouwd om het licht van de winter binnen te laten, en al meer dan honderd jaar het hart van een park dat zijn eigen weg zoekt.</p>
+    <p class="eyebrow" contenteditable="true">Baarn &middot; Cantonspark</p>
+    <h1 contenteditable="true">Wintertuin</h1>
+    <p contenteditable="true">Een kas van glas en staal uit 1914, gebouwd om het licht van de winter binnen te laten, en al meer dan honderd jaar het hart van een park dat zijn eigen weg zoekt.</p>
   </div>
 
   <section>
-    <p>De Wintertuin staat in het Cantonspark in Baarn, een klein botanisch park met een rijke geschiedenis. De kas werd in 1914 gebouwd door August Janssen om zijn verzameling tropische planten uit voormalig Nederlands-Indi&euml; te huisvesten, zuidgericht zodat het schaarse winterlicht optimaal wordt benut. Het gebouw is inmiddels rijksmonument, net als het park eromheen.</p>
-    <p>In de honderd jaar daarna heeft de Wintertuin veel gedaanten gehad: botanisch laboratorium van de Universiteit Utrecht, jarenlang leegstand, een galerie, een vlindertuin met horeca, en meest recent Wintertuin Experience met een theetuin en escaperooms. Geen van die concepten hield het structureel vol, vooral door de kosten van het onderhouden van een grotendeels glazen monument en onduidelijke afspraken over wie waarvoor verantwoordelijk is.</p>
-    <p>Sinds maart 2026 is de huur gegund aan Stichting De Wintertuin. Daarbinnen wordt nu een nieuw horecaconcept uitgewerkt: een bakkerij, lunch en een eenvoudig winter- en zomerdiner, gedragen door drie specialismen in één ruimte. Het plan bouwt bewust voort op de lessen van eerdere pogingen, met scherpere afspraken over onderhoud, energie en wat het gebouw wel en niet aankan.</p>
+    <p contenteditable="true">De Wintertuin staat in het Cantonspark in Baarn, een klein botanisch park met een rijke geschiedenis. De kas werd in 1914 gebouwd door August Janssen om zijn verzameling tropische planten uit voormalig Nederlands-Indi&euml; te huisvesten, zuidgericht zodat het schaarse winterlicht optimaal wordt benut. Het gebouw is inmiddels rijksmonument, net als het park eromheen.</p>
+    <p contenteditable="true">In de honderd jaar daarna heeft de Wintertuin veel gedaanten gehad: botanisch laboratorium van de Universiteit Utrecht, jarenlang leegstand, een galerie, een vlindertuin met horeca, en meest recent Wintertuin Experience met een theetuin en escaperooms. Geen van die concepten hield het structureel vol, vooral door de kosten van het onderhouden van een grotendeels glazen monument en onduidelijke afspraken over wie waarvoor verantwoordelijk is.</p>
+    <p contenteditable="true">Sinds maart 2026 is de huur gegund aan Stichting De Wintertuin. Daarbinnen wordt nu een nieuw horecaconcept uitgewerkt: een bakkerij, lunch en een eenvoudig winter- en zomerdiner, gedragen door drie specialismen in één ruimte. Het plan bouwt bewust voort op de lessen van eerdere pogingen, met scherpere afspraken over onderhoud, energie en wat het gebouw wel en niet aankan.</p>
   </section>
 
   <div class="facts">
-    <div class="fact"><span class="val">1914</span><span class="label">Jaar van bouw</span></div>
-    <div class="fact"><span class="val">3,5 ha</span><span class="label">Cantonspark</span></div>
-    <div class="fact"><span class="val">Rijksmonument</span><span class="label">Status kas &amp; park</span></div>
+    <div class="fact"><span class="val" contenteditable="true">1914</span><span class="label" contenteditable="true">Jaar van bouw</span></div>
+    <div class="fact"><span class="val" contenteditable="true">3,5 ha</span><span class="label" contenteditable="true">Cantonspark</span></div>
+    <div class="fact"><span class="val" contenteditable="true">Rijksmonument</span><span class="label" contenteditable="true">Status kas &amp; park</span></div>
   </div>
 
   <div class="history-card">
     <div>
-      <h2>Honderd jaar geschiedenis</h2>
-      <p>Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
+      <h2 contenteditable="true">Honderd jaar geschiedenis</h2>
+      <p contenteditable="true">Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
     </div>
     <a class="btn" href="Wintertuin-Cantonspark-Geschiedenis.html">Bekijk de tijdlijn &rarr;</a>
   </div>
 
-  <footer>Wintertuin, Baarn &middot; introductie</footer>
+  <footer contenteditable="true">Wintertuin, Baarn &middot; introductie</footer>
 </div>
 </body>
 </html>
