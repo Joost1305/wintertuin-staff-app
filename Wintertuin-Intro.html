@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wintertuin, Baarn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --glass: #EDF1EC; --ink: #24372B; --crust: #B8873A; --bean: #3B2A22;
+    --bean-light: #7A5A44; --honey: #D9A441; --paper: #FBF6EC;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--glass); color:var(--bean); font-family:'Work Sans', sans-serif; line-height:1.6; }
+  .page { max-width: 780px; margin:0 auto; padding:20px 28px 90px 28px; }
+  h1,h2,h3 { font-family:'Instrument Serif', serif; font-weight:400; color:var(--ink); margin:0; }
+  .eyebrow { font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--bean-light); margin:0 0 10px 0; }
+
+  .toolbar {
+    position: sticky; top: 0; z-index: 10; background: var(--ink); color: var(--paper);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 20px; font-family:'IBM Plex Mono', monospace; font-size: 11px;
+  }
+  .toolbar span { opacity: 0.8; }
+  .toolbar button {
+    background: var(--honey); color: var(--bean); border: none; border-radius: 6px;
+    padding: 8px 14px; font-family:'Work Sans'; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+
+  .hero { margin: 44px 0 52px 0; text-align: center; }
+  .hero h1 { font-size: 58px; line-height: 1; margin-bottom: 16px; }
+  .hero p { font-size: 18px; color: var(--bean-light); max-width: 560px; margin: 0 auto; }
+
+  section { margin-bottom: 48px; }
+  section p { font-size: 16px; margin: 0 0 16px 0; }
+  section p:last-child { margin-bottom: 0; }
+
+  .facts { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom: 48px; }
+  .fact { background: var(--paper); border-radius: 12px; padding: 18px 16px; text-align:center; }
+  .fact .val { font-family:'Instrument Serif', serif; font-size: 26px; color: var(--ink); display:block; margin-bottom:4px; }
+  .fact .label { font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--bean-light); text-transform:uppercase; letter-spacing:0.05em; }
+
+  .history-card {
+    background: var(--ink); color: var(--paper); border-radius: 16px; padding: 32px 30px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+  }
+  .history-card h2 { color: var(--paper); font-size: 26px; margin-bottom: 8px; }
+  .history-card p { color: rgba(251,246,236,0.75); font-size: 14.5px; max-width: 380px; margin: 0; }
+  .history-card a.btn {
+    display: inline-block; background: var(--honey); color: var(--bean); text-decoration:none;
+    padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 14px; white-space: nowrap;
+  }
+
+  footer { font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--bean-light); border-top:1px solid rgba(59,42,34,0.15); padding-top:18px; margin-top:16px; }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 40px; }
+    .facts { grid-template-columns: 1fr; }
+    .history-card { flex-direction: column; align-items: flex-start; text-align: left; }
+  }
+  @media print { .toolbar { display:none; } body { background:#fff; } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span>Wintertuin &middot; introductie</span>
+  <button onclick="window.print()">Print / opslaan als PDF</button>
+</div>
+
+<div class="page">
+
+  <div class="hero">
+    <p class="eyebrow">Baarn &middot; Cantonspark</p>
+    <h1>Wintertuin</h1>
+    <p>Een kas van glas en staal uit 1914, gebouwd om het licht van de winter binnen te laten, en al meer dan honderd jaar het hart van een park dat zijn eigen weg zoekt.</p>
+  </div>
+
+  <section>
+    <p>De Wintertuin staat in het Cantonspark in Baarn, een klein botanisch park met een rijke geschiedenis. De kas werd in 1914 gebouwd door August Janssen om zijn verzameling tropische planten uit voormalig Nederlands-Indi&euml; te huisvesten, zuidgericht zodat het schaarse winterlicht optimaal wordt benut. Het gebouw is inmiddels rijksmonument, net als het park eromheen.</p>
+    <p>In de honderd jaar daarna heeft de Wintertuin veel gedaanten gehad: botanisch laboratorium van de Universiteit Utrecht, jarenlang leegstand, een galerie, een vlindertuin met horeca, en meest recent Wintertuin Experience met een theetuin en escaperooms. Geen van die concepten hield het structureel vol, vooral door de kosten van het onderhouden van een grotendeels glazen monument en onduidelijke afspraken over wie waarvoor verantwoordelijk is.</p>
+    <p>Sinds maart 2026 is de huur gegund aan Stichting De Wintertuin. Daarbinnen wordt nu een nieuw horecaconcept uitgewerkt: een bakkerij, lunch en een eenvoudig winter- en zomerdiner, gedragen door drie specialismen in één ruimte. Het plan bouwt bewust voort op de lessen van eerdere pogingen, met scherpere afspraken over onderhoud, energie en wat het gebouw wel en niet aankan.</p>
+  </section>
+
+  <div class="facts">
+    <div class="fact"><span class="val">1914</span><span class="label">Jaar van bouw</span></div>
+    <div class="fact"><span class="val">3,5 ha</span><span class="label">Cantonspark</span></div>
+    <div class="fact"><span class="val">Rijksmonument</span><span class="label">Status kas &amp; park</span></div>
+  </div>
+
+  <div class="history-card">
+    <div>
+      <h2>Honderd jaar geschiedenis</h2>
+      <p>Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
+    </div>
+    <a class="btn" href="Wintertuin-Cantonspark-Geschiedenis.html">Bekijk de tijdlijn &rarr;</a>
+  </div>
+
+  <footer>Wintertuin, Baarn &middot; introductie</footer>
+</div>
+</body>
+</html>

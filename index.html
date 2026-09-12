@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wintertuin, team</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --glass: #EDF1EC; --ink: #24372B; --crust: #B8873A; --bean: #3B2A22;
+    --bean-light: #7A5A44; --honey: #D9A441; --paper: #FBF6EC; --warn: #A6432F;
+    --ok: #3F7D4F;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--glass); color: var(--bean);
+    font-family: 'Work Sans', sans-serif; line-height: 1.5;
+  }
+  h1, h2, h3 { font-family: 'Instrument Serif', serif; font-weight: 400; color: var(--ink); margin: 0; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  button { font-family: 'Work Sans', sans-serif; cursor: pointer; }
+  a { color: var(--ink); }
+
+  /* ---------- Auth screen ---------- */
+  #authScreen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .authCard {
+    background: var(--paper); border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 380px;
+  }
+  .authCard h1 { font-size: 34px; margin-bottom: 6px; }
+  .authCard p.sub { color: var(--bean-light); font-size: 14px; margin: 0 0 24px 0; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--bean-light); margin-bottom: 5px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #d8cdb8; border-radius: 8px;
+    font-size: 15px; font-family: inherit; background: #fff; color: var(--bean);
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .btn {
+    display: inline-block; border: none; border-radius: 8px; padding: 10px 18px;
+    font-size: 14px; font-weight: 600; background: var(--ink); color: var(--paper);
+  }
+  .btn:hover { background: #1a2a1f; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+  .btn.honey { background: var(--honey); color: var(--bean); }
+  .btn.warn { background: var(--warn); color: var(--paper); }
+  .btn.block { width: 100%; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .authToggle { text-align: center; margin-top: 16px; font-size: 13px; color: var(--bean-light); }
+  .authToggle a { cursor: pointer; text-decoration: underline; }
+  .authMsg { font-size: 13px; margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
+  .authMsg.err { background: rgba(166,67,47,0.12); color: var(--warn); }
+  .authMsg.ok { background: rgba(63,125,79,0.12); color: var(--ok); }
+
+  /* ---------- App shell ---------- */
+  #appShell { display: none; min-height: 100vh; flex-direction: column; }
+  header.top {
+    background: var(--ink); color: var(--paper); padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  header.top .brand { font-family: 'Instrument Serif', serif; font-size: 22px; }
+  header.top .who { font-size: 12px; opacity: 0.85; text-align: right; }
+  header.top .who button { background: none; border: none; color: var(--honey); font-size: 12px; text-decoration: underline; padding: 0; margin-left: 8px; }
+
+  nav.tabs {
+    display: flex; overflow-x: auto; background: var(--paper); border-bottom: 1px solid #e3d8c2;
+    position: sticky; top: 0; z-index: 5;
+  }
+  nav.tabs button {
+    flex: 0 0 auto; background: none; border: none; padding: 13px 16px; font-size: 13px;
+    font-weight: 600; color: var(--bean-light); border-bottom: 3px solid transparent; white-space: nowrap;
+  }
+  nav.tabs button.active { color: var(--ink); border-bottom-color: var(--honey); }
+  .navBadge {
+    display: inline-block; background: var(--warn); color: var(--paper); font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; min-width: 16px; height: 16px; line-height: 16px; text-align: center;
+    border-radius: 8px; padding: 0 4px; margin-left: 4px; vertical-align: middle;
+  }
+
+  main { flex: 1; padding: 20px; max-width: 900px; margin: 0 auto; width: 100%; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel h2 { font-size: 26px; margin-bottom: 4px; }
+  .panel .panelSub { color: var(--bean-light); font-size: 13px; margin-bottom: 20px; }
+
+  .card {
+    background: var(--paper); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px;
+  }
+  .cardRow { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .empty { color: var(--bean-light); font-size: 14px; font-style: italic; padding: 20px 0; }
+  .tag {
+    display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    padding: 2px 8px; border-radius: 20px; background: var(--glass); color: var(--ink); margin-right: 6px;
+  }
+  .tag.open { background: rgba(217,164,65,0.25); color: #8a5f1a; }
+  .tag.approved { background: rgba(63,125,79,0.18); color: var(--ok); }
+  .tag.rejected { background: rgba(166,67,47,0.15); color: var(--warn); }
+  .tag.claimed { background: rgba(36,55,43,0.12); color: var(--ink); }
+
+  .managerBox { border: 1px dashed var(--crust); border-radius: 12px; padding: 16px; margin-top: 24px; }
+  .managerBox h3 { font-size: 16px; margin-bottom: 12px; font-family: 'Work Sans'; font-weight: 600; }
+
+  .menuGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .menuCard img { width: 100%; height: 150px; object-fit: cover; border-radius: 10px 10px 0 0; display: block; background: #ddd; }
+  .menuCard { background: var(--paper); border-radius: 12px; overflow: hidden; }
+  .menuCard .body { padding: 14px 16px; }
+  .menuCard h3 { font-size: 18px; }
+  .menuCard .price { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--crust); }
+  .menuCard iframe { width: 100%; aspect-ratio: 16/9; border: none; display: block; }
+
+  .checkinBig { text-align: center; padding: 30px 20px; }
+  .checkinBig .status { font-size: 15px; color: var(--bean-light); margin-bottom: 18px; }
+  .checkinBig .bigBtn { padding: 22px 40px; font-size: 18px; border-radius: 40px; }
+
+  table.simple { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.simple th { text-align: left; font-family: 'IBM Plex Mono', monospace; font-size: 10px; text-transform: uppercase; color: var(--bean-light); padding: 6px 8px; border-bottom: 1px solid #e3d8c2; }
+  table.simple td { padding: 8px; border-bottom: 1px solid #eee2cc; }
+
+  .loading { text-align: center; padding: 40px; color: var(--bean-light); }
+
+  @media (min-width: 720px) {
+    nav.tabs { padding: 0 20px; }
+  }
+
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: absolute; top: 0; left: 0; width: 100%; display: block; color: #000; background: #fff; padding: 24px; }
+  }
+
+  .dayGridLabel { font-size: 11px; color: var(--bean-light); margin-bottom: 6px; }
+  .dayGrid {
+    display: flex; flex-direction: column; border: 1px solid #e3d8c2; border-radius: 8px; overflow: hidden;
+    user-select: none; max-height: 260px; overflow-y: auto;
+  }
+  .gridSlot {
+    height: 14px; background: #fff; border-bottom: 1px solid #f3ede0; position: relative; cursor: pointer;
+  }
+  .gridSlot.gridSlotHour { border-bottom: 1px solid #e3d8c2; }
+  .gridSlot.gridSlotSelected { background: var(--honey); }
+  .gridHourLabel {
+    position: absolute; left: 6px; top: -6px; font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--bean-light); pointer-events: none;
+  }
+  .gridSlot.gridSlotSelected .gridHourLabel { color: var(--bean); }
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="authScreen">
+  <div class="authCard">
+    <h1>Wintertuin</h1>
+    <p class="sub">Team app, log in met je account</p>
+
+    <div class="field">
+      <label for="authName" id="authNameLabel" style="display:none;">Naam</label>
+      <input id="authName" type="text" placeholder="Je naam" style="display:none;">
+    </div>
+    <div class="field">
+      <label for="authEmail">E-mail</label>
+      <input id="authEmail" type="email" placeholder="naam@voorbeeld.nl">
+    </div>
+    <div class="field">
+      <label for="authPassword">Wachtwoord</label>
+      <input id="authPassword" type="password" placeholder="Minstens 6 tekens">
+    </div>
+    <button class="btn block" id="authSubmitBtn">Inloggen</button>
+    <div id="authMsg"></div>
+    <div class="authToggle">
+      <span id="authToggleText">Nog geen account?</span> <a id="authToggleLink">Account aanmaken</a>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="appShell">
+  <header class="top">
+    <div class="brand">Wintertuin</div>
+    <div class="who">
+      <span id="whoName">-</span>
+      <button id="logoutBtn">uitloggen</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabNav">
+    <button data-tab="sops" class="active">SOP's</button>
+    <button data-tab="menu">Menu</button>
+    <button data-tab="links">Links</button>
+    <button data-tab="roster">Rooster</button>
+    <button data-tab="checkin">Inklokken</button>
+    <button data-tab="swap">Ruilen <span class="navBadge" id="swapBadge" style="display:none;"></span></button>
+    <button data-tab="team" id="teamTabBtn" style="display:none;">Team</button>
+    <a href="Wintertuin-Intro.html" target="_blank" rel="noopener" class="mono"
+       style="align-self:center; margin-left:auto; margin-right:12px; padding:8px 14px; font-size:12px; color:var(--bean-light); text-decoration:none; border:1px solid #e3d8c2; border-radius:20px;">
+      Over de Wintertuin &#8599;
+    </a>
+  </nav>
+
+  <main>
+    <div class="panel active" id="panel-sops"></div>
+    <div class="panel" id="panel-menu"></div>
+    <div class="panel" id="panel-links"></div>
+    <div class="panel" id="panel-roster"></div>
+    <div class="panel" id="panel-checkin"></div>
+    <div class="panel" id="panel-swap"></div>
+    <div class="panel" id="panel-team"></div>
+  </main>
+</div>
+
+<div id="printArea"></div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="app_sops_menu.js"></script>
+<script src="app_links_roster.js"></script>
+<script src="app_roster.js"></script>
+<script src="app_checkin_swap.js"></script>
+<script src="app_team_notify.js"></script>
+</body>
+</html>

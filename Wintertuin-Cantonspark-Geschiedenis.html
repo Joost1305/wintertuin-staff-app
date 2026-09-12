@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wintertuin &amp; Cantonspark, geschiedenis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --glass: #EDF1EC; --ink: #24372B; --crust: #B8873A; --bean: #3B2A22;
+    --bean-light: #7A5A44; --honey: #D9A441; --paper: #FBF6EC;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--glass); color:var(--bean); font-family:'Work Sans', sans-serif; line-height:1.5; }
+  .page { max-width: 820px; margin:0 auto; padding:20px 28px 80px 28px; }
+  h1,h2,h3 { font-family:'Instrument Serif', serif; font-weight:400; color:var(--ink); margin:0; }
+  .eyebrow { font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--bean-light); margin:0 0 10px 0; }
+  .hero { margin-bottom: 48px; margin-top: 36px; }
+  .hero h1 { font-size: 44px; line-height:1.05; margin-bottom:12px; }
+  .hero p { font-size:17px; color:var(--bean-light); max-width:620px; margin:0; }
+  section { margin-bottom:56px; }
+  section > h2 { font-size:26px; margin-bottom:22px; }
+
+  .toolbar {
+    position: sticky; top: 0; z-index: 10; background: var(--ink); color: var(--paper);
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 10px 20px; font-family:'IBM Plex Mono', monospace; font-size: 11px;
+  }
+  .toolbar a { color: var(--paper); }
+  .toolbar button {
+    background: var(--honey); color: var(--bean); border: none; border-radius: 6px;
+    padding: 8px 14px; font-family:'Work Sans'; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .toolbar button:hover { background: #c9963e; }
+
+  .strand-legend { display:flex; gap:20px; flex-wrap:wrap; margin-bottom: 26px; font-size:12.5px; color:var(--bean-light); }
+  .strand-legend span.sw { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+
+  .timeline { position:relative; padding-left:30px; }
+  .timeline::before { content:''; position:absolute; left:5px; top:4px; bottom:4px; width:2px; background:rgba(36,55,43,0.15); }
+  .tl-item { position:relative; margin-bottom:20px; break-inside: avoid; }
+  .tl-item::before {
+    content:''; position:absolute; left:-30px; top:3px; width:12px; height:12px; border-radius:50%;
+    background:var(--crust); border:3px solid var(--glass);
+  }
+  .tl-item.park::before { background: var(--ink); }
+  .tl-item.now::before { background: var(--bean); }
+  .tl-year { font-family:'IBM Plex Mono', monospace; font-size:12px; color:var(--crust); font-weight:500; margin-bottom:3px; display:inline-block; }
+  .tl-item.park .tl-year { color: var(--ink); }
+  .tl-text { font-size:15px; color:var(--bean); }
+  .tl-text .sub { display:block; font-size:13px; color:var(--bean-light); margin-top:2px; }
+
+  .sources { font-size:12px; color:var(--bean-light); line-height:1.7; }
+  footer { font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--bean-light); border-top:1px solid rgba(59,42,34,0.15); padding-top:18px; margin-top:8px; }
+
+  @media (max-width:640px){ .hero h1 { font-size:34px; } }
+  @media print { .toolbar { display:none; } body { background:#fff; } .page { max-width:100%; padding:0 24px; } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a href="Wintertuin-Intro.html">&larr; Terug naar de introductie</a>
+  <button onclick="window.print()">Print / opslaan als PDF</button>
+</div>
+
+<div class="page">
+
+  <div class="hero">
+    <p class="eyebrow">Achtergrond &middot; geschiedenis</p>
+    <h1>De Wintertuin &amp; het Cantonspark</h1>
+    <p>Twee verhalen in één, het park om de kas heen en de kas zelf. Beide beginnen bij dezelfde man, in hetzelfde jaar, en zijn sindsdien onlosmakelijk met elkaar verbonden.</p>
+  </div>
+
+  <section>
+    <div class="strand-legend">
+      <div><span class="sw" style="background:var(--ink);"></span>Het Cantonspark, het landgoed en park eromheen</div>
+      <div><span class="sw" style="background:var(--crust);"></span>De Wintertuin, de kas zelf</div>
+    </div>
+
+    <div class="timeline">
+
+      <div class="tl-item park"><div class="tl-year">1800</div><div class="tl-text">Richard Scheerenberg laat Huize Schoonoord bouwen.<span class="sub">Het latere landgoed waarvan een deel ooit het Cantonspark wordt.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1817</div><div class="tl-text">Landgoed gekocht door jhr. Gerbrand Faas Elias.<span class="sub">Blijft in de familie tot 1902.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1902</div><div class="tl-text">Laatste telg, freule A. Faas Elias, overlijdt kinderloos.<span class="sub">Geen erfgenamen, het landgoed valt uiteen.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1905&ndash;1915</div><div class="tl-text">August Janssen legt een overtuin aan op een deel van de voormalige grond.<span class="sub">Janssen (1865&ndash;1918) was rijk geworden in het toenmalig Nederlands-Indi&euml; en bezat de villa's Peking, Java en Canton, vandaar de naam.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">1914</div><div class="tl-text">De Wintertuin wordt gebouwd, een kas van glas en staal.<span class="sub">Zuidgericht voor winterlicht, om zijn collectie tropische planten uit Indi&euml; te huisvesten.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1915</div><div class="tl-text">Janssen koopt op een veiling de natuurstenen colonnade voor het park.</div></div>
+
+      <div class="tl-item park"><div class="tl-year">1916</div><div class="tl-text">Janssen financiert de bouw van een zwembad aan de Eem.<span class="sub">Een van zijn sociale projecten in Baarn, de straat ernaast is naar hem vernoemd.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1918</div><div class="tl-text">August Janssen overlijdt.<span class="sub">De Universiteit Utrecht wordt eigenaar en richt het park in als botanische tuin.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">1918&ndash;1987</div><div class="tl-text">De Wintertuin dient als botanisch laboratorium en leslokaal van de universiteit.</div></div>
+
+      <div class="tl-item park"><div class="tl-year">Jaren '60&ndash;'70</div><div class="tl-text">De universiteit verhuist naar de Uithof, met een nieuwe, moderne botanische tuin.<span class="sub">Kasplanten en kassen gaan mee, het klaslokaal verdwijnt. Alleen de Wintertuin zelf blijft staan.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">1987</div><div class="tl-text">Het park wordt voor &eacute;&eacute;n gulden overgedragen aan de gemeente Baarn.<span class="sub">Voorwaarde: de bijzondere botanische waarde moet behouden blijven. Vanaf nu openbaar park.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">1987</div><div class="tl-text">De Wintertuin wordt rijksmonument, net als het park zelf.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">1987&ndash;2012</div><div class="tl-text">De Wintertuin staat grotendeels leeg, af en toe gebruikt als galerie.</div></div>
+
+      <div class="tl-item park"><div class="tl-year">1995</div><div class="tl-text">De Stichting Vrienden van het Cantonspark wordt opgericht.<span class="sub">Adviseert de gemeente over onderhoud en beplanting, tot op de dag van vandaag.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">2012</div><div class="tl-text">De Wintertuin wordt gerestaureerd met rijkssubsidie.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">2013</div><div class="tl-text">Horeca gecombineerd met een vlindertuin in de Wintertuin, sluit snel weer.</div></div>
+
+      <div class="tl-item park"><div class="tl-year">2015</div><div class="tl-text">Het Cantonspark viert zijn 100-jarig bestaan.<span class="sub">De Stichting Vrienden zet de volledige geschiedenis van het park online.</span></div></div>
+
+      <div class="tl-item park"><div class="tl-year">2018</div><div class="tl-text">Restauratie van het park zelf begint.<span class="sub">Gericht op het terugbrengen van de oorspronkelijke sfeer, met nieuwe Aziatische bomen en heesters.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">2019</div><div class="tl-text">Wintertuin Experience opent: theetuin, terras, twee escaperooms.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">2020&ndash;2022</div><div class="tl-text">Coronasluitingen en een oplopend onderhoudsgeschil met de gemeente raken de zaak.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">2022</div><div class="tl-text">Gasprijzen stijgen ongeveer 8&times;, de gemeente springt bij met ruim &euro;120.000 steun.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">10 jul 2023</div><div class="tl-text">De horeca in de Wintertuin sluit definitief, het gebouw is sindsdien niet meer publiek toegankelijk geweest voor die functie.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">Dec 2025</div><div class="tl-text">Verzakking van de fundering van de Wintertuin voor het eerst gemeld.</div></div>
+
+      <div class="tl-item crust"><div class="tl-year">Jul 2026</div><div class="tl-text">De Wintertuin wordt met onmiddellijke ingang gesloten wegens de fundering.<span class="sub">De gemeente trekt &euro;100.000 uit voor herstel.</span></div></div>
+
+      <div class="tl-item crust"><div class="tl-year">Mrt 2026</div><div class="tl-text">Huur van de Wintertuin gegund aan Stichting De Wintertuin (Mette te Velde e.a.).</div></div>
+
+      <div class="tl-item now"><div class="tl-year">Nu</div><div class="tl-text"><b>Een nieuw horecaconcept wordt uitgewerkt binnen de Wintertuin</b>, in een park dat al meer dan honderd jaar zijn eigen weg zoekt tussen verval en herstel.</div></div>
+
+    </div>
+  </section>
+
+  <section style="margin-bottom:24px;">
+    <h2 style="font-size:18px; margin-bottom:10px;">Bronnen</h2>
+    <p class="sources">
+      Wikipedia, "Cantonspark" &middot; Stichting Vrienden van het Cantonspark (cantonspark.nl) &middot; svjmedia.nl, "De geschiedenis van het Cantonspark" &middot; Eemland1 &middot; koloniaalerfgoedtevoet.nl &middot; opdeheuvelrug.nl &middot; RTV Utrecht &middot; Gemeente Baarn (baarn.nl) &middot; BaarnscheCourant
+    </p>
+  </section>
+
+  <footer>Wintertuin &amp; Cantonspark, Baarn &middot; achtergrond voor overleg</footer>
+</div>
+</body>
+</html>
