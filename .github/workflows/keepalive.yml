@@ -1,0 +1,19 @@
+
+name: Supabase keepalive
+ 
+on:
+  schedule:
+    - cron: '0 6 * * *'   # elke dag om 06:00 UTC
+  workflow_dispatch: {}    # laat je 'm ook handmatig draaien vanuit de Actions-tab
+ 
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase project
+        run: |
+          curl -sS -o /dev/null -w "Supabase antwoordde met status: %{http_code}\n" \
+            "https://foaoyjxzclvvdhuxvsck.supabase.co/rest/v1/resources?select=id&limit=1" \
+            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYW95anh6Y2x2dmRodXh2c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzU5MTYsImV4cCI6MjEwNDgxMTkxNn0.Fp2OtcvWc_fyOiE-NpveZg8tvRAlJ8CmvR2hRFCilUc" \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYW95anh6Y2x2dmRodXh2c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzU5MTYsImV4cCI6MjEwNDgxMTkxNn0.Fp2OtcvWc_fyOiE-NpveZg8tvRAlJ8CmvR2hRFCilUc"
+ 
