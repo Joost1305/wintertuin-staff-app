@@ -1,19 +1,44 @@
-
 name: Supabase keepalive
- 
+
 on:
   schedule:
     - cron: '0 6 * * *'   # elke dag om 06:00 UTC
   workflow_dispatch: {}    # laat je 'm ook handmatig draaien vanuit de Actions-tab
- 
+
+env:
+  SUPABASE_URL: https://foaoyjxzclvvdhuxvsck.supabase.co
+  SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYW95anh6Y2x2dmRodXh2c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzU5MTYsImV4cCI6MjEwNDgxMTkxNn0.Fp2OtcvWc_fyOiE-NpveZg8tvRAlJ8CmvR2hRFCilUc
+
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase project
+      - name: Ping resources
         run: |
-          curl -sS -o /dev/null -w "Supabase antwoordde met status: %{http_code}\n" \
-            "https://foaoyjxzclvvdhuxvsck.supabase.co/rest/v1/resources?select=id&limit=1" \
-            -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYW95anh6Y2x2dmRodXh2c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzU5MTYsImV4cCI6MjEwNDgxMTkxNn0.Fp2OtcvWc_fyOiE-NpveZg8tvRAlJ8CmvR2hRFCilUc" \
-            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYW95anh6Y2x2dmRodXh2c2NrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyMzU5MTYsImV4cCI6MjEwNDgxMTkxNn0.Fp2OtcvWc_fyOiE-NpveZg8tvRAlJ8CmvR2hRFCilUc"
- 
+          curl -sS -o /dev/null -w "resources: %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/resources?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+      - name: Ping sops
+        run: |
+          curl -sS -o /dev/null -w "sops: %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/sops?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+      - name: Ping menu_items
+        run: |
+          curl -sS -o /dev/null -w "menu_items: %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/menu_items?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+      - name: Ping profiles
+        run: |
+          curl -sS -o /dev/null -w "profiles: %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+      - name: Ping shifts
+        run: |
+          curl -sS -o /dev/null -w "shifts: %{http_code}\n" \
+            "$SUPABASE_URL/rest/v1/shifts?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY"
