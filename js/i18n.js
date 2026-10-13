@@ -1,0 +1,147 @@
+// UI translations. English is the default; everyone can switch to Dutch (saved in their profile).
+export const LANGS = { en: 'English', nl: 'Nederlands' };
+
+const dict = {
+  en: {
+    nav_sops: 'SOPs', nav_menu: 'Menu', nav_links: 'Links', nav_roster: 'Roster', nav_checkin: 'Clock in', nav_swap: 'Swap', nav_settings: 'Settings',
+    nav_about: 'About', nav_finance: 'Finance', nav_password: 'Password', nav_logout: 'Sign out',
+    login_title: 'Sign in', signup_title: 'Create account', login_sub: 'Wintertuin Team', email: 'Email', password: 'Password', sign_in: 'Sign in', signup_btn: 'Create account',
+    no_account: 'No account yet?', have_account: 'Already have an account?', signup_done: 'Account created. If email confirmation is on, check your inbox.',
+    login_note: 'One login for the team app and Wintertuin Finance.',
+    forgot_pw: 'Forgot your password?', forgot_need_email: 'Fill in your email address first.', forgot_sent: 'If {e} has an account, a reset link is on its way. Check your inbox and spam folder.',
+    no_access_title: 'No access', no_access_text: 'Your account is not active in the team app. Ask a manager.',
+    pw_title: 'Choose a new password', pw_new: 'New password', pw_repeat: 'Repeat password', pw_short: 'Use at least 8 characters.', pw_mismatch: 'The two passwords are not the same.', pw_saved: 'Password saved',
+    save: 'Save', saved: 'Saved', cancel: 'Cancel', delete: 'Delete', deleted: 'Deleted', edit: 'Edit', add: 'Add', close: 'Close', ok: 'OK', print: 'Print', export: 'Export',
+    error: 'Something went wrong', nothing_yet: 'Nothing here yet.', confirm_delete: 'Delete this item?', optional: 'Optional',
+    name: 'Name', title: 'Title', note: 'Note', date: 'Date', time: 'Time', from: 'From', until: 'Until', active: 'Active', role: 'Role', category: 'Category',
+    description: 'Description', price: 'Price (€)', hours: 'Hours', h: 'h', sort_order: 'Order', copy: 'Copy', copied: 'Copied', you: 'you',
+    downloaded_on: 'Downloaded on', draft_restored: 'Unsaved draft restored.', text_optional: 'Text (optional)',
+    // SOPs
+    sops_title: 'SOPs', sops_sub: 'Opening and closing lists and other fixed procedures. Checklists reset every day at midnight.',
+    sops_add: 'Add SOP', sops_edit: 'Edit SOP', sops_backup: 'Backup (.txt)', sops_none: 'No SOPs yet.',
+    sops_cat_ph: 'For example: Opening', sops_cat_hint: 'Pick an existing category or type a new one.', sops_title_ph: 'For example: Morning check kitchen',
+    sops_items: 'Checklist items (one per line, optional)', sops_items_ph: 'Turn on the coffee machine\nPut the terrace cushions outside',
+    sops_confirm_delete: 'Delete this SOP? This cannot be undone.',
+    // menu
+    menu_title: 'Menu', menu_sub: 'Dishes and drinks with explanation, photos and instruction videos.', menu_add: 'Add item', menu_edit: 'Edit item', menu_none: 'No menu items yet.',
+    group_food: 'Food', group_beverage: 'Beverage', menu_group: 'Main group', menu_category: 'Subcategory', menu_category_ph: 'For example: bakery, lunch, dinner, coffee, wine',
+    menu_photo: 'Photo', menu_photo_replace: 'New photo (optional, replaces the current one)', menu_video: 'Video embed URL (optional)',
+    menu_video_hint: 'Use the "embed" link from YouTube or Vimeo.', photo_failed: 'Photo upload failed', menu_confirm_delete: 'Remove this item from the menu?',
+    // links
+    links_title: 'Links', links_sub: 'Recipe database, finance and other reference material.', links_none: 'No links yet.', links_manage: 'Manage links',
+    // roster
+    roster_title: 'Roster', roster_sub: 'Your shifts in colour, colleagues in grey.', roster_print_today: 'Print: who works today',
+    ics_my_week: 'My week (.ics)', ics_my_month: 'My month (.ics)', ics_team_week: 'Team, this week (.ics)', ics_team_month: 'Team, this month (.ics)', roster_csv: 'Full roster backup (.csv)',
+    ics_cal_mine: 'Wintertuin, my shifts', ics_cal_team: 'Wintertuin, team roster',
+    prev_week: 'Previous week', next_week: 'Next week', this_week: 'This week', staff_member: 'Staff member', roster_no_staff: 'No active staff yet.', roster_add: 'Plan a shift',
+    fixed_shifts: 'Fixed shifts', fixed_manage: 'Manage fixed shifts', fixed_none: 'No fixed shifts yet. Add them in Settings to drag them onto the roster.',
+    fixed_drag_hint: 'Drag a fixed shift onto a day to plan it. You can also drag planned shifts to another day or person.',
+    hours_week: 'Hours this week', hours_week_sub: 'Planned comes from the roster, worked from clocking in and out.', planned: 'Planned', worked: 'Worked (clocked)',
+    shift: 'Shift', shift_plan: 'Plan a shift', shift_edit: 'Edit shift', roster_plan_btn: 'Plan', time_bar_hint: 'Drag over the time bar, or type the times below.',
+    section: 'Section', section_ph: 'For example: Restaurant, Bakery', end_after_start: 'The end time must be after the start time.',
+    shift_confirm_delete: 'Delete this shift?', who_works_today: 'Who works today', no_shifts_today: 'No shifts planned.',
+    // check-in
+    checkin_title: 'Clock in', checkin_sub: 'Clock in at the start of your shift, out at the end.', checked_in_since: 'Clocked in since {d}', not_checked_in: 'Not clocked in',
+    check_in: 'Clock in', check_out: 'Clock out', checkin_recent: 'Your recent shifts', checkin_none: 'No check-ins yet.', checked_in: 'In', checked_out: 'Out',
+    // swap
+    swap_title: 'Swap', swap_sub: 'Offer a shift or take over an open one. A manager approves every swap.',
+    swap_to_approve: 'Swaps to approve', swap_nothing_approve: 'Nothing to approve.', swap_from_to: 'from {a} to {b}', approve: 'Approve', reject: 'Reject',
+    swap_my_shifts: 'Your upcoming shifts', swap_no_shifts: 'You have no upcoming shifts.', swap_offered: 'offered', swap_offer: 'Offer swap',
+    swap_open: 'Open swap requests', swap_none_open: 'No open requests from colleagues.', swap_offered_by: 'offered by {n}', swap_take: "I'll take it",
+    swap_my_requests: 'Status of your requests', swap_none_mine: 'You have not offered any shifts yet.', swap_taken_by: 'taken over by {n}',
+    swap_reason: 'Reason for the swap (optional)',
+    swap_status_open: 'open', swap_status_claimed: 'waiting for approval', swap_status_approved: 'approved', swap_status_rejected: 'rejected', swap_status_cancelled: 'cancelled',
+    // settings
+    set_team: 'Team and accounts', set_team_sub: 'Names, roles, accounts and passwords.', set_templates: 'Fixed shifts', set_templates_sub: 'Ready-made shifts to drag onto the roster.',
+    set_links: 'Links', set_links_sub: 'Shown on the Links page for everyone.', set_backup: 'Backup and restore',
+    add_account: 'New account', create_account: 'Create account', name_ph: 'For example: Anna de Vries', password_hint: 'A password has been generated. You can change it.',
+    role_staff: 'Staff', role_manager: 'Manager', reset_password: 'New password', self_note: 'You cannot change your own role or switch yourself off, so you never lock yourself out.',
+    team_note: 'Accounts are shared with Wintertuin Finance: one login for both apps. Finance access is set separately in the finance app.',
+    confirm_reset: 'Make a new password for {n}? The old password stops working.',
+    cred_title: 'Login details for {n}', pw_once: 'This password is shown only once, so copy or share it now.', share_whatsapp: 'Share via WhatsApp',
+    cred_text: 'Your Wintertuin login for {n}\nEmail: {e}\nPassword: {p}\nLink: {url}',
+    add_template: 'Add fixed shift', template_ph: 'For example: Morning bakery', add_link: 'Add link', link_name_ph: 'For example: Recipe database',
+    link_note: 'Note (for example a password hint)', link_note_ph: 'Password: ask the manager',
+    backup_sub: 'One file with all settings: SOPs, menu, links, fixed shifts and the full roster. Handy before a big change.',
+    backup_download: 'Download all settings (.json)', restore_title: 'Restore', restore_sub: 'Put back a file you downloaded earlier. Existing items with the same ID are overwritten, new ones are added, nothing is deleted.',
+    restore_btn: 'Restore from file', restore_pick: 'Choose a backup file (.json) first.', restore_bad_file: 'Could not read this file. Is it a valid backup (.json)?',
+    restore_shifts: 'Shifts in the roster', restore_confirm: 'This file was made on {d} and contains:\n\n{c}\n\nContinue?', restoring: 'Restoring…',
+    restore_partial: 'Partly done, with errors:', restore_done: 'Restored.', other_exports: 'Other exports', other_exports_sub: 'The SOP backup (.txt) is on the SOPs page; calendar files and the roster backup (.csv) are on the Roster page.',
+  },
+  nl: {
+    nav_sops: "SOP's", nav_menu: 'Menu', nav_links: 'Links', nav_roster: 'Rooster', nav_checkin: 'Inklokken', nav_swap: 'Ruilen', nav_settings: 'Instellingen',
+    nav_about: 'Over', nav_finance: 'Financiën', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
+    login_title: 'Inloggen', signup_title: 'Account aanmaken', login_sub: 'Wintertuin Team', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen', signup_btn: 'Account aanmaken',
+    no_account: 'Nog geen account?', have_account: 'Heb je al een account?', signup_done: 'Account aangemaakt. Als e-mailbevestiging aan staat, kijk dan in je inbox.',
+    login_note: 'Eén login voor de team-app en Wintertuin Finance.',
+    forgot_pw: 'Wachtwoord vergeten?', forgot_need_email: 'Vul eerst je e-mailadres in.', forgot_sent: 'Als {e} een account heeft, komt er een resetlink aan. Kijk ook in je spammap.',
+    no_access_title: 'Geen toegang', no_access_text: 'Je account staat niet actief in de team-app. Vraag het een manager.',
+    pw_title: 'Kies een nieuw wachtwoord', pw_new: 'Nieuw wachtwoord', pw_repeat: 'Herhaal wachtwoord', pw_short: 'Gebruik minstens 8 tekens.', pw_mismatch: 'De twee wachtwoorden zijn niet gelijk.', pw_saved: 'Wachtwoord opgeslagen',
+    save: 'Opslaan', saved: 'Opgeslagen', cancel: 'Annuleren', delete: 'Verwijderen', deleted: 'Verwijderd', edit: 'Bewerken', add: 'Toevoegen', close: 'Sluiten', ok: 'OK', print: 'Printen', export: 'Exporteren',
+    error: 'Er ging iets mis', nothing_yet: 'Hier staat nog niets.', confirm_delete: 'Dit item verwijderen?', optional: 'Optioneel',
+    name: 'Naam', title: 'Titel', note: 'Notitie', date: 'Datum', time: 'Tijd', from: 'Van', until: 'Tot', active: 'Actief', role: 'Rol', category: 'Categorie',
+    description: 'Beschrijving', price: 'Prijs (€)', hours: 'Uren', h: 'u', sort_order: 'Volgorde', copy: 'Kopiëren', copied: 'Gekopieerd', you: 'jij',
+    downloaded_on: 'Gedownload op', draft_restored: 'Niet-opgeslagen concept hersteld.', text_optional: 'Tekst (optioneel)',
+    sops_title: "SOP's", sops_sub: 'Openings- en sluitlijsten en andere vaste procedures. Afvinklijsten resetten elke dag om middernacht.',
+    sops_add: 'SOP toevoegen', sops_edit: 'SOP bewerken', sops_backup: 'Back-up (.txt)', sops_none: "Nog geen SOP's.",
+    sops_cat_ph: 'Bijvoorbeeld: Opening', sops_cat_hint: 'Kies een bestaande categorie of typ een nieuwe.', sops_title_ph: 'Bijvoorbeeld: Ochtendcheck keuken',
+    sops_items: 'Checklist (één per regel, optioneel)', sops_items_ph: 'Koffiemachine aanzetten\nTerraskussens buiten leggen',
+    sops_confirm_delete: 'Deze SOP verwijderen? Dit kan niet ongedaan gemaakt worden.',
+    menu_title: 'Menu', menu_sub: "Gerechten en dranken met uitleg, foto's en instructievideo's.", menu_add: 'Item toevoegen', menu_edit: 'Item bewerken', menu_none: 'Nog geen menu-items.',
+    group_food: 'Food', group_beverage: 'Beverage', menu_group: 'Hoofdcategorie', menu_category: 'Subcategorie', menu_category_ph: 'Bijvoorbeeld: bakkerij, lunch, diner, koffie, wijn',
+    menu_photo: 'Foto', menu_photo_replace: 'Nieuwe foto (optioneel, vervangt de huidige)', menu_video: 'Video embed-URL (optioneel)',
+    menu_video_hint: 'Gebruik de "embed"-link van YouTube of Vimeo.', photo_failed: 'Foto uploaden mislukt', menu_confirm_delete: 'Dit item van het menu halen?',
+    links_title: 'Links', links_sub: 'Receptendatabase, financiën en andere naslag.', links_none: 'Nog geen links.', links_manage: 'Links beheren',
+    roster_title: 'Rooster', roster_sub: "Jouw diensten in kleur, collega's in grijs.", roster_print_today: 'Print: wie werkt vandaag',
+    ics_my_week: 'Mijn week (.ics)', ics_my_month: 'Mijn maand (.ics)', ics_team_week: 'Team, deze week (.ics)', ics_team_month: 'Team, deze maand (.ics)', roster_csv: 'Volledige roosterback-up (.csv)',
+    ics_cal_mine: 'Wintertuin, mijn diensten', ics_cal_team: 'Wintertuin, teamrooster',
+    prev_week: 'Vorige week', next_week: 'Volgende week', this_week: 'Deze week', staff_member: 'Medewerker', roster_no_staff: 'Nog geen actieve medewerkers.', roster_add: 'Dienst inplannen',
+    fixed_shifts: 'Vaste diensten', fixed_manage: 'Vaste diensten beheren', fixed_none: 'Nog geen vaste diensten. Voeg ze toe bij Instellingen om ze op het rooster te slepen.',
+    fixed_drag_hint: 'Sleep een vaste dienst op een dag om hem in te plannen. Geplande diensten kun je ook naar een andere dag of persoon slepen.',
+    hours_week: 'Uren deze week', hours_week_sub: 'Gepland komt uit het rooster, gewerkt uit in- en uitklokken.', planned: 'Gepland', worked: 'Gewerkt (ingeklokt)',
+    shift: 'Dienst', shift_plan: 'Dienst inplannen', shift_edit: 'Dienst bewerken', roster_plan_btn: 'Inplannen', time_bar_hint: 'Sleep over de tijdbalk, of typ de tijden hieronder.',
+    section: 'Onderdeel', section_ph: 'Bijvoorbeeld: Restaurant, Bakkerij', end_after_start: 'De eindtijd moet na de begintijd liggen.',
+    shift_confirm_delete: 'Deze dienst verwijderen?', who_works_today: 'Wie werkt vandaag', no_shifts_today: 'Geen diensten gepland.',
+    checkin_title: 'Inklokken', checkin_sub: 'Klok in bij het begin van je dienst, uit bij het einde.', checked_in_since: 'Ingeklokt sinds {d}', not_checked_in: 'Nu niet ingeklokt',
+    check_in: 'Inklokken', check_out: 'Uitklokken', checkin_recent: 'Jouw laatste keren', checkin_none: 'Nog geen check-ins.', checked_in: 'In', checked_out: 'Uit',
+    swap_title: 'Ruilen', swap_sub: 'Bied een dienst aan of neem een openstaande dienst over. Een manager keurt elke ruil goed.',
+    swap_to_approve: 'Goed te keuren ruilen', swap_nothing_approve: 'Niets om goed te keuren.', swap_from_to: 'van {a} naar {b}', approve: 'Goedkeuren', reject: 'Afwijzen',
+    swap_my_shifts: 'Jouw aankomende diensten', swap_no_shifts: 'Je hebt geen aankomende diensten.', swap_offered: 'aangeboden', swap_offer: 'Ruil aanbieden',
+    swap_open: 'Openstaande ruilverzoeken', swap_none_open: "Geen openstaande verzoeken van collega's.", swap_offered_by: 'aangeboden door {n}', swap_take: 'Ik neem hem over',
+    swap_my_requests: 'Status van jouw verzoeken', swap_none_mine: 'Je hebt nog geen diensten aangeboden.', swap_taken_by: 'overgenomen door {n}',
+    swap_reason: 'Reden voor de ruil (optioneel)',
+    swap_status_open: 'open', swap_status_claimed: 'wacht op goedkeuring', swap_status_approved: 'goedgekeurd', swap_status_rejected: 'afgewezen', swap_status_cancelled: 'geannuleerd',
+    set_team: 'Team en accounts', set_team_sub: 'Namen, rollen, accounts en wachtwoorden.', set_templates: 'Vaste diensten', set_templates_sub: 'Kant-en-klare diensten om op het rooster te slepen.',
+    set_links: 'Links', set_links_sub: 'Staan voor iedereen op de pagina Links.', set_backup: 'Back-up en herstel',
+    add_account: 'Nieuw account', create_account: 'Account aanmaken', name_ph: 'Bijvoorbeeld: Anna de Vries', password_hint: 'Er is een wachtwoord gemaakt. Je kunt het aanpassen.',
+    role_staff: 'Medewerker', role_manager: 'Manager', reset_password: 'Nieuw wachtwoord', self_note: 'Je eigen rol of actief-status kun je niet wijzigen, zo sluit je jezelf nooit buiten.',
+    team_note: 'Accounts worden gedeeld met Wintertuin Finance: één login voor beide apps. Toegang tot de financiële app stel je apart in, in die app.',
+    confirm_reset: 'Een nieuw wachtwoord maken voor {n}? Het oude wachtwoord werkt daarna niet meer.',
+    cred_title: 'Inloggegevens voor {n}', pw_once: 'Dit wachtwoord zie je maar één keer, dus kopieer of deel het nu.', share_whatsapp: 'Delen via WhatsApp',
+    cred_text: 'Je Wintertuin-login voor {n}\nE-mail: {e}\nWachtwoord: {p}\nLink: {url}',
+    add_template: 'Vaste dienst toevoegen', template_ph: 'Bijvoorbeeld: Ochtend bakkerij', add_link: 'Link toevoegen', link_name_ph: 'Bijvoorbeeld: Receptendatabase',
+    link_note: 'Notitie (bijvoorbeeld een wachtwoordhint)', link_note_ph: 'Wachtwoord: vraag de manager',
+    backup_sub: "Eén bestand met alle instellingen: SOP's, menu, links, vaste diensten en het volledige rooster. Handig vlak voor een grote wijziging.",
+    backup_download: 'Download alle instellingen (.json)', restore_title: 'Herstellen', restore_sub: 'Zet een eerder gedownload bestand terug. Bestaande items met hetzelfde ID worden overschreven, nieuwe toegevoegd, niets wordt verwijderd.',
+    restore_btn: 'Herstellen uit bestand', restore_pick: 'Kies eerst een back-upbestand (.json).', restore_bad_file: 'Dit bestand kon niet gelezen worden. Is het een geldige back-up (.json)?',
+    restore_shifts: 'Diensten in het rooster', restore_confirm: 'Dit bestand is gemaakt op {d} en bevat:\n\n{c}\n\nDoorgaan?', restoring: 'Bezig met herstellen…',
+    restore_partial: 'Deels gelukt, met fouten:', restore_done: 'Hersteld.', other_exports: 'Andere exports', other_exports_sub: "De SOP-back-up (.txt) staat op de SOP-pagina; agendabestanden en de roosterback-up (.csv) op de Rooster-pagina.",
+  },
+};
+
+let current = 'en';
+try { current = localStorage.getItem('wtteam_lang') || 'en'; } catch { /* private mode */ }
+document.documentElement.lang = current;
+export function setLang(l) {
+  if (!dict[l]) return;
+  current = l;
+  try { localStorage.setItem('wtteam_lang', l); } catch { /* private mode */ }
+  document.documentElement.lang = l;
+}
+export function lang() { return current; }
+export function t(key, vars) {
+  let s = (dict[current] && dict[current][key]) || dict.en[key] || key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v);
+  return s;
+}
+export const _dict = dict;
