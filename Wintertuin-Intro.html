@@ -2,77 +2,66 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="img/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#2F5D50">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wintertuin, Baarn</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --glass: #EDF1EC; --ink: #24372B; --crust: #B8873A; --bean: #3B2A22;
-    --bean-light: #7A5A44; --honey: #D9A441; --paper: #FBF6EC;
+    --bg: #F6F4EF; --surface: #FFFFFF; --surface-2: #F0EDE5; --ink: #1F2A27; --ink-2: #55625E; --ink-3: #8A9592;
+    --line: #E3DFD5; --primary: #2F5D50; --primary-soft: #E3EDE9; --accent: #C0703F; --accent-soft: #F6E7DC;
+    --radius: 14px; --shadow: 0 1px 2px rgba(31, 42, 39, .06), 0 4px 16px rgba(31, 42, 39, .05);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--glass); color:var(--bean); font-family:'Work Sans', sans-serif; line-height:1.6; }
-  .page { max-width: 780px; margin:0 auto; padding:20px 28px 90px 28px; }
-  h1,h2,h3 { font-family:'Instrument Serif', serif; font-weight:400; color:var(--ink); margin:0; }
-  .eyebrow { font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--bean-light); margin:0 0 10px 0; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { margin: 0; color: var(--ink); letter-spacing: -.01em; }
+  a { color: var(--primary); }
+  .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); font-weight: 700; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .edit-hint { font-size: .78rem; color: var(--ink-3); }
+  .btn { font: inherit; font-weight: 600; font-size: .9rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    border-radius: 10px; padding: 7px 12px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { border-color: var(--ink-3); }
+  .btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #264d42; }
+  .page { max-width: 800px; margin: 0 auto; padding: 24px 20px 90px; }
+  .eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); margin: 0 0 10px; }
+  [contenteditable="true"] { border-radius: 6px; transition: background .15s; cursor: text; }
+  [contenteditable="true"]:hover { background: var(--primary-soft); }
+  [contenteditable="true"]:focus { outline: 2px solid var(--primary); outline-offset: 2px; background: var(--surface); }
+  footer { font-size: .8rem; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
+  @media (max-width: 640px) { .edit-hint { display: none; } .topbar { padding: 8px 14px; } }
+  @media print { .topbar { display: none; } body { background: #fff; } [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; outline: none; } }
 
-  .toolbar {
-    position: sticky; top: 0; z-index: 10; background: var(--ink); color: var(--paper);
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 10px 20px; font-family:'IBM Plex Mono', monospace; font-size: 11px;
-  }
-  .toolbar span { opacity: 0.8; }
-  .toolbar button {
-    background: var(--honey); color: var(--bean); border: none; border-radius: 6px;
-    padding: 8px 14px; font-family:'Work Sans'; font-size: 13px; font-weight: 600; cursor: pointer;
-  }
-
-  [contenteditable="true"] { border-radius: 4px; transition: background 0.15s; cursor: text; }
-  [contenteditable="true"]:hover { background: rgba(217,164,65,0.12); }
-  [contenteditable="true"]:focus { outline: 1.5px dashed var(--crust); background: rgba(217,164,65,0.16); }
-
-  .hero { margin: 44px 0 52px 0; text-align: center; }
-  .hero h1 { font-size: 58px; line-height: 1; margin-bottom: 16px; }
-  .hero p { font-size: 18px; color: var(--bean-light); max-width: 560px; margin: 0 auto; }
-
-  section { margin-bottom: 48px; }
-  section p { font-size: 16px; margin: 0 0 16px 0; }
+  .hero { margin: 40px 0 44px; text-align: center; }
+  .hero h1 { font-size: 3rem; line-height: 1.05; margin-bottom: 14px; font-weight: 750; }
+  .hero p { font-size: 1.12rem; color: var(--ink-2); max-width: 560px; margin: 0 auto; }
+  section { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; margin-bottom: 16px; }
+  section h2 { font-size: 1.25rem; margin-bottom: 10px; }
+  section p { margin: 0 0 14px; color: var(--ink); }
   section p:last-child { margin-bottom: 0; }
-
-  .facts { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom: 48px; }
-  .fact { background: var(--paper); border-radius: 12px; padding: 18px 16px; text-align:center; }
-  .fact .val { font-family:'Instrument Serif', serif; font-size: 26px; color: var(--ink); display:block; margin-bottom:4px; }
-  .fact .label { font-family:'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--bean-light); text-transform:uppercase; letter-spacing:0.05em; }
-
-  .history-card {
-    background: var(--ink); color: var(--paper); border-radius: 16px; padding: 32px 30px;
-    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
-  }
-  .history-card h2 { color: var(--paper); font-size: 26px; margin-bottom: 8px; }
-  .history-card p { color: rgba(251,246,236,0.75); font-size: 14.5px; max-width: 380px; margin: 0; }
-  .history-card a.btn {
-    display: inline-block; background: var(--honey); color: var(--bean); text-decoration:none;
-    padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 14px; white-space: nowrap;
-  }
-
-  footer { font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--bean-light); border-top:1px solid rgba(59,42,34,0.15); padding-top:18px; margin-top:16px; }
-
-  @media (max-width: 640px) {
-    .hero h1 { font-size: 40px; }
-    .facts { grid-template-columns: 1fr; }
-    .history-card { flex-direction: column; align-items: flex-start; text-align: left; }
-  }
-  @media print { .toolbar { display:none; } body { background:#fff; } [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; outline: none; } }
+  .facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 24px; }
+  .fact { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; text-align: center; }
+  .fact .val { display: block; font-size: 1.5rem; font-weight: 750; color: var(--primary); margin-bottom: 2px; }
+  .fact .label { font-size: .76rem; font-weight: 650; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+  .history-card { background: var(--primary); color: #fff; border-radius: var(--radius); padding: 26px 26px; display: flex; align-items: center;
+    justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+  .history-card h2 { color: #fff; font-size: 1.35rem; margin-bottom: 6px; }
+  .history-card p { color: rgba(255,255,255,.82); font-size: .95rem; max-width: 400px; margin: 0; }
+  .history-card a.btn { background: #fff; color: var(--primary); border-color: #fff; padding: 11px 18px; white-space: nowrap; }
+  @media (max-width: 640px) { .hero h1 { font-size: 2.2rem; } .facts { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
-<div class="toolbar">
-  <span>Klik op tekst om te bewerken &middot; wijzigingen zijn alleen zichtbaar in dit browsertabblad</span>
-  <button onclick="window.print()">Print / opslaan als PDF</button>
-</div>
+<header class="topbar">
+  <a class="brand" href="index.html"><img src="img/icon.svg" width="28" height="28" alt=""><span>&larr; Wintertuin Team</span></a>
+  <div class="topbar-right"><span class="edit-hint">Klik op tekst om te bewerken (alleen in dit tabblad)</span>
+    <button class="btn" onclick="window.print()">&#128424; Print / PDF</button></div>
+</header>
 
 <div class="page">
 
