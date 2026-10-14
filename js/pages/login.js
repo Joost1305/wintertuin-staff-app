@@ -8,7 +8,7 @@ export function renderLogin(onSuccess) {
   app().innerHTML = `
     <div class="login-wrap">
       <form class="card login-card" id="login-form" autocomplete="on">
-        <div class="logo"><img src="img/icon.svg" width="40" height="40" alt="">
+        <div class="logo"><img src="img/team-icon.svg" width="40" height="40" alt="">
           <div style="flex:1"><h1>${t('login_title')}</h1><div class="muted small">${t('login_sub')}</div></div>
           <div class="lang-toggle" id="login-lang" role="group" aria-label="Language"></div></div>
         <div class="field"><label>${t('email')}</label><input type="email" name="email" autocomplete="username" required></div>

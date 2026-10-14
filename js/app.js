@@ -80,7 +80,7 @@ function renderShell() {
 
 function renderNoAccess() {
   $('#topbar').hidden = true;
-  app().innerHTML = `<div class="card no-access"><img src="img/icon.svg" width="48" height="48" alt="">
+  app().innerHTML = `<div class="card no-access"><img src="img/team-icon.svg" width="48" height="48" alt="">
     <h1 style="margin-top:10px">${t('no_access_title')}</h1><p class="muted">${t('no_access_text')}</p>
     <button class="btn-primary" id="na-out">${t('nav_logout')}</button></div>`;
   $('#na-out').onclick = () => { location.hash = '#/logout'; };

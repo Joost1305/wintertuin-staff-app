@@ -7,7 +7,7 @@ export function renderSetPassword(onDone) {
   app().innerHTML = `
     <div class="login-wrap">
       <form class="card login-card" id="pw-form">
-        <div class="logo"><img src="img/icon.svg" width="40" height="40" alt=""><h1>${t('pw_title')}</h1></div>
+        <div class="logo"><img src="img/team-icon.svg" width="40" height="40" alt=""><h1>${t('pw_title')}</h1></div>
         <div class="field"><label>${t('pw_new')}</label><input type="password" name="pw" autocomplete="new-password" minlength="8" required></div>
         <div class="field"><label>${t('pw_repeat')}</label><input type="password" name="pw2" autocomplete="new-password" minlength="8" required></div>
         <button class="btn-primary btn-xl" type="submit">${t('save')}</button>
