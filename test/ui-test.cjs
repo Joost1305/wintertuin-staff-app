@@ -264,6 +264,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForFunction((b) => (window.__printed || 0) > b, before, { timeout: 5000 });
       const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
       if ((html.match(/class="hcp"/g) || []).length !== 10 || !/Week \d+/.test(html) || !/Bar fridge/.test(html) || !/Checked by/.test(html)) throw new Error('print sheet'); });
+    await step('HACCP: switching lists off removes them from overview, archive and print', async () => {
+      await p.goto(BASE + '#/settings/haccp'); await p.waitForSelector('#save-lists');
+      await p.uncheck('[data-list-on=sousvide]'); await p.click('#save-lists'); await p.waitForTimeout(500);
+      await p.goto(BASE + '#/haccp'); await p.waitForSelector('.hc-tile');
+      if (await p.$('a[href="#/haccp/sousvide"]')) throw new Error('switched-off list still shown');
+      await p.goto(BASE + '#/settings/haccp'); await p.waitForSelector('#save-lists');
+      await p.check('[data-list-on=sousvide]'); await p.click('#save-lists'); await p.waitForTimeout(500); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
