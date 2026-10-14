@@ -443,7 +443,8 @@ function printBlank(l) {
     .beo .cb { display: inline-block; width: 11px; height: 11px; border: 1.2px solid #333; vertical-align: -1px; margin: 0 4px 0 12px; }
     .beo .opts { padding: 8px 0 4px; font-size: 9.5pt; }
     .beo .office { border: 1px dashed #999; border-radius: 6px; padding: 6px 10px 10px; margin-top: 16px; }
-    .beo .pb { break-before: page; }
+    .beo table.g, .beo .fg, .beo .fg3, .beo .office { break-inside: avoid; page-break-inside: avoid; }
+    .beo h2 { break-after: avoid; page-break-after: avoid; }
     .beo .keep { break-inside: avoid; }
     .beo h2 { margin-top: 11px; }
   </style><div class="beo">
@@ -459,13 +460,13 @@ function printBlank(l) {
     <div class="fg">${f('ev_guests_expected')}${f('ev_guests_guaranteed')}${f('ev_guarantee_deadline')}${f('ev_children')}</div>
     <h2>${tt('ev_dietary')}</h2>${grid([['ev_count', '12%'], ['ev_diet_type', '38%'], ['ev_who', '50%']], 5)}
     <h2>${tt('ev_timeline')}</h2>${grid([['time', '14%'], ['ev_what', '86%']], 8)}
-    <h2 class="pb">${tt('ev_menu')}</h2>${grid([['ev_course', '24%'], ['ev_dish', '76%']], 6)}
+    <h2>${tt('ev_menu')}</h2>${grid([['ev_course', '24%'], ['ev_dish', '76%']], 5)}
     <h2>${tt('ev_sec_setup')}</h2><div class="lbl">${tt('ev_setup')}</div>${lines(2)}
-    <h2>${tt('ev_sec_drinks_extras')}</h2><div class="lbl">${tt('ev_drinks')}</div>${lines(2)}<div class="lbl">${tt('ev_extras')}</div>${lines(2)}
+    <h2>${tt('ev_sec_drinks_extras')}</h2><div class="lbl">${tt('ev_drinks')}</div>${lines(1)}<div class="lbl">${tt('ev_extras')}</div>${lines(1)}
     <h2>${tt('ev_sec_money')}</h2>
     <div class="fg">${f('ev_price_pp')}${f('ev_room_hire')}${f('ev_min_spend')}${f('ev_deposit')}${f('ev_deposit_due')}<div class="opts">${tt('ev_incl_vat')}: ${box('yes')}${box('no')}</div></div>
     <div class="lbl">${tt('ev_payment_terms')}</div>${lines(1)}<div class="lbl">${tt('ev_cancellation_terms')}</div>${lines(1)}
-    <h2>${tt('ev_blank_notes')}</h2>${lines(3)}
+    <h2>${tt('ev_blank_notes')}</h2>${lines(2)}
     <div class="keep"><h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
     <div class="office"><div class="small"><strong>${tt('ev_office')}</strong></div><div class="fg3">${f('ev_status')}${f('ev_sold_by')}${f('ev_entered')}</div></div></div>

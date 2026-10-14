@@ -177,27 +177,19 @@ export function download(text, filename, type = 'text/plain;charset=utf-8') {
   a.click();
   a.remove();
 }
-// Prints only the given HTML, from its own hidden frame. The app itself is never touched, so the
-// preview cannot go blank (Safari renders the page again when you save as PDF or press Print).
-const PRINT_CSS = `@page { size: A4; margin: 14mm; }
-  html, body { margin: 0; background: #fff; color: #000; }
-  body { font: 10.5pt/1.4 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  h1 { font-size: 20pt; margin: 0 0 8px; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border-bottom: 1px solid #ccc; padding: 6px; text-align: left; }
-  tr, td, th { break-inside: avoid; }`;
+// Prints only the given HTML. The sheet goes into #printArea, which shows only on paper while the rest of the
+// page is hidden there. Nothing is cleared after printing: Safari signals "done" too early and renders the page
+// again when you press Print or Save as PDF, so clearing (or printing from a frame) gave blank pages.
+// The sheet is removed when you move to another page, or replaced by the next print.
+let clearOnLeave = null;
 export function printHtml(html) {
-  document.getElementById('printArea').innerHTML = html; // kept as a record of the last sheet (used by tests)
-  const old = document.getElementById('printFrame'); if (old) old.remove();
-  const f = document.createElement('iframe');
-  f.id = 'printFrame'; f.title = 'print'; f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
-  // off screen but rendered: some browsers print a blank page from frames that are hidden with display:none
-  f.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;';
-  document.body.appendChild(f);
-  const d = f.contentDocument;
-  d.open();
-  d.write(`<!doctype html><html lang="${document.documentElement.lang || 'en'}"><head><meta charset="utf-8"><title>${esc(document.title)}</title><style>${PRINT_CSS}</style></head><body>${html}</body></html>`);
-  d.close();
-  const run = window.__printHook || ((w) => { w.focus(); w.print(); }); // tests swap in a counter
-  setTimeout(() => run(f.contentWindow), 120); // let the frame lay out and load images first
+  const area = document.getElementById('printArea');
+  area.innerHTML = html;
+  document.body.classList.add('printing');
+  if (!clearOnLeave) {
+    clearOnLeave = () => { document.body.classList.remove('printing'); area.innerHTML = ''; window.removeEventListener('hashchange', clearOnLeave); clearOnLeave = null; };
+    window.addEventListener('hashchange', clearOnLeave);
+  }
+  const run = window.__printHook || (() => window.print()); // tests swap in a counter
+  setTimeout(run, 60); // let the sheet lay out first
 }
