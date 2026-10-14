@@ -4,7 +4,7 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 const dict = {
   en: {
     set_password: 'My password', set_password_sub: 'One login for the team app and Wintertuin Finance: this changes both.',
-    sops_missing_en: '{n} SOPs have no English version yet; they show in Dutch. Click Edit to add English.', sops_lang_hint: 'Fill in one or both languages. Everyone sees their own language, Dutch when there is no English. Keep the checklists line for line the same, the ticks follow the line number.',
+    sops_missing_en: 'No English version yet for {n} SOP(s); they show in Dutch. Click Edit to add English.', sops_lang_hint: 'Fill in one or both languages. Everyone sees their own language, Dutch when there is no English. Keep the checklists line for line the same, the ticks follow the line number.',
     sops_lines: '{n} lines', sops_lines_mismatch: '{n} lines, the Dutch list has {m}. Make them the same.', sops_need_title: 'Give the SOP a title.',
     no_account_note: 'No account? Ask a manager.', closed: 'closed', opening_from_finance: 'Grey days are closed. Opening hours and themed evenings are managed in Wintertuin Finance.',
     allergens: 'Allergens', allergens_hint: 'The 14 allergens you must inform guests about (EU 1169/2011).', allergens_none_set: 'No allergens set',

@@ -33,7 +33,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const body = await p.textContent('#app');
       if (!/Morning check kitchen/.test(body) || !/Coffee machine on/.test(body)) throw new Error('English not shown');
       if (!/Bar sluiten/.test(body)) throw new Error('Dutch fallback missing');
-      if (!/1 SOPs have no English/.test(body)) throw new Error('missing-English note');
+      if (!/No English version yet for 1 SOP/.test(body)) throw new Error('missing-English note');
     });
     await step('app switch to Finance next to the brand, same icon', async () => {
       const a = await p.$('.topbar #app-switch'); if (!a) throw new Error('no switch');
