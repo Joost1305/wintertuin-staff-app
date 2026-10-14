@@ -5,6 +5,16 @@ import { t } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { PHOTO_BUCKET } from '../config.js';
 
+// Turn any YouTube or Vimeo link (watch, share, shorts, embed) into the embed address that may be shown inside the app.
+export function embedUrl(raw) {
+  const u = String(raw || '').trim(); if (!u) return '';
+  let m = u.match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([\w-]{11})/i);
+  if (m) { const t = u.match(/[?&](?:t|start)=(\d+)/); return `https://www.youtube-nocookie.com/embed/${m[1]}${t ? `?start=${t[1]}` : ''}`; }
+  m = u.match(/vimeo\.com\/(?:video\/)?(\d+)(?:\/(\w+))?/i);
+  if (m) return `https://player.vimeo.com/video/${m[1]}${m[2] ? `?h=${m[2]}` : ''}`;
+  return /^https:\/\//i.test(u) ? u : '';
+}
+
 let items = [];
 // The 14 allergens that EU law (Regulation 1169/2011) requires you to inform guests about
 export const ALLERGENS = ['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soy', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'];
@@ -34,7 +44,7 @@ function draw() {
 function card(m) {
   return `<div class="card menu-card">
     ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy">` : ''}
-    ${m.video_url ? `<iframe src="${esc(m.video_url)}" allowfullscreen loading="lazy" title="${esc(m.name)}"></iframe>` : ''}
+    ${embedUrl(m.video_url) ? `<iframe src="${esc(embedUrl(m.video_url))}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="${esc(m.name)}"></iframe>` : ''}
     <div class="body">
       ${m.category ? `<span><span class="tag">${esc(m.category)}</span></span>` : ''}
       <h3>${esc(m.name)}</h3>
@@ -60,7 +70,7 @@ function openEditor(m) {
     { name: 'category', label: t('menu_category'), placeholder: t('menu_category_ph') },
     { name: 'description', label: t('description'), type: 'textarea' },
     { name: 'photo', label: m && m.photo_url ? t('menu_photo_replace') : t('menu_photo'), type: 'file', accept: 'image/*' },
-    { name: 'video_url', label: t('menu_video'), placeholder: 'https://www.youtube.com/embed/...', hint: t('menu_video_hint') },
+    { name: 'video_url', label: t('menu_video'), placeholder: 'https://www.youtube.com/watch?v=...', hint: t('menu_video_hint') },
     { name: 'price', label: t('price'), type: 'number' },
   ];
   const has = new Set((m && m.allergens) || []);
@@ -78,7 +88,7 @@ function openEditor(m) {
       const btn = cardEl.querySelector('button[type=submit]'); btn.disabled = true;
       try {
         const allergens = $$('input[name=al]:checked', cardEl).map((x) => x.value);
-        const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: v.video_url || null, price: v.price, allergens };
+        const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: embedUrl(v.video_url) || null, price: v.price, allergens };
         if (v.photo) row.photo_url = await uploadPhoto(v.photo);
         if (m) check(await sb.from('menu_items').update(row).eq('id', m.id));
         else check(await sb.from('menu_items').insert(row));
