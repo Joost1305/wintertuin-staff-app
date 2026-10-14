@@ -35,8 +35,9 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions">
-      ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}">&#128196; ${esc(x.label)}</a><a class="btn btn-sm" href="${esc(x.download)}" data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}">&#11015;</a></span>`).join('')}
+      ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}">&#128196; ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}">&#11015;</a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage">&#9998; ${t('menu_pdfs_manage')}</button>` : ''}
+      ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}
       <button type="button" class="btn-sm" id="allergen-card">&#128424; ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
@@ -48,22 +49,30 @@ function draw() {
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
   $('#allergen-card').onclick = printAllergenCard;
   const pm = $('#pdf-manage'); if (pm) pm.onclick = managePdfs;
-  $$('[data-edit]').forEach((b) => (b.onclick = () => openEditor(items.find((m) => m.id === b.dataset.edit))));
+  // Edit sits in the folded header: it must not fold or unfold the dish
+  $$('[data-edit]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openEditor(items.find((m) => m.id === b.dataset.edit)); }));
+  $$('details[data-dish]').forEach((d) => d.addEventListener('toggle', () => { if (d.open) openIds.add(d.dataset.dish); else openIds.delete(d.dataset.dish); rememberOpen(); }));
+  const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-dish]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
 }
 
+// Each dish is folded by default: only its name (and Edit for managers). Click to see photo, video, price,
+// description and allergens. What you unfolded is remembered in this browser.
+const OPEN = 'wintertuinMenuOpen';
+let openIds = new Set((() => { try { return JSON.parse(localStorage.getItem(OPEN) || '[]'); } catch { return []; } })());
+const rememberOpen = () => { try { localStorage.setItem(OPEN, JSON.stringify([...openIds])); } catch { /* private mode */ } };
 function card(m) {
-  return `<div class="card menu-card">
+  return `<details class="card menu-card" data-dish="${m.id}" ${openIds.has(m.id) ? 'open' : ''}>
+    <summary class="dish-sum"><span class="sop-chev" aria-hidden="true">&#9656;</span><h3>${esc(m.name)}</h3>
+      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button>` : ''}</summary>
     ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy">` : ''}
     ${embedUrl(m.video_url) ? `<iframe src="${esc(embedUrl(m.video_url))}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="${esc(m.name)}"></iframe>` : ''}
     <div class="body">
       ${m.category ? `<span><span class="tag">${esc(m.category)}</span></span>` : ''}
-      <h3>${esc(m.name)}</h3>
       ${m.price != null && m.price !== '' ? `<div class="price">${fmt.money(m.price)}</div>` : ''}
       ${m.description ? `<p class="desc">${esc(m.description)}</p>` : ''}
       ${(m.allergens || []).length ? `<div class="allergen-chips">${m.allergens.map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('')}</div>`
         : `<div class="tiny muted">${t('allergens_none_set')}</div>`}
-      ${isManager() ? `<div style="margin-top:auto;padding-top:8px"><button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button></div>` : ''}
-    </div></div>`;
+    </div></details>`;
 }
 
 // Menu PDFs: several named menus as buttons. Names and order live in the menu_pdfs table, files in storage.
@@ -74,11 +83,14 @@ async function loadPdfs() {
     const { data, error } = await sb.from('menu_pdfs').select('*').order('sort_order').order('created_at');
     if (error) throw error;
     pdfs = (data || []).map((x) => {
+      // a path starting with 'site:' is a file shipped with the app (the demo menu); everything else is in storage
+      if (isSite(x.path)) { const u = new URL(x.path.slice(5), location.href).href; return { ...x, view: u, download: u, sameSite: true }; }
       const v = Date.parse(x.updated_at || '') || 0; // new address after each replacement, so nobody sees an old copy
       return { ...x, view: `${bucket().getPublicUrl(x.path).data.publicUrl}?v=${v}`, download: bucket().getPublicUrl(x.path, { download: fileName(x.label) }).data.publicUrl };
     });
   } catch { pdfs = []; } // the menu page still works without them
 }
+const isSite = (path) => String(path || '').startsWith('site:');
 const isPdf = (f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
 async function putPdf(path, file) {
   const { error } = await bucket().upload(path, file, { upsert: true, contentType: 'application/pdf', cacheControl: '60' });
@@ -116,12 +128,12 @@ function managePdfs() {
       }));
       r.querySelector('[data-replace]').onchange = async (e) => {
         const f = e.target.files[0]; if (!isPdf(f)) { toastError(new Error(t('menu_pdf_only'))); return; }
-        try { await putPdf(x.path, f); check(await sb.from('menu_pdfs').update({ updated_at: new Date().toISOString() }).eq('id', x.id)); await again(t('menu_pdf_saved')); } catch (err) { toastError(err); }
+        try { const path = isSite(x.path) ? `${PDF_DIR}/${crypto.randomUUID()}.pdf` : x.path; await putPdf(path, f); check(await sb.from('menu_pdfs').update({ path, updated_at: new Date().toISOString() }).eq('id', x.id)); await again(t('menu_pdf_saved')); } catch (err) { toastError(err); }
       };
       r.querySelector('[data-del]').onclick = async () => {
         close();
         if (!(await confirmDialog(t('menu_pdf_confirm_delete', { n: x.label }), t('delete')))) { managePdfs(); return; }
-        try { check(await sb.from('menu_pdfs').delete().eq('id', x.id)); await bucket().remove([x.path]); toast(t('deleted')); await loadPdfs(); draw(); managePdfs(); } catch (err) { toastError(err); }
+        try { check(await sb.from('menu_pdfs').delete().eq('id', x.id)); if (!isSite(x.path)) await bucket().remove([x.path]); toast(t('deleted')); await loadPdfs(); draw(); managePdfs(); } catch (err) { toastError(err); }
       };
     });
     card.querySelector('#pdf-add').onsubmit = async (e) => {

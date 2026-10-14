@@ -91,7 +91,9 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card'); });
     await step('allergens: set on an item, shown as chips, allergen card prints', async () => {
       await p.click('.menu-card:has-text("Sourdough") [data-edit]'); await p.check('.modal input[name=al][value=gluten]'); await p.check('.modal input[name=al][value=milk]');
-      await p.click('.modal button[type=submit]'); await p.waitForSelector('.tag.allergen');
+      await p.click('.modal button[type=submit]'); await p.waitForSelector('#dish-expand');
+      if (await p.isVisible('.tag.allergen')) throw new Error('dishes should be folded');
+      await p.click('#dish-expand'); await p.waitForSelector('.tag.allergen');
       const al = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Sourdough').allergens); if (JSON.stringify(al) !== '["gluten","milk"]') throw new Error(JSON.stringify(al));
       const before = await p.evaluate(() => window.__printed || 0); await p.click('#allergen-card'); await p.waitForTimeout(200);
       if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('no print'); });
@@ -230,6 +232,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if ((await p.$$('a[data-pdf-dl]')).length !== 2) throw new Error('download buttons');
       await p.click('#pdf-manage'); await p.click('.pdf-row[data-id] >> nth=1 >> [data-del]'); await p.click('#cf-ok');
       await p.waitForFunction(() => document.querySelectorAll('a[data-pdf-view]').length === 1); await p.keyboard.press('Escape'); });
+    await step('menu: a PDF shipped with the app opens and downloads from the site', async () => {
+      await p.evaluate(() => window.__mockdb.menu_pdfs.push({ id: 'demo-pdf', label: 'Lunch menu (DEMO)', path: 'site:demo/wintertuin-lunchkaart-demo.pdf', sort_order: 1, created_at: '2026-10-14T20:00:00Z', updated_at: '2026-10-14T20:00:00Z' }));
+      await p.goto(BASE + '#/links'); await p.goto(BASE + '#/menu'); await p.waitForSelector('a[data-pdf-view="demo-pdf"]');
+      const href = await p.getAttribute('a[data-pdf-view="demo-pdf"]', 'href'); if (!/\/demo\/wintertuin-lunchkaart-demo\.pdf$/.test(href)) throw new Error(href);
+      if (!(await p.getAttribute('a[data-pdf-dl="demo-pdf"]', 'download'))) throw new Error('no download name');
+      const r = await p.request.get(href); if (r.status() !== 200 || !/pdf/.test(r.headers()['content-type'] || '')) throw new Error('demo file not served');
+      await p.evaluate(() => { const d = window.__mockdb; d.menu_pdfs = d.menu_pdfs.filter((x) => x.id !== 'demo-pdf'); }); });
     await step('events: print a blank BEO', async () => {
       await p.goto(BASE + '#/events'); await p.click('summary:has-text("Blank BEO")');
       const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-blank=en]');
@@ -275,6 +284,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
       let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
+      await p.goto(BASE + '#/home'); await p.waitForSelector('.hc-tile'); if (!/#\/haccp$/.test(p.url())) throw new Error('start page is ' + p.url());
+      await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
       first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
       await p.click('#reset-nav'); await p.click('#save-nav'); await p.waitForTimeout(400);

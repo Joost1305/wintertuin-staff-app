@@ -724,3 +724,10 @@ table.hc-ed td { padding: 4px 6px; }
   table.hc-t { font-size: .8rem; }
 }
 .hc-freq { font-size: .76rem; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+/* dishes folded by default */
+details.menu-card { align-self: start; }
+.dish-sum { list-style: none; display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; }
+.dish-sum::-webkit-details-marker { display: none; }
+.dish-sum h3 { flex: 1; min-width: 0; margin: 0 !important; }
+details[open] > .dish-sum .sop-chev { transform: rotate(90deg); }
+details[open] > .dish-sum { border-bottom: 1px solid var(--line); }

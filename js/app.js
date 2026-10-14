@@ -33,7 +33,12 @@ const routes = [
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
-const homePath = () => 'sops';
+// Start page: the first item of the top menu in the order set under Settings (SOPs when nothing is set yet)
+const homePath = () => {
+  if (!state.me) return 'sops';
+  const visible = routes.filter((r) => r.nav && r.show()).map((r) => r.path);
+  return orderPaths(visible, state.navOrder)[0] || 'sops';
+};
 let badge = 0;
 let badgeTimer = null;
 
@@ -132,6 +137,7 @@ async function route() {
   }
   if (!(await ensureSession())) { location.hash = '#/login'; return; }
   if (state.me.active === false) return renderNoAccess();
+  if (!path || path === 'home') { history.replaceState(null, '', `${location.pathname}${location.search}#/${homePath()}`); return route(); }
   const r = routes.find((x) => x.path === path && x.show());
   if (!r) { location.hash = `#/${homePath()}`; return; }
   renderShell();
@@ -147,6 +153,7 @@ window.addEventListener('wt:badge', () => refreshBadge());
 sb.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; }
 });
-const known = /^#\/(login|sops|menu|links|roster|checkin|swap|settings|password)/;
-if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/${homePath()}`);
+const known = /^#\/(login|home|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
+// unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
+if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();
