@@ -179,11 +179,16 @@ export function download(text, filename, type = 'text/plain;charset=utf-8') {
 }
 // Prints only the given HTML (the rest of the page is hidden while printing)
 export function printHtml(html) {
+  // The sheet stays in place until the print window is closed. Safari keeps running scripts while its print
+  // window is open, so clearing it on a timer made the preview go blank. It only shows in print, never on screen.
   const area = document.getElementById('printArea');
   area.innerHTML = html;
   document.body.classList.add('printing');
-  const done = () => { document.body.classList.remove('printing'); area.innerHTML = ''; window.removeEventListener('afterprint', done); };
+  const done = () => {
+    document.body.classList.remove('printing'); area.innerHTML = '';
+    window.removeEventListener('afterprint', done); window.removeEventListener('hashchange', done);
+  };
   window.addEventListener('afterprint', done);
+  window.addEventListener('hashchange', done); // fallback for browsers without afterprint: clear when moving on
   window.print();
-  setTimeout(done, 1500);
 }

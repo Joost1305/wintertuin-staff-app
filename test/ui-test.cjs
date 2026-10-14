@@ -204,7 +204,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/events'); await p.click('summary:has-text("Blank BEO")');
       const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-blank=en]');
       await p.waitForFunction((b) => (window.__printed || 0) > b, before);
-      if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('blank form not built'); });
+      await p.waitForTimeout(2000); // Safari keeps scripts running while its print window is open
+      if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('print sheet cleared while printing'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
