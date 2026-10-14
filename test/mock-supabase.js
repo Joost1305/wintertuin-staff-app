@@ -103,7 +103,10 @@
         out.push({ day: iso(d), is_open: o ? o.is_open : wd === 0 || wd >= 5 || wd === 4, note: o ? o.note : wd === 4 ? 'Wintertuin Verteld' : null }); }
       return { data: out, error: null };
     },
-    storage: { from: () => ({ upload: async () => ({ data: {}, error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
+    storage: { from: () => ({
+      upload: async (path) => { (window.__mockFiles = window.__mockFiles || {})[path] = new Date().toISOString(); return { data: {}, error: null }; },
+      list: async (dir) => ({ data: Object.entries(window.__mockFiles || {}).filter(([k]) => k.startsWith(dir + '/')).map(([k, at]) => ({ name: k.slice(dir.length + 1), updated_at: at })), error: null }),
+      getPublicUrl: (p) => ({ data: { publicUrl: /\.pdf$/.test(p) ? 'about:blank#' + p : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
     functions: { invoke: async (name, { body }) => {
       if (name === 'system-check') { const r = { id: Math.floor(Math.random() * 1e9), run_at: new Date().toISOString(), trigger: 'manual', status: 'ok', checks: [{ key: 'database', status: 'ok', detail: 'reachable' }], gaps: [], changes: [], window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() }; db.system_checks.unshift(r); return { data: { ok: true, data: r }, error: null }; }
       if (body.action === 'create') db.profiles.push({ id: uid(), full_name: body.full_name, email: body.email, role: 'staff', active: true, language: 'en' });

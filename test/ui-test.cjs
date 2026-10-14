@@ -195,6 +195,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
+    await step('menu: upload a menu PDF, then view and download buttons appear', async () => {
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('#pdf-up-btn'); if (await p.$('#pdf-view')) throw new Error('PDF button without a PDF');
+      await p.setInputFiles('#pdf-up', { name: 'menu.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
+      await p.waitForSelector('#pdf-view'); await p.waitForSelector('#pdf-dl');
+      if (!/New menu PDF/.test(await p.textContent('#pdf-up-btn'))) throw new Error('upload label not switched'); });
     await step('events: print a blank BEO', async () => {
       await p.goto(BASE + '#/events'); await p.click('summary:has-text("Blank BEO")');
       const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-blank=en]');

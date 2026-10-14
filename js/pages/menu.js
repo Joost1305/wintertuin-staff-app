@@ -16,19 +16,28 @@ export function embedUrl(raw) {
 }
 
 let items = [];
+let menuPdf = null; // { view, download } when a menu PDF has been uploaded
+const PDF_DIR = 'menu-pdf'; const PDF_PATH = `${PDF_DIR}/menu.pdf`;
 // The 14 allergens that EU law (Regulation 1169/2011) requires you to inform guests about
 export const ALLERGENS = ['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soy', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'];
 
 export async function renderMenu() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
-  items = check(await sb.from('menu_items').select('*').eq('active', true).order('group_type').order('category').order('sort_order')) || [];
+  const [rows] = await Promise.all([
+    sb.from('menu_items').select('*').eq('active', true).order('group_type').order('category').order('sort_order'),
+    loadPdf(),
+  ]);
+  items = check(rows) || [];
   draw();
 }
 
 function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
-      <div class="page-actions"><button type="button" class="btn-sm" id="allergen-card">&#128424; ${t('allergen_card')}</button>
+      <div class="page-actions">
+      ${menuPdf ? `<span class="btn-pair"><a class="btn btn-sm" href="${esc(menuPdf.view)}" target="_blank" rel="noopener" id="pdf-view">&#128196; ${t('menu_pdf')}</a><a class="btn btn-sm" href="${esc(menuPdf.download)}" id="pdf-dl" title="${t('download')}" aria-label="${t('download')}">&#11015;</a></span>` : ''}
+      ${isManager() ? `<label class="btn btn-sm" id="pdf-up-btn">&#8679; ${t(menuPdf ? 'menu_pdf_replace' : 'menu_pdf_upload')}<input type="file" id="pdf-up" accept="application/pdf" hidden></label>` : ''}
+      <button type="button" class="btn-sm" id="allergen-card">&#128424; ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
     ${['food', 'beverage'].map((g) => {
@@ -38,6 +47,7 @@ function draw() {
     }).join('')}`;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
   $('#allergen-card').onclick = printAllergenCard;
+  const up = $('#pdf-up'); if (up) up.onchange = () => uploadPdf(up.files[0]);
   $$('[data-edit]').forEach((b) => (b.onclick = () => openEditor(items.find((m) => m.id === b.dataset.edit))));
 }
 
@@ -54,6 +64,27 @@ function card(m) {
         : `<div class="tiny muted">${t('allergens_none_set')}</div>`}
       ${isManager() ? `<div style="margin-top:auto;padding-top:8px"><button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button></div>` : ''}
     </div></div>`;
+}
+
+// Menu PDF: one file at a fixed address, replaced on every upload. Everyone can open or download it.
+async function loadPdf() {
+  menuPdf = null;
+  try {
+    const { data } = await sb.storage.from(PHOTO_BUCKET).list(PDF_DIR, { limit: 10 });
+    const f = (data || []).find((x) => x.name === 'menu.pdf'); if (!f) return;
+    const v = Date.parse(f.updated_at || f.created_at || '') || Date.now(); // new address after each upload, so nobody sees an old copy
+    const bucket = sb.storage.from(PHOTO_BUCKET);
+    menuPdf = { view: `${bucket.getPublicUrl(PDF_PATH).data.publicUrl}?v=${v}`, download: bucket.getPublicUrl(PDF_PATH, { download: 'Wintertuin-menu.pdf' }).data.publicUrl };
+  } catch { /* no PDF yet, or storage unreachable: the button simply stays away */ }
+}
+async function uploadPdf(file) {
+  if (!file) return;
+  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { toastError(new Error(t('menu_pdf_only'))); return; }
+  try {
+    const { error } = await sb.storage.from(PHOTO_BUCKET).upload(PDF_PATH, file, { upsert: true, contentType: 'application/pdf', cacheControl: '60' });
+    if (error) throw error;
+    toast(t('menu_pdf_saved')); renderMenu();
+  } catch (e) { toastError(e); }
 }
 
 async function uploadPhoto(file) {

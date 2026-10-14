@@ -276,7 +276,7 @@ const dict = {
     menu_title: 'Menu', menu_sub: 'Dishes and drinks with explanation, photos and instruction videos.', menu_add: 'Add item', menu_edit: 'Edit item', menu_none: 'No menu items yet.',
     group_food: 'Food', group_beverage: 'Beverage', menu_group: 'Main group', menu_category: 'Subcategory', menu_category_ph: 'For example: bakery, lunch, dinner, coffee, wine',
     menu_photo: 'Photo', menu_photo_replace: 'New photo (optional, replaces the current one)', menu_video: 'Video embed URL (optional)',
-    menu_video_hint: 'Paste any YouTube or Vimeo link; the app turns it into a playable video.', photo_failed: 'Photo upload failed', menu_confirm_delete: 'Remove this item from the menu?',
+    menu_pdf: 'Menu (PDF)', download: 'Download', menu_pdf_upload: 'Upload menu PDF', menu_pdf_replace: 'New menu PDF', menu_pdf_only: 'Choose a PDF file.', menu_pdf_saved: 'Menu PDF uploaded.', menu_video_hint: 'Paste any YouTube or Vimeo link; the app turns it into a playable video.', photo_failed: 'Photo upload failed', menu_confirm_delete: 'Remove this item from the menu?',
     // links
     links_title: 'Links', links_sub: 'Recipe database, finance and other reference material.', links_none: 'No links yet.', links_manage: 'Manage links',
     // roster
@@ -590,7 +590,7 @@ const dict = {
     menu_title: 'Menu', menu_sub: "Gerechten en dranken met uitleg, foto's en instructievideo's.", menu_add: 'Item toevoegen', menu_edit: 'Item bewerken', menu_none: 'Nog geen menu-items.',
     group_food: 'Food', group_beverage: 'Beverage', menu_group: 'Hoofdcategorie', menu_category: 'Subcategorie', menu_category_ph: 'Bijvoorbeeld: bakkerij, lunch, diner, koffie, wijn',
     menu_photo: 'Foto', menu_photo_replace: 'Nieuwe foto (optioneel, vervangt de huidige)', menu_video: 'Video embed-URL (optioneel)',
-    menu_video_hint: 'Plak gewoon een YouTube- of Vimeo-link; de app maakt er een afspeelbare video van.', photo_failed: 'Foto uploaden mislukt', menu_confirm_delete: 'Dit item van het menu halen?',
+    menu_pdf: 'Menukaart (PDF)', download: 'Downloaden', menu_pdf_upload: 'Menukaart-PDF uploaden', menu_pdf_replace: 'Nieuwe menukaart-PDF', menu_pdf_only: 'Kies een PDF-bestand.', menu_pdf_saved: 'Menukaart-PDF geüpload.', menu_video_hint: 'Plak gewoon een YouTube- of Vimeo-link; de app maakt er een afspeelbare video van.', photo_failed: 'Foto uploaden mislukt', menu_confirm_delete: 'Dit item van het menu halen?',
     links_title: 'Links', links_sub: 'Receptendatabase, financiën en andere naslag.', links_none: 'Nog geen links.', links_manage: 'Links beheren',
     roster_title: 'Rooster', roster_sub: "Jouw diensten in kleur, collega's in grijs.", roster_print_today: 'Print: wie werkt vandaag',
     ics_my_week: 'Mijn week (.ics)', ics_my_month: 'Mijn maand (.ics)', ics_team_week: 'Team, deze week (.ics)', ics_team_month: 'Team, deze maand (.ics)', roster_csv: 'Volledige roosterback-up (.csv)',

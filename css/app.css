@@ -631,3 +631,9 @@ tr.sc-current td { background: var(--primary-soft); }
   table.num-table th, table.num-table th:not(:first-child) { white-space: normal; }
   table.num-table th, table.num-table td { padding-left: 6px; padding-right: 6px; }
 }
+/* menu: breathing room between photo and video, and the PDF button pair */
+.menu-card img + iframe { margin-top: 8px; }
+.btn-pair { display: inline-flex; }
+.btn-pair .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.btn-pair .btn + .btn { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; padding-left: 9px; padding-right: 9px; }
+label.btn { cursor: pointer; }
