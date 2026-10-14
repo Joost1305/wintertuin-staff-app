@@ -3,7 +3,7 @@
   "name": "Wintertuin Team",
   "short_name": "WT Team",
   "start_url": "./",
-  "scope": "./",
+  "scope": "../",
   "display": "browser",
   "background_color": "#2F5D50",
   "theme_color": "#2F5D50",
