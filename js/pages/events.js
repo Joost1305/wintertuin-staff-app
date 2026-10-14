@@ -429,7 +429,7 @@ function printBlank(l) {
   const grid = (cols, rows) => `<table class="g"><tr>${cols.map(([k, w]) => `<th style="width:${w}">${tt(k)}</th>`).join('')}</tr>
     ${`<tr>${cols.map(() => '<td></td>').join('')}</tr>`.repeat(rows)}</table>`;
   printHtml(`${sheetCss}<style>
-    .beo .f { border-bottom: 1px solid #999; min-height: 30px; padding-top: 2px; }
+    .beo .f { border-bottom: 1px solid #999; min-height: 27px; padding-top: 2px; }
     .beo .f span { font-size: 8pt; color: #666; }
     .beo .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
     .beo .fg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 22px; }
@@ -437,8 +437,8 @@ function printBlank(l) {
     .beo .ln { border-bottom: 1px solid #bbb; height: 21px; }
     .beo .lbl { font-size: 8pt; color: #666; margin-top: 8px; }
     .beo table.g { border-collapse: collapse; margin-top: 2px; }
-    .beo table.g th { font-size: 8pt; color: #666; font-weight: 600; text-align: left; padding: 2px 6px; border-bottom: 1px solid #999 !important; }
-    .beo table.g td { border-bottom: 1px solid #bbb !important; height: 22px; }
+    .beo table.g th { line-height: 1.2; font-size: 8pt; color: #666; font-weight: 600; text-align: left; padding: 2px 6px; border-bottom: 1px solid #999 !important; }
+    .beo table.g td { border-bottom: 1px solid #bbb !important; height: 22px; padding: 0 6px; }
     .beo table.g th + th, .beo table.g td + td { border-left: 1px solid #ddd !important; }
     .beo .cb { display: inline-block; width: 11px; height: 11px; border: 1.2px solid #333; vertical-align: -1px; margin: 0 4px 0 12px; }
     .beo .opts { padding: 8px 0 4px; font-size: 9.5pt; }

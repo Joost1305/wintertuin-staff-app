@@ -482,13 +482,6 @@ table.roster td.drop-ok { background: var(--primary-soft); }
 .section-title { font-size: 1rem; margin: 22px 0 10px; color: var(--ink); }
 .no-access { max-width: 460px; margin: 10vh auto; text-align: center; }
 #printArea { display: none; }
-@media print {
-  body.printing > *:not(#printArea) { display: none !important; }
-  body.printing #printArea { display: block !important; color: #000; }
-  #printArea h1 { font-size: 20pt; margin: 0 0 8px; }
-  #printArea table { width: 100%; border-collapse: collapse; }
-  #printArea th, #printArea td { border-bottom: 1px solid #ccc; padding: 6px; text-align: left; }
-}
 .allergen-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .tag.allergen { background: var(--accent-soft); color: #8a4a22; }
 .allergen-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0 0 14px; }

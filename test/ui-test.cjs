@@ -14,7 +14,7 @@ async function session(browser, role, viewport) {
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.addInitScript((r) => { window.__MOCK_ROLE = r; window.print = () => { window.__printed = (window.__printed || 0) + 1; }; }, role);
+  await page.addInitScript((r) => { window.__MOCK_ROLE = r; window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
   await page.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
   return { ctx, page, errors };
 }
@@ -185,11 +185,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const id = await p.evaluate(() => window.__mockdb.events[0].id);
       await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
       await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
-      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]');
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       let html = await p.evaluate(() => window.__printed);
       if (!/Bevestiging evenement/.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
-      await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]');
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
       if (!/Gluten/i.test(html) || !/Bread warm/.test(html) || !/Vegetarian/.test(html)) throw new Error('kitchen sheet'); });
     await step('events: list shows the event, confirmed', async () => {
