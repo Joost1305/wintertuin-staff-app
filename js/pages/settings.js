@@ -1,6 +1,6 @@
 // Settings (managers only): team and accounts, fixed shifts, links, backup and restore.
 // Accounts and passwords go through the admin-users edge function, which re-checks that you are a manager.
-import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download } from '../core.js';
+import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 
@@ -16,11 +16,13 @@ export async function renderSettings(args = []) {
   if (!isManager()) { location.hash = '#/sops'; return; }
   const narrow = window.matchMedia('(max-width: 820px)').matches;
   const current = SECTIONS.find((x) => x.id === args[0]) || (narrow ? null : SECTIONS[0]);
-  app().innerHTML = `<div class="page-head"><h1>${t('nav_settings')}</h1></div>
+  app().innerHTML = `<div class="page-head"><h1>${t('nav_settings')}</h1>
+      <div class="page-actions"><button type="button" class="btn-sm" id="emp-on" title="${t('emp_view_hint')}">&#128065; ${t('emp_view')}</button></div></div>
     <div class="settings ${current ? 'has-section' : 'menu-only'}">
       <nav class="settings-nav">${SECTIONS.map((x) => `<a href="#/settings/${x.id}" class="${current && x.id === current.id ? 'active' : ''}">${t(x.label)}</a>`).join('')}</nav>
       <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
+  $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
   try { await ({ team, templates, links, backup, password })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }

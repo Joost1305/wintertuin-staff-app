@@ -6,7 +6,30 @@ export const state = {
   me: null,        // own profiles row
   profiles: [],    // everyone, for names and pickers
 };
-export const isManager = () => !!(state.me && state.me.role === 'manager');
+export const realManager = () => !!(state.me && state.me.role === 'manager');
+export const isManager = () => realManager() && !employeeView.on();
+// ------------------------------------------------------------------ employee view
+// A manager can look at the app exactly as staff see it. Only the screens change; on this device only.
+const EMP_KEY = 'wtTeamEmployeeView';
+export const employeeView = {
+  on() { try { return localStorage.getItem(EMP_KEY) === '1'; } catch { return false; } },
+  set(v) { try { if (v) localStorage.setItem(EMP_KEY, '1'); else localStorage.removeItem(EMP_KEY); } catch { /* private mode */ } },
+};
+
+// Banner while a manager looks at the employee view
+export function renderEmployeeBanner(isRealManager, backHash, t) {
+  let bar = document.getElementById('emp-bar');
+  const show = isRealManager && employeeView.on();
+  if (!show) { if (bar) bar.remove(); document.body.classList.remove('emp-view'); return; }
+  if (!bar) { bar = document.createElement('div'); bar.id = 'emp-bar'; bar.className = 'emp-bar'; document.querySelector('main').before(bar); }
+  document.body.classList.add('emp-view');
+  bar.innerHTML = `<span>&#128065; ${t('emp_view_on')}</span><button type="button" class="btn-sm" id="emp-off">${t('emp_view_off')}</button>`;
+  bar.querySelector('#emp-off').onclick = () => {
+    employeeView.set(false);
+    if (location.hash === backHash) window.dispatchEvent(new Event('wt:lang')); else location.hash = backHash;
+  };
+}
+
 
 // ------------------------------------------------------------------ formatting
 const locale = () => (lang() === 'en' ? 'en-GB' : 'nl-NL');

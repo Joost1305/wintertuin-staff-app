@@ -134,6 +134,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/templates'); await p.click('#add'); await p.fill('.modal [name=name]', 'Evening'); await p.fill('.modal [name=start_time]', '17:00'); await p.fill('.modal [name=end_time]', '23:00');
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Evening'); });
     await step('backup download', async () => { await p.goto(BASE + '#/settings/backup'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#dl')]); if (!dl.suggestedFilename().endsWith('.json')) throw new Error('no json'); });
+    await step('employee view: manager sees the staff screens, then goes back', async () => {
+      await p.goto(BASE + '#/settings'); await p.waitForSelector('#emp-on'); await p.click('#emp-on');
+      await p.waitForSelector('#emp-bar'); await p.waitForTimeout(300);
+      const links = await p.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href')));
+      if (links.includes('#/settings')) throw new Error('settings still in menu');
+      if (!links.includes('#/password')) throw new Error('no staff password link');
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); if (await p.$('.day-toggle')) throw new Error('manager tools visible');
+      await p.screenshot({ path: `${OUT}/14-employee-view.png`, fullPage: true });
+      await p.click('#emp-off'); await p.waitForSelector('#emp-on');
+      if (await p.$('#emp-bar')) throw new Error('banner stayed'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
