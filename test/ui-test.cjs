@@ -271,6 +271,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.$('a[href="#/haccp/sousvide"]')) throw new Error('switched-off list still shown');
       await p.goto(BASE + '#/settings/haccp'); await p.waitForSelector('#save-lists');
       await p.check('[data-list-on=sousvide]'); await p.click('#save-lists'); await p.waitForTimeout(500); });
+    await step('settings: top menu order by number and arrows, applied to the menu', async () => {
+      await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
+      await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
+      let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
+      await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
+      first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
+      await p.click('#reset-nav'); await p.click('#save-nav'); await p.waitForTimeout(400);
+      if ((await p.$eval('#nav a', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);

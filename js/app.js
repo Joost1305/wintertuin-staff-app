@@ -14,8 +14,10 @@ import { renderCheckin } from './pages/checkin.js';
 import { renderSwap, swapBadgeCount } from './pages/swap.js';
 import { renderSettings } from './pages/settings.js';
 import { renderHaccp } from './pages/haccp.js';
+import { loadNavOrder, orderPaths } from './nav.js';
 
 console.log(`Wintertuin Team, build ${BUILD}`);
+window.addEventListener('nav-order-changed', () => renderShell());
 // One tab per app: the switch button in the other app targets this name and reuses this tab
 try { window.name = 'wintertuin-team'; } catch { /* ignore */ }
 
@@ -43,7 +45,7 @@ async function ensureSession() {
     const me = await loadMe();
     state.me = me;
     setLang(me.language || 'en');
-    await refreshProfiles();
+    await Promise.all([refreshProfiles(), loadNavOrder()]);
     refreshBadge();
     clearInterval(badgeTimer);
     badgeTimer = setInterval(refreshBadge, 60000);
@@ -67,7 +69,9 @@ function renderShell() {
   top.hidden = false;
   const current = location.hash.replace(/^#\//, '').split('/')[0] || homePath();
   const nav = $('#nav');
-  nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
+  const visible = routes.filter((r) => r.nav && r.show());
+  const sorted = orderPaths(visible.map((r) => r.path), state.navOrder).map((p) => visible.find((r) => r.path === p));
+  nav.innerHTML = sorted.map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`).join('') +
     `<a class="ext" href="Wintertuin-Intro.html">${t('nav_about')}</a>` +
     // Managers change their password under Settings; staff (no Settings) keep it in the menu

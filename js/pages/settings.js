@@ -5,12 +5,14 @@ import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 import { renderSystemCheck } from './system-check.js';
 import { renderHaccpSettings } from './haccp.js';
+import { NAV_ITEMS, orderPaths, saveNavOrder } from '../nav.js';
 
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
   { id: 'templates', label: 'set_templates' },
   { id: 'menuorder', label: 'set_menu_order' },
   { id: 'haccp', label: 'set_haccp' },
+  { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
   { id: 'backup', label: 'set_backup' },
   { id: 'system', label: 'set_system' },
@@ -29,7 +31,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, navorder, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
@@ -66,6 +68,35 @@ function crud(el, { title, sub, rows, columns, fields, table, toRow, addLabel })
   }));
 }
 
+// ------------------------------------------------------------------ order of the top menu
+// Number the menu items or move them with the arrows; 1 is on the left. The same for everyone.
+function navorder(el) {
+  let order = orderPaths(NAV_ITEMS.map(([p]) => p), state.navOrder);
+  const label = (p) => t(NAV_ITEMS.find(([x]) => x === p)[1]);
+  const draw = () => {
+    el.innerHTML = `<div class="card"><h2 style="margin:0">${t('set_nav_order')}</h2><div class="small muted">${t('nav_order_sub')}</div>
+      <div class="order-list" style="margin-top:12px">${order.map((p, i) => `<div class="order-row">
+        <input type="number" min="1" step="1" inputmode="numeric" value="${i + 1}" data-nav="${p}" aria-label="${t('position')}: ${esc(label(p))}">
+        <span style="flex:1"><strong>${esc(label(p))}</strong></span>
+        <span class="row-move" style="display:inline-flex"><button type="button" data-nup="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-ndown="${i}" ${i === order.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span></div>`).join('')}</div>
+      <div class="tiny muted" style="margin-top:8px">${t('nav_order_fixed')}</div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="btn-primary" id="save-nav">${t('save')}</button><button type="button" class="btn-sm" id="reset-nav">${t('nav_order_reset')}</button></div></div>`;
+    const swap = (i, j) => { [order[i], order[j]] = [order[j], order[i]]; draw(); };
+    $$('[data-nup]', el).forEach((b) => (b.onclick = () => swap(Number(b.dataset.nup), Number(b.dataset.nup) - 1)));
+    $$('[data-ndown]', el).forEach((b) => (b.onclick = () => swap(Number(b.dataset.ndown), Number(b.dataset.ndown) + 1)));
+    $('#reset-nav', el).onclick = () => { order = NAV_ITEMS.map(([p]) => p); draw(); };
+    $('#save-nav', el).onclick = async () => {
+      // sort by the typed numbers; equal or empty numbers keep their current place
+      // on equal numbers the item you just renumbered goes first (type 1 to put it in front)
+      const typed = order.map((p, i) => { const v = Number($(`[data-nav="${p}"]`, el).value); const n = Number.isFinite(v) && v > 0 ? v : Infinity; return { p, n, i, moved: n !== i + 1 }; });
+      typed.sort((a, b) => a.n - b.n || (b.moved - a.moved) || a.i - b.i);
+      order = typed.map((x) => x.p);
+      try { await saveNavOrder(order); toast(t('saved')); draw(); } catch (e) { toastError(e); }
+    };
+  };
+  draw();
+}
+
 // ------------------------------------------------------------------ menu order
 // Number the dishes per group: 1 shows first on the Menu page. Saved as sort_order 10, 20, 30, ...
 async function menuorder(el) {
@@ -83,8 +114,8 @@ async function menuorder(el) {
       const updates = [];
       for (const [, list] of groups) {
         // sort by the typed number; equal or empty numbers keep their current order
-        const typed = list.map((r, i) => { const v = Number($(`[data-oid="${r.id}"]`, el).value); return { r, n: Number.isFinite(v) && v > 0 ? v : Infinity, i }; });
-        typed.sort((a, b) => a.n - b.n || a.i - b.i);
+        const typed = list.map((r, i) => { const v = Number($(`[data-oid="${r.id}"]`, el).value); const n = Number.isFinite(v) && v > 0 ? v : Infinity; return { r, n, i, moved: n !== i + 1 }; });
+        typed.sort((a, b) => a.n - b.n || (b.moved - a.moved) || a.i - b.i); // renumbered dish wins a tie
         typed.forEach(({ r }, k) => { const so = (k + 1) * 10; if (r.sort_order !== so) updates.push(sb.from('menu_items').update({ sort_order: so }).eq('id', r.id).then(check)); });
       }
       btn.disabled = true;
