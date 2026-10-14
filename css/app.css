@@ -628,6 +628,6 @@ tr.sc-current td { background: var(--primary-soft); }
 .m-row .add-shift { width: 44px; padding: 5px; font-size: .95rem; }
 .m-sub { margin: 16px 0 0; font-size: .72rem; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
 @media (max-width: 700px) {
-  table.num-table th { white-space: normal; }
+  table.num-table th, table.num-table th:not(:first-child) { white-space: normal; }
   table.num-table th, table.num-table td { padding-left: 6px; padding-right: 6px; }
 }
