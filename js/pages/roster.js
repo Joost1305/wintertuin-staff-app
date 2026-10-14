@@ -78,7 +78,8 @@ function draw(days, checkins) {
         ${days.map((d) => { const c = calendar[isoOf(d)]; const closed = c && !c.is_open;
           return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
           ${c && c.note ? `<span class="day-note">${esc(c.note)}</span>` : ''}
-          ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>`
+          ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>
+            <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${isoOf(d)}" title="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
             : closed && !(c && c.note) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
         <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<strong>${esc(p.full_name)}</strong>
             ${mgr ? `<span class="row-move"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-down="${i}" ${i === staff.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span>` : ''}</td>
@@ -106,6 +107,13 @@ function draw(days, checkins) {
       toast(t(c.is_open ? 'day_now_closed' : 'day_now_open', { d: fmt.dayMonth(new Date(`${ds}T12:00:00`)) }));
       renderRoster();
     } catch (err) { toastError(err); b.disabled = false; }
+  }));
+  $$('[data-dnote]').forEach((b) => (b.onclick = async () => {
+    const ds = b.dataset.dnote; const c = calendar[ds] || {};
+    const v = await editDayNote(fmt.dayMonth(new Date(`${ds}T12:00:00`)), c.note);
+    if (v === null) return;
+    try { check(await sb.rpc('fin_set_day_open', { p_day: ds, p_open: !!c.is_open, p_note: v || null })); toast(t('saved')); renderRoster(); }
+    catch (err) { toastError(err); }
   }));
   // order of people: drag the handle, or the arrows on a phone
   const saveOrder = async (ids) => {
@@ -283,4 +291,22 @@ async function exportCsv() {
     rows.forEach((s) => { csv += [s.shift_date, fmt.time(s.start_time), fmt.time(s.end_time), s.profiles ? s.profiles.full_name : '', s.section || '', s.notes || ''].map(csvEsc).join(',') + '\r\n'; });
     download('﻿' + csv, `wintertuin-roster-backup-${isoOf(new Date())}.csv`, 'text/csv;charset=utf-8');
   } catch (e) { toastError(e); }
+}
+
+// Small popup to add, change or remove the note of one day (themed evening, private event, ...)
+function editDayNote(dayLabel, current) {
+  return new Promise((resolve) => {
+    openModal(`<h2>${t('day_note_title', { d: esc(dayLabel) })}</h2><form id="nf">
+      <div class="field"><input name="v" maxlength="60" value="${esc(current || '')}" placeholder="${t('day_note_ph')}"></div>
+      <div class="tiny muted" style="margin:-6px 0 12px">${t('day_note_hint')}</div>
+      <div class="modal-actions" style="justify-content:space-between">
+        <div>${current ? `<button type="button" class="btn-ghost btn-danger" id="nclear">${t('day_note_clear')}</button>` : ''}</div>
+        <div style="display:flex;gap:8px"><button type="button" id="ncancel">${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></div></form>`,
+    (card, close) => {
+      const inp = card.querySelector('[name=v]'); inp.focus(); inp.select();
+      card.querySelector('#nf').onsubmit = (e) => { e.preventDefault(); close(); resolve(inp.value.trim()); };
+      card.querySelector('#ncancel').onclick = () => { close(); resolve(null); };
+      const clr = card.querySelector('#nclear'); if (clr) clr.onclick = () => { close(); resolve(''); };
+    });
+  });
 }

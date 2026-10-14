@@ -526,3 +526,8 @@ tr.row-drop td { box-shadow: inset 0 3px 0 var(--primary); }
 .emp-bar { position: sticky; top: 0; z-index: 30; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 8px 16px; background: var(--accent-soft, #F6E7DC); color: var(--ink); font-weight: 600; font-size: .9rem; border-bottom: 1px solid var(--line); }
 @media print { .emp-bar { display: none !important; } }
+
+.day-note-btn { display: inline-block; margin-top: 3px; min-height: 0; padding: 0 6px; border-radius: 999px; font-size: .7rem; line-height: 1.5;
+  border: 1px solid transparent; background: transparent; color: var(--ink-3); cursor: pointer; }
+.day-note-btn:hover, .day-note-btn.has-note { border-color: var(--line); color: var(--accent); background: var(--surface); }
+table.roster th .day-toggle { display: inline-block; margin: 4px 2px 0; }

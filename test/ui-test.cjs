@@ -87,6 +87,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await b.click(); await p.waitForSelector(`.day-toggle.is-closed[data-day="${ds}"]`);
       const o = await p.evaluate((d) => window.__mockdb.day_overrides[d], ds); if (!o || o.is_open !== false) throw new Error(JSON.stringify(o));
       await p.click(`.day-toggle[data-day="${ds}"]`); await p.waitForSelector(`.day-toggle.is-open[data-day="${ds}"]`); });
+    await step('roster: add a note to a day', async () => {
+      const b = await p.$('[data-dnote]'); const ds = await b.getAttribute('data-dnote');
+      await b.click(); await p.fill('.modal [name=v]', 'Private party'); await p.click('.modal button[type=submit]');
+      await p.waitForSelector('text=Private party');
+      const o = await p.evaluate((d) => window.__mockdb.day_overrides[d], ds); if (!o || o.note !== 'Private party') throw new Error(JSON.stringify(o)); });
     await step('roster: drag a person to another row, order is saved', async () => {
       const names = () => p.$$eval('tr[data-row] strong', (s) => s.map((x) => x.textContent));
       const before = await names();

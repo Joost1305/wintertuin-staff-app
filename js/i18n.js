@@ -3,6 +3,7 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    day_note_title: 'Note for {d}', day_note_ph: 'e.g. Wintertuin Verteld, private party', day_note_hint: 'Shown in the roster and the Finance calendar. Keep it short.', day_note_clear: 'Remove note', day_note_add: 'Add a note', day_note_edit: 'Change the note',
     emp_view: 'Employee view', emp_view_hint: 'See the app exactly as staff see it', emp_view_on: 'Employee view: you see what staff see.', emp_view_off: 'Back to manager view',
     open: 'Open', day_click_open: 'Closed. Click to open this day.', day_click_close: 'Open. Click to close this day.', day_now_closed: '{d} is now closed', day_now_open: '{d} is now open',
     drag_to_reorder: 'Drag to move up or down', move_up: 'Move up', move_down: 'Move down',
@@ -80,6 +81,7 @@ const dict = {
     restore_partial: 'Partly done, with errors:', restore_done: 'Restored.', other_exports: 'Other exports', other_exports_sub: 'The SOP backup (.txt) is on the SOPs page; calendar files and the roster backup (.csv) are on the Roster page.',
   },
   nl: {
+    day_note_title: 'Notitie voor {d}', day_note_ph: 'bijv. Wintertuin Verteld, besloten feest', day_note_hint: 'Zichtbaar in het rooster en de Finance-kalender. Houd het kort.', day_note_clear: 'Notitie weghalen', day_note_add: 'Notitie toevoegen', day_note_edit: 'Notitie wijzigen',
     emp_view: 'Medewerkerweergave', emp_view_hint: 'Zie de app precies zoals medewerkers hem zien', emp_view_on: 'Medewerkerweergave: je ziet wat medewerkers zien.', emp_view_off: 'Terug naar managerweergave',
     open: 'Open', day_click_open: 'Gesloten. Klik om deze dag te openen.', day_click_close: 'Open. Klik om deze dag te sluiten.', day_now_closed: '{d} is nu gesloten', day_now_open: '{d} is nu open',
     drag_to_reorder: 'Sleep om omhoog of omlaag te zetten', move_up: 'Omhoog', move_down: 'Omlaag',
