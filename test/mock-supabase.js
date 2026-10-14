@@ -8,8 +8,9 @@
   const people = [[ME, 'Joost', role], [uid(), 'Anna', 'staff'], [uid(), 'Sam', 'staff']];
   const db = {
     profiles: people.map(([id, full_name, r]) => ({ id, full_name, role: r, active: true, email: full_name.toLowerCase() + '@example.test', language: 'en' })),
-    sops: [{ id: uid(), category: 'Opening', title: 'Morning check kitchen', content: 'Before 08:00', items: ['Coffee machine on', 'Terrace cushions out'], sort_order: 0 },
-           { id: uid(), category: 'Closing', title: 'Close bar', content: '', items: ['Clean grinder'], sort_order: 0 }],
+    sops: [{ id: uid(), category: 'Opening', title: 'Ochtendcheck keuken', content: 'Voor 08:00', items: ['Koffiemachine aan', 'Terraskussens buiten'], sort_order: 0,
+             category_en: 'Opening', title_en: 'Morning check kitchen', content_en: 'Before 08:00', items_en: ['Coffee machine on', 'Terrace cushions out'] },
+           { id: uid(), category: 'Sluiten', title: 'Bar sluiten', content: '', items: ['Molen schoonmaken'], sort_order: 0, items_en: [] }],
     sop_checks: [], resources: [{ id: uid(), label: 'Recipe database', url: 'https://example.test', note: 'Ask Joost', sort_order: 0 }],
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0 },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],

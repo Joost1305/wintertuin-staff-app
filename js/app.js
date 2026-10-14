@@ -2,7 +2,7 @@
 import { state, isManager, $, esc, app, toastError, renderLangToggle, closeModal } from './core.js';
 import { t, setLang } from './i18n.js';
 import { sb, loadMe, loadProfiles, signOut } from './data.js';
-import { BUILD, FINANCE_URL } from './config.js';
+import { BUILD } from './config.js';
 import { renderLogin } from './pages/login.js';
 import { renderSetPassword } from './pages/set-password.js';
 import { renderSops } from './pages/sops.js';
@@ -64,8 +64,10 @@ function renderShell() {
   nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`).join('') +
     `<a class="ext" href="Wintertuin-Intro.html" target="_blank" rel="noopener">${t('nav_about')} &#8599;</a>` +
-    `<a class="ext" href="${FINANCE_URL}" target="_blank" rel="noopener">${t('nav_finance')} &#8599;</a>` +
-    `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a><a href="#/logout">${t('nav_logout')}</a>`;
+    // Managers change their password under Settings; staff (no Settings) keep it in the menu
+    (isManager() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
+    `<a href="#/logout">${t('nav_logout')}</a>`;
+  $('#app-switch-label').textContent = t('nav_finance');
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));

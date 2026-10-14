@@ -2,13 +2,14 @@
 // Accounts and passwords go through the admin-users edge function, which re-checks that you are a manager.
 import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download } from '../core.js';
 import { t } from '../i18n.js';
-import { sb, check, adminUsers, loadProfiles } from '../data.js';
+import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
   { id: 'templates', label: 'set_templates' },
   { id: 'links', label: 'set_links' },
   { id: 'backup', label: 'set_backup' },
+  { id: 'password', label: 'set_password' },
 ];
 
 export async function renderSettings(args = []) {
@@ -21,7 +22,7 @@ export async function renderSettings(args = []) {
       <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
   if (!current) return;
-  try { await ({ team, templates, links, backup })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, links, backup, password })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
@@ -219,5 +220,20 @@ async function backup(el) {
     await up('shifts', (bundle.shifts || []).map(({ profiles, ...rest }) => rest)); // the joined name is not a real column
     out.innerHTML = errors.length ? `<span class="txt-red">${t('restore_partial')}<br>${errors.map(esc).join('<br>')}</span>` : `<span class="txt-green">${t('restore_done')}</span>`;
     $('#file', el).value = '';
+  };
+}
+
+// ------------------------------------------------------------------ own password (one login for both Wintertuin apps)
+async function password(el) {
+  el.innerHTML = `<div class="card" style="max-width:480px"><h2>${t('set_password')}</h2><p class="small muted" style="margin-top:-6px">${t('set_password_sub')}</p>
+    <form id="pw"><div class="field"><label>${t('pw_new')}</label><input type="password" name="pw" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label>${t('pw_repeat')}</label><input type="password" name="pw2" autocomplete="new-password" minlength="8" required></div>
+    <button class="btn-primary" type="submit">${t('save')}</button></form></div>`;
+  $('#pw', el).onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.pw.value.length < 8) return toastError(new Error(t('pw_short')));
+    if (f.pw.value !== f.pw2.value) return toastError(new Error(t('pw_mismatch')));
+    try { await setPassword(f.pw.value); f.reset(); toast(t('pw_saved')); } catch (err) { toastError(err); }
   };
 }

@@ -29,6 +29,20 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     const p = A.page;
     await step('login page in English', async () => { await p.goto(BASE); await p.waitForSelector('#login-form'); if (!/Sign in/.test(await p.textContent('h1'))) throw new Error('not English'); await p.screenshot({ path: `${OUT}/01-login.png` }); });
     await step('login lands on SOPs', async () => { await login(p); await p.screenshot({ path: `${OUT}/02-sops.png`, fullPage: true }); });
+    await step('SOPs in English, Dutch fallback, translation hint', async () => {
+      const body = await p.textContent('#app');
+      if (!/Morning check kitchen/.test(body) || !/Coffee machine on/.test(body)) throw new Error('English not shown');
+      if (!/Bar sluiten/.test(body)) throw new Error('Dutch fallback missing');
+      if (!/1 SOPs have no English/.test(body)) throw new Error('missing-English note');
+    });
+    await step('app switch to Finance next to the brand, same icon', async () => {
+      const a = await p.$('.topbar #app-switch'); if (!a) throw new Error('no switch');
+      const txt = await a.textContent(); if (!/Finance/.test(txt) || !/\u2197/.test(txt)) throw new Error(txt);
+      if (!/wintertuin-finance/.test(await a.getAttribute('href'))) throw new Error('href');
+      const nav = await p.$$eval('#nav a', (as) => as.map((x) => x.textContent));
+      if (nav.some((x) => /Finance/.test(x))) throw new Error('Finance still in menu');
+      if (nav.some((x) => /Password/.test(x))) throw new Error('Password in menu for manager');
+    });
     await step('tick a checklist item, progress updates', async () => {
       await p.click('.sop-check >> nth=0'); await p.waitForTimeout(200);
       if (!(await p.textContent('[data-progress]')).startsWith('1/')) throw new Error(await p.textContent('[data-progress]'));
@@ -38,6 +52,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#add'); if ((await p.inputValue('.modal [name=title]')) !== 'Lunch prep') throw new Error('draft lost');
       await p.fill('.modal [name=category]', 'Lunch'); await p.fill('.modal [name=items]', 'Cut bread\nSet tables'); await p.click('.modal button[type=submit]');
       await p.waitForSelector('text=Lunch prep'); });
+    await step('SOP editor: Dutch and English side by side, line mismatch blocked', async () => {
+      await p.click('[data-edit] >> nth=0'); await p.waitForSelector('.modal [name=title_en]');
+      if ((await p.inputValue('.modal [name=title]')) === '' ) throw new Error('nl title empty');
+      await p.fill('.modal [name=items_en]', 'Only one line'); await p.waitForSelector('.modal .txt-red');
+      await p.click('.modal button[type=submit]'); await p.waitForTimeout(200);
+      if (!(await p.$('.modal'))) throw new Error('mismatch saved');
+      await p.screenshot({ path: `${OUT}/02b-sop-editor.png` });
+      await p.click('.modal #cancel'); });
     await step('no self sign-up on the login page', async () => {
       const ctx2 = await browser.newContext(); const p2 = await ctx2.newPage();
       await p2.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
@@ -86,6 +108,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/06-swap.png`, fullPage: true });
       await p.click('[data-decide$="approved"]'); await p.waitForTimeout(300);
       const st = await p.evaluate(() => window.__mockdb.shift_swap_requests[0].status); if (st !== 'approved') throw new Error(st); });
+    await step('settings: my password', async () => {
+      await p.goto(BASE + '#/settings/password'); await p.waitForSelector('#pw');
+      await p.fill('#pw [name=pw]', 'abcdefgh1'); await p.fill('#pw [name=pw2]', 'abcdefgh1'); await p.click('#pw button[type=submit]');
+      await p.waitForSelector('text=/saved/i'); });
     for (const sec of ['team', 'templates', 'links', 'backup']) await step(`settings: ${sec}`, async () => { await p.goto(BASE + '#/settings/' + sec); await p.waitForSelector('#sec .card'); });
     await step('settings: create account shows login details', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
@@ -118,6 +144,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('staff: no Settings, no plan buttons, phone layout', async () => {
       const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href')));
       if (links.includes('#/settings')) throw new Error('settings visible');
+      if (!links.includes('#/password')) throw new Error('staff lost password link');
+      if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
       await q.goto(BASE + '#/settings'); await q.waitForSelector('.sop-card');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('table.roster'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
