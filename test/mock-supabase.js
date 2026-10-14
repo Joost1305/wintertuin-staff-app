@@ -12,10 +12,10 @@
              category_en: 'Opening', title_en: 'Morning check kitchen', content_en: 'Before 08:00', items_en: ['Coffee machine on', 'Terrace cushions out'] },
            { id: uid(), category: 'Sluiten', title: 'Bar sluiten', content: '', items: ['Molen schoonmaken'], sort_order: 0, items_en: [] }],
     sop_checks: [], resources: [{ id: uid(), label: 'Recipe database', url: 'https://example.test', note: 'Ask Joost', sort_order: 0 }],
-    menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0 },
+    menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0, allergens: ['gluten'] },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],
-    shifts: [], checkins: [], shift_swap_requests: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
+    shifts: [], checkins: [], events: [], event_versions: [], shift_swap_requests: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
   };
   const today = new Date();
   for (let i = 0; i < 4; i++) { const d = new Date(today); d.setDate(d.getDate() + i);
@@ -59,9 +59,17 @@
       const match = (r) => this.f.every((fn) => fn(r));
       let out = [];
       if (this.op === 'select') out = tbl.filter(match);
-      const DEF = { menu_items: { active: true, sort_order: 0 }, profiles: { active: true } };
+      const now = new Date().toISOString();
+      const DEF = { menu_items: { active: true, sort_order: 0 }, profiles: { active: true },
+        events: { version: 1, created_by: ME, updated_by: ME, updated_at: now, menu: [], dietary: [], timeline: [] } };
       if (this.op === 'insert') for (const r of this.rows) { const row = { id: uid(), created_at: new Date().toISOString(), ...(DEF[this.t] || {}), ...r }; tbl.push(row); out.push(row); }
-      if (this.op === 'update') for (const r of tbl.filter(match)) { Object.assign(r, this.patch); out.push(r); }
+      if (this.op === 'update') for (const r of tbl.filter(match)) {
+        const old = JSON.parse(JSON.stringify(r)); Object.assign(r, this.patch);
+        if (this.t === 'events') {   // like the database trigger: keep the old version when something changed
+          const strip = (x) => { const y = { ...x }; ['version', 'updated_at', 'updated_by', 'created_at', 'created_by'].forEach((k) => delete y[k]); return JSON.stringify(Object.keys(y).sort().map((k) => [k, y[k] ?? null])); };
+          if (strip(old) !== strip(r)) { (db.event_versions = db.event_versions || []).push({ id: uid(), event_id: r.id, version: old.version, snapshot: old, changed_by: ME, changed_at: now }); r.version = old.version + 1; r.updated_at = now; }
+        }
+        out.push(r); }
       if (this.op === 'upsert') for (const r of this.rows) { const hit = tbl.find((x) => this.conflict.every((k) => String(x[k]) === String(r[k]))); if (hit) Object.assign(hit, r); else tbl.push({ id: uid(), ...r }); }
       if (this.op === 'delete') for (let i = tbl.length - 1; i >= 0; i--) if (match(tbl[i])) tbl.splice(i, 1);
       if (this.head) return { data: null, count: out.length, error: null };

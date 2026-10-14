@@ -149,6 +149,47 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/14-employee-view.png`, fullPage: true });
       await p.click('#emp-off'); await p.waitForSelector('#emp-on');
       if (await p.$('#emp-bar')) throw new Error('banner stayed'); });
+    await step('events: create a BEO with menu from dishes, dietary and timeline', async () => {
+      await p.goto(BASE + '#/events'); await p.waitForSelector('text=No upcoming events');
+      await p.click('a:has-text("New event")'); await p.waitForSelector('#ev-form');
+      await p.fill('[name=title]', 'Wedding Jansen'); await p.fill('[name=event_type]', 'Wedding');
+      const d = new Date(); d.setDate(d.getDate() + 1); const ds = d.toLocaleDateString('sv-SE');
+      await p.fill('[name=event_date]', ds); await p.fill('[name=start_time]', '17:00');
+      await p.fill('[name=client_name]', 'Eva Jansen'); await p.fill('[name=guests_expected]', '60'); await p.fill('[name=staff_needed]', '5');
+      await p.click('[data-addrow=dietary]'); await p.fill('#rows-dietary [name=di_count]', '3'); await p.fill('#rows-dietary [name=di_type]', 'Vegetarian');
+      await p.click('[data-addrow=timeline]'); await p.fill('#rows-timeline [name=tl_time]', '17:00'); await p.fill('#rows-timeline [name=tl_what]', 'Guests arrive, welcome drink');
+      await p.click('[data-addrow=menu]'); await p.fill('#rows-menu [name=mn_course]', 'Starter');
+      await p.selectOption('#rows-menu [name=mn_item]', { label: 'Sourdough' }); await p.waitForSelector('#rows-menu .tag.allergen');
+      await p.fill('[name=price_per_person]', '85'); await p.fill('[name=notes_kitchen]', 'Bread warm from the oven');
+      await p.screenshot({ path: `${OUT}/15-event-form.png`, fullPage: true });
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('h1:has-text("Wedding Jansen")');
+      const ev = await p.evaluate(() => window.__mockdb.events[0]);
+      if (ev.menu[0].course !== 'course_starter' || ev.menu[0].allergens[0] !== 'gluten') throw new Error(JSON.stringify(ev.menu));
+      if (ev.dietary[0].type !== 'diet_vegetarian' || ev.dietary[0].count !== 3) throw new Error(JSON.stringify(ev.dietary));
+      if (ev.guests_expected !== 60 || ev.price_per_person !== 85) throw new Error('numbers');
+      if (!/€5,100/.test(await p.textContent('.ev-kpis'))) throw new Error('expected revenue');
+      await p.screenshot({ path: `${OUT}/16-event-view.png`, fullPage: true }); });
+    await step('events: change makes a new version with history', async () => {
+      await p.click('a:has-text("Edit")'); await p.waitForSelector('#ev-form');
+      await p.fill('[name=guests_expected]', '72'); await p.selectOption('[name=status]', 'confirmed');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('text=v2');
+      await p.click('a:has-text("Change history")'); await p.waitForSelector('.ev-changes');
+      const txt = await p.textContent('.ev-hist'); if (!/60/.test(txt) || !/72/.test(txt) || !/Confirmed/.test(txt)) throw new Error(txt);
+      await p.screenshot({ path: `${OUT}/17-event-history.png`, fullPage: true }); });
+    await step('events: client PDF in Dutch, kitchen sheet with allergens', async () => {
+      const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
+      await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]');
+      let html = await p.evaluate(() => window.__printed);
+      if (!/Bevestiging evenement/.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
+      if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]');
+      html = await p.evaluate(() => window.__printed);
+      if (!/Gluten/i.test(html) || !/Bread warm/.test(html) || !/Vegetarian/.test(html)) throw new Error('kitchen sheet'); });
+    await step('events: list shows the event, confirmed', async () => {
+      await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
+      await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
@@ -182,6 +223,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('staff: offer own shift for swap', async () => {
       await q.goto(BASE + '#/swap'); await q.waitForSelector('[data-offer]'); await q.click('[data-offer]'); await q.fill('.modal [name=v]', 'Wedding'); await q.click('.modal button[type=submit]');
       await q.waitForSelector('.tag.open'); });
+    await step('staff: can open events and make one, no delete', async () => {
+      await q.goto(BASE + '#/events/new'); await q.waitForSelector('#ev-form'); await q.fill('[name=title]', 'Birthday Sam');
+      await q.click('#ev-form button[type=submit]'); await q.waitForSelector('h1:has-text("Birthday Sam")');
+      if (await q.$('#del')) throw new Error('delete for staff'); });
     await step('staff: About page has no Edit button', async () => { await q.goto(BASE + 'Wintertuin-Intro.html'); await q.waitForTimeout(800); if (await q.$('#ab-edit')) throw new Error('edit for staff'); });
     await B.ctx.close();
     if (B.errors.length) { failed = true; console.log('ERRORS (staff):', B.errors); }

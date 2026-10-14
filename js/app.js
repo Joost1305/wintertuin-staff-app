@@ -9,6 +9,7 @@ import { renderSops } from './pages/sops.js';
 import { renderMenu } from './pages/menu.js';
 import { renderLinks } from './pages/links.js';
 import { renderRoster } from './pages/roster.js';
+import { renderEvents } from './pages/events.js';
 import { renderCheckin } from './pages/checkin.js';
 import { renderSwap, swapBadgeCount } from './pages/swap.js';
 import { renderSettings } from './pages/settings.js';
@@ -20,6 +21,7 @@ const routes = [
   { path: 'menu', render: renderMenu, nav: 'nav_menu', show: () => true },
   { path: 'links', render: renderLinks, nav: 'nav_links', show: () => true },
   { path: 'roster', render: renderRoster, nav: 'nav_roster', show: () => true },
+  { path: 'events', render: (args) => renderEvents(args[0] === 'list' ? [null, args[1]] : args), nav: 'nav_events', show: () => true },
   { path: 'checkin', render: renderCheckin, nav: 'nav_checkin', show: () => true },
   { path: 'swap', render: renderSwap, nav: 'nav_swap', show: () => true, badge: true },
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
