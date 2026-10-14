@@ -8,6 +8,7 @@ import { renderSystemCheck } from './system-check.js';
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
   { id: 'templates', label: 'set_templates' },
+  { id: 'menuorder', label: 'set_menu_order' },
   { id: 'links', label: 'set_links' },
   { id: 'backup', label: 'set_backup' },
   { id: 'system', label: 'set_system' },
@@ -26,7 +27,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, menuorder, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
@@ -61,6 +62,34 @@ function crud(el, { title, sub, rows, columns, fields, table, toRow, addLabel })
     if (!(await confirmDialog(t('confirm_delete'), t('delete')))) return;
     try { check(await sb.from(table).delete().eq('id', b.dataset.del)); toast(t('deleted')); again(); } catch (err) { toastError(err); }
   }));
+}
+
+// ------------------------------------------------------------------ menu order
+// Number the dishes per group: 1 shows first on the Menu page. Saved as sort_order 10, 20, 30, ...
+async function menuorder(el) {
+  const rows = check(await sb.from('menu_items').select('id, name, category, group_type, sort_order').eq('active', true)
+    .order('group_type').order('sort_order').order('name')) || [];
+  const groups = ['food', 'beverage'].map((g) => [g, rows.filter((r) => (r.group_type || 'food') === g)]).filter(([, l]) => l.length);
+  el.innerHTML = `<div class="card"><h2 style="margin:0">${t('set_menu_order')}</h2><div class="small muted">${t('menu_order_sub')}</div>
+    ${!groups.length ? `<div class="empty">${t('menu_none')}</div>` : groups.map(([g, list]) => `<div class="sop-cat" style="margin-top:16px">${t('group_' + g)}</div>
+      <div class="order-list">${list.map((r, i) => `<label class="order-row"><input type="number" min="1" step="1" inputmode="numeric" value="${i + 1}" data-oid="${r.id}" data-g="${g}" aria-label="${t('position')}: ${esc(r.name)}">
+        <span><strong>${esc(r.name)}</strong>${r.category ? ` <span class="tag">${esc(r.category)}</span>` : ''}</span></label>`).join('')}</div>`).join('')}
+    ${groups.length ? `<button type="button" class="btn-primary" id="save-order" style="margin-top:14px">${t('save')}</button>` : ''}</div>`;
+  const btn = $('#save-order', el); if (!btn) return;
+  btn.onclick = async () => {
+    try {
+      const updates = [];
+      for (const [, list] of groups) {
+        // sort by the typed number; equal or empty numbers keep their current order
+        const typed = list.map((r, i) => { const v = Number($(`[data-oid="${r.id}"]`, el).value); return { r, n: Number.isFinite(v) && v > 0 ? v : Infinity, i }; });
+        typed.sort((a, b) => a.n - b.n || a.i - b.i);
+        typed.forEach(({ r }, k) => { const so = (k + 1) * 10; if (r.sort_order !== so) updates.push(sb.from('menu_items').update({ sort_order: so }).eq('id', r.id).then(check)); });
+      }
+      btn.disabled = true;
+      await Promise.all(updates);
+      toast(t('saved')); again();
+    } catch (e) { toastError(e); btn.disabled = false; }
+  };
 }
 
 // ------------------------------------------------------------------ team and accounts

@@ -24,7 +24,7 @@ export const ALLERGENS = ['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 's
 export async function renderMenu() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   const [rows] = await Promise.all([
-    sb.from('menu_items').select('*').eq('active', true).order('group_type').order('category').order('sort_order'),
+    sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name'), // order set under Settings > Menu order
     loadPdfs(),
   ]);
   items = check(rows) || [];
@@ -173,7 +173,7 @@ function openEditor(m) {
         const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: embedUrl(v.video_url) || null, price: v.price, allergens };
         if (v.photo) row.photo_url = await uploadPhoto(v.photo);
         if (m) check(await sb.from('menu_items').update(row).eq('id', m.id));
-        else check(await sb.from('menu_items').insert(row));
+        else check(await sb.from('menu_items').insert({ ...row, sort_order: items.reduce((mx, x) => Math.max(mx, x.sort_order || 0), 0) + 10 })); // new dishes go last
         close(); toast(t('saved')); renderMenu();
       } catch (err) { toastError(err); btn.disabled = false; }
     };

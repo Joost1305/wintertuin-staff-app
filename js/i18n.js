@@ -302,7 +302,7 @@ const dict = {
     swap_reason: 'Reason for the swap (optional)',
     swap_status_open: 'open', swap_status_claimed: 'waiting for approval', swap_status_approved: 'approved', swap_status_rejected: 'rejected', swap_status_cancelled: 'cancelled',
     // settings
-    set_team: 'Team and accounts', set_team_sub: 'Names, roles, accounts and passwords.', set_templates: 'Fixed shifts', set_templates_sub: 'Ready-made shifts to drag onto the roster.',
+    set_team: 'Team and accounts', set_team_sub: 'Names, roles, accounts and passwords.', set_menu_order: 'Menu order', menu_order_sub: 'Number the dishes: 1 is shown first on the Menu page. Equal numbers keep their current order.', position: 'Position', set_templates: 'Fixed shifts', set_templates_sub: 'Ready-made shifts to drag onto the roster.',
     set_links: 'Links', set_links_sub: 'Shown on the Links page for everyone.', set_backup: 'Backup and restore',
     add_account: 'New account', create_account: 'Create account', name_ph: 'For example: Anna de Vries', password_hint: 'A password has been generated. You can change it.',
     role_staff: 'Staff', role_manager: 'Manager', reset_password: 'New password', self_note: 'You cannot change your own role or switch yourself off, so you never lock yourself out.',
@@ -611,7 +611,7 @@ const dict = {
     swap_my_requests: 'Status van jouw verzoeken', swap_none_mine: 'Je hebt nog geen diensten aangeboden.', swap_taken_by: 'overgenomen door {n}',
     swap_reason: 'Reden voor de ruil (optioneel)',
     swap_status_open: 'open', swap_status_claimed: 'wacht op goedkeuring', swap_status_approved: 'goedgekeurd', swap_status_rejected: 'afgewezen', swap_status_cancelled: 'geannuleerd',
-    set_team: 'Team en accounts', set_team_sub: 'Namen, rollen, accounts en wachtwoorden.', set_templates: 'Vaste diensten', set_templates_sub: 'Kant-en-klare diensten om op het rooster te slepen.',
+    set_team: 'Team en accounts', set_team_sub: 'Namen, rollen, accounts en wachtwoorden.', set_menu_order: 'Volgorde menu', menu_order_sub: 'Nummer de gerechten: 1 staat bovenaan op de Menu-pagina. Gelijke nummers houden hun huidige volgorde.', position: 'Positie', set_templates: 'Vaste diensten', set_templates_sub: 'Kant-en-klare diensten om op het rooster te slepen.',
     set_links: 'Links', set_links_sub: 'Staan voor iedereen op de pagina Links.', set_backup: 'Back-up en herstel',
     add_account: 'Nieuw account', create_account: 'Account aanmaken', name_ph: 'Bijvoorbeeld: Anna de Vries', password_hint: 'Er is een wachtwoord gemaakt. Je kunt het aanpassen.',
     role_staff: 'Medewerker', role_manager: 'Manager', reset_password: 'Nieuw wachtwoord', self_note: 'Je eigen rol of actief-status kun je niet wijzigen, zo sluit je jezelf nooit buiten.',

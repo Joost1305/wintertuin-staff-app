@@ -71,6 +71,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.setInputFiles('.modal [name=photo]', { name: 'pie.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Apple pie');
       const price = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie').price); if (price !== 4.5) throw new Error(price); });
+    await step('settings: menu order by number changes the Menu page', async () => {
+      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#save-order');
+      const pie = await p.$eval('.order-row:has-text("Apple pie") input', (i) => i.dataset.oid);
+      await p.fill(`[data-oid="${pie}"]`, '1'); await p.fill('.order-row:has-text("Sourdough") input', '2'); await p.click('#save-order');
+      await p.waitForTimeout(600); await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card');
+      const first = await p.$eval('.menu-grid .menu-card h3', (h) => h.textContent);
+      if (first !== 'Apple pie') throw new Error('first dish is ' + first);
+      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#save-order');
+      await p.fill('.order-row:has-text("Sourdough") input', '1'); await p.fill(`[data-oid="${pie}"]`, '2'); await p.click('#save-order'); await p.waitForTimeout(600);
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card'); });
     await step('allergens: set on an item, shown as chips, allergen card prints', async () => {
       await p.click('.menu-card:has-text("Sourdough") [data-edit]'); await p.check('.modal input[name=al][value=gluten]'); await p.check('.modal input[name=al][value=milk]');
       await p.click('.modal button[type=submit]'); await p.waitForSelector('.tag.allergen');

@@ -646,3 +646,7 @@ label.btn { cursor: pointer; }
 .pdf-acts { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
 .pdf-acts input[type=file] { max-width: 210px; font-size: .8rem; }
 .page-actions { flex-wrap: wrap; }
+/* settings: menu order */
+.order-list { display: flex; flex-direction: column; }
+.order-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-weight: 400; margin: 0; }
+.order-row input { width: 64px; flex: none; text-align: center; font-variant-numeric: tabular-nums; }
