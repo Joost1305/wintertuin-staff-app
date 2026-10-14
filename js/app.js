@@ -13,6 +13,7 @@ import { renderEvents } from './pages/events.js';
 import { renderCheckin } from './pages/checkin.js';
 import { renderSwap, swapBadgeCount } from './pages/swap.js';
 import { renderSettings } from './pages/settings.js';
+import { renderHaccp } from './pages/haccp.js';
 
 console.log(`Wintertuin Team, build ${BUILD}`);
 // One tab per app: the switch button in the other app targets this name and reuses this tab
@@ -24,6 +25,7 @@ const routes = [
   { path: 'links', render: renderLinks, nav: 'nav_links', show: () => true },
   { path: 'roster', render: renderRoster, nav: 'nav_roster', show: () => true },
   { path: 'events', render: (args) => renderEvents(args[0] === 'list' ? [null, args[1]] : args), nav: 'nav_events', show: () => true },
+  { path: 'haccp', render: renderHaccp, nav: 'nav_haccp', show: () => true },
   { path: 'checkin', render: renderCheckin, nav: 'nav_checkin', show: () => true },
   { path: 'swap', render: renderSwap, nav: 'nav_swap', show: () => true, badge: true },
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },

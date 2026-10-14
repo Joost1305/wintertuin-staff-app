@@ -236,6 +236,34 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForFunction((b) => (window.__printed || 0) > b, before);
       await p.waitForTimeout(2000); // Safari keeps scripts running while its print window is open
       if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('print sheet cleared while printing'); });
+    await step('HACCP: own menu item, 10 lists, temperature deviation needs a corrective action', async () => {
+      const nav = await p.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (!nav.includes('#/haccp')) throw new Error('no HACCP in menu');
+      await p.goto(BASE + '#/haccp'); await p.waitForSelector('.hc-tile'); if ((await p.$$('.hc-tile')).length !== 10) throw new Error('tiles');
+      await p.click('a[href="#/haccp/temperatures"]'); await p.waitForSelector('#hc-f');
+      await p.fill('[name=eq_cool1]', '9'); await p.fill('[name=eq_frz1]', '-20');
+      for (const k of ['fifo', 'covered', 'cleaned']) await p.click(`[name=${k}][value=yes] + span`);
+      await p.waitForSelector('.hc-dev:not([hidden])'); await p.click('#hc-f button[type=submit]'); await p.waitForTimeout(300);
+      if ((await p.evaluate(() => window.__mockdb.haccp_entries.length)) !== 0) throw new Error('saved without corrective action');
+      await p.fill('[name=__action]', 'Door was open; closed and measured again'); await p.click('#hc-f button[type=submit]'); await p.waitForSelector('.hc-days .hc-bad');
+      const e = await p.evaluate(() => window.__mockdb.haccp_entries[0]); if (e.ok !== false || !e.action) throw new Error('entry'); });
+    await step('HACCP: receiving check (frozen −16 passes, dry goods hide temperature), buffet over 2 hours flagged', async () => {
+      await p.goto(BASE + '#/haccp/receiving'); await p.waitForSelector('#hc-f');
+      await p.fill('[name=supplier]', 'Bidfood'); await p.fill('[name=product]', 'Fries'); await p.selectOption('[name=kind]', 'D'); await p.fill('[name=temp]', '-16');
+      await p.click('[name=tht][value=yes] + span'); await p.click('[name=pack][value=yes] + span');
+      if (await p.isVisible('.hc-dev')) throw new Error('-16 flagged'); await p.click('#hc-f button[type=submit]'); await p.waitForSelector('table.hc-t tbody tr');
+      await p.selectOption('[name=kind]', 'C'); if (await p.isVisible('[data-field=temp]')) throw new Error('temp for dry goods');
+      await p.goto(BASE + '#/haccp/buffet'); await p.waitForSelector('#hc-f'); await p.fill('[name=product]', 'Salad'); await p.fill('[name=start]', '10:00');
+      await p.click('[name=cold][value=yes] + span'); await p.click('[name=guard][value=yes] + span'); await p.click('#hc-f button[type=submit]'); await p.waitForSelector('.hc-open');
+      await p.click('.hc-log summary'); await p.click('[data-close-buffet]'); await p.fill('#hc-end [name=end]', '12:30'); await p.click('#hc-end button[type=submit]');
+      await p.waitForSelector('tr.hc-rowbad'); });
+    await step('HACCP: archive in Settings, edit fridges, print the whole week with labels', async () => {
+      await p.goto(BASE + '#/settings/haccp'); await p.waitForSelector('#arch-body table');
+      await p.click('#ed-equipment [data-add]'); await p.fill('#ed-equipment input[data-k=name] >> nth=-1', 'Bar fridge'); await p.click('#ed-equipment [data-save]'); await p.waitForTimeout(400);
+      if ((await p.evaluate(() => window.__mockdb.haccp_config.find((x) => x.key === 'equipment').value.length)) !== 3) throw new Error('fridge not saved');
+      await p.waitForSelector('#arch-body table'); const before = await p.evaluate(() => window.__printed || 0); await p.click('#arch-print');
+      await p.waitForFunction((b) => (window.__printed || 0) > b, before, { timeout: 5000 });
+      const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
+      if ((html.match(/class="hcp"/g) || []).length !== 10 || !/Week \d+/.test(html) || !/Bar fridge/.test(html) || !/Checked by/.test(html)) throw new Error('print sheet'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
@@ -262,6 +290,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
       await q.goto(BASE + '#/menu'); await q.waitForSelector('#allergen-card'); if (await q.$('#pdf-manage')) throw new Error('staff can manage menu PDFs');
+      await q.goto(BASE + '#/haccp/temperatures'); await q.waitForSelector('#hc-f'); if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('HACCP form scrolls sideways');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab');
       if (await q.isVisible('table.roster')) throw new Error('wide table still shown on phone');
       if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('roster scrolls sideways on phone');

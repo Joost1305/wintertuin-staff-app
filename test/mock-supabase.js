@@ -13,6 +13,13 @@
            { id: uid(), category: 'Sluiten', title: 'Bar sluiten', content: '', items: ['Molen schoonmaken'], sort_order: 0, items_en: [] }],
     sop_checks: [], resources: [{ id: uid(), label: 'Recipe database', url: 'https://example.test', note: 'Ask Joost', sort_order: 0 }],
     menu_pdfs: [],
+    haccp_entries: [],
+    haccp_config: [
+      { key: 'equipment', value: [{ id: 'cool1', name: 'Koelcel', kind: 'cool' }, { id: 'frz1', name: 'Vriezer', kind: 'freeze' }] },
+      { key: 'cleaning', value: [{ id: 'c01', name: 'Werkbanken', clean: true, disinfect: true, freq: 'D' }, { id: 'c15', name: 'Koelingen', clean: true, disinfect: true, freq: 'W' }] },
+      { key: 'suppliers', value: [{ id: 's1', name: 'Bidfood', supplies: 'Food', notes: '' }] },
+      { key: 'lists', value: ['temperatures', 'receiving', 'cooking', 'cleaning', 'thermometers', 'hygiene', 'suppliers', 'sousvide', 'acidified', 'buffet'] },
+    ],
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0, allergens: ['gluten'] },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],

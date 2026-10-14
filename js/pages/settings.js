@@ -4,11 +4,13 @@ import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, op
 import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 import { renderSystemCheck } from './system-check.js';
+import { renderHaccpSettings } from './haccp.js';
 
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
   { id: 'templates', label: 'set_templates' },
   { id: 'menuorder', label: 'set_menu_order' },
+  { id: 'haccp', label: 'set_haccp' },
   { id: 'links', label: 'set_links' },
   { id: 'backup', label: 'set_backup' },
   { id: 'system', label: 'set_system' },
@@ -27,7 +29,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, menuorder, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
@@ -223,13 +225,14 @@ async function backup(el) {
       <div class="page-actions"><a class="btn btn-sm" href="#/sops">${t('nav_sops')}</a><a class="btn btn-sm" href="#/roster">${t('nav_roster')}</a></div></div>`;
   $('#dl', el).onclick = async () => {
     try {
-      const [sops, menu, resources, tpl, shifts] = await Promise.all([
+      const [sops, menu, resources, tpl, shifts, hcEntries, hcConfig] = await Promise.all([
         sb.from('sops').select('*'), sb.from('menu_items').select('*'), sb.from('resources').select('*'),
         sb.from('shift_templates').select('*'), sb.from('shifts').select('*, profiles:staff_id(full_name)'),
+        sb.from('haccp_entries').select('*').order('entry_date'), sb.from('haccp_config').select('*'),
       ]);
-      const errs = [sops, menu, resources, tpl, shifts].filter((r) => r.error).map((r) => r.error.message);
+      const errs = [sops, menu, resources, tpl, shifts, hcEntries, hcConfig].filter((r) => r.error).map((r) => r.error.message);
       if (errs.length) throw new Error(errs.join(', '));
-      const bundle = { exported_at: new Date().toISOString(), sops: sops.data, menu_items: menu.data, resources: resources.data, shift_templates: tpl.data, shifts: shifts.data };
+      const bundle = { exported_at: new Date().toISOString(), sops: sops.data, menu_items: menu.data, resources: resources.data, shift_templates: tpl.data, shifts: shifts.data, haccp_config: hcConfig.data, haccp_entries: hcEntries.data };
       download(JSON.stringify(bundle, null, 2), `wintertuin-all-settings-${todayIso()}.json`, 'application/json;charset=utf-8');
     } catch (e) { toastError(e); }
   };
@@ -251,6 +254,8 @@ async function backup(el) {
     await up('resources', bundle.resources);
     await up('shift_templates', bundle.shift_templates);
     await up('shifts', (bundle.shifts || []).map(({ profiles, ...rest }) => rest)); // the joined name is not a real column
+    // HACCP: settings (fridges, cleaning items, suppliers) come back; registrations stay in the database and are only kept in the file
+    if (bundle.haccp_config && bundle.haccp_config.length) { const { error } = await sb.from('haccp_config').upsert(bundle.haccp_config.map(({ key, value }) => ({ key, value })), { onConflict: 'key' }); if (error) errors.push(`haccp_config: ${error.message}`); }
     out.innerHTML = errors.length ? `<span class="txt-red">${t('restore_partial')}<br>${errors.map(esc).join('<br>')}</span>` : `<span class="txt-green">${t('restore_done')}</span>`;
     $('#file', el).value = '';
   };
