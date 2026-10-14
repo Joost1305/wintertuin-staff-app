@@ -639,3 +639,10 @@ tr.sc-current td { background: var(--primary-soft); }
 .btn-pair .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 .btn-pair .btn + .btn { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; padding-left: 9px; padding-right: 9px; }
 label.btn { cursor: pointer; }
+/* manage menu PDFs */
+.pdf-list { display: flex; flex-direction: column; gap: 8px; }
+.pdf-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pdf-row > input { flex: 1 1 200px; min-width: 0; }
+.pdf-acts { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.pdf-acts input[type=file] { max-width: 210px; font-size: .8rem; }
+.page-actions { flex-wrap: wrap; }

@@ -16,8 +16,8 @@ export function embedUrl(raw) {
 }
 
 let items = [];
-let menuPdf = null; // { view, download } when a menu PDF has been uploaded
-const PDF_DIR = 'menu-pdf'; const PDF_PATH = `${PDF_DIR}/menu.pdf`;
+let pdfs = []; // named menu PDFs (BQT menu, Lunch menu, ...), each { id, label, path, sort_order, view, download }
+const PDF_DIR = 'menu-pdf';
 // The 14 allergens that EU law (Regulation 1169/2011) requires you to inform guests about
 export const ALLERGENS = ['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soy', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'];
 
@@ -25,7 +25,7 @@ export async function renderMenu() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   const [rows] = await Promise.all([
     sb.from('menu_items').select('*').eq('active', true).order('group_type').order('category').order('sort_order'),
-    loadPdf(),
+    loadPdfs(),
   ]);
   items = check(rows) || [];
   draw();
@@ -35,8 +35,8 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions">
-      ${menuPdf ? `<span class="btn-pair"><a class="btn btn-sm" href="${esc(menuPdf.view)}" target="_blank" rel="noopener" id="pdf-view">&#128196; ${t('menu_pdf')}</a><a class="btn btn-sm" href="${esc(menuPdf.download)}" id="pdf-dl" title="${t('download')}" aria-label="${t('download')}">&#11015;</a></span>` : ''}
-      ${isManager() ? `<label class="btn btn-sm" id="pdf-up-btn">&#8679; ${t(menuPdf ? 'menu_pdf_replace' : 'menu_pdf_upload')}<input type="file" id="pdf-up" accept="application/pdf" hidden></label>` : ''}
+      ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}">&#128196; ${esc(x.label)}</a><a class="btn btn-sm" href="${esc(x.download)}" data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}">&#11015;</a></span>`).join('')}
+      ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage">&#9998; ${t('menu_pdfs_manage')}</button>` : ''}
       <button type="button" class="btn-sm" id="allergen-card">&#128424; ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
@@ -47,7 +47,7 @@ function draw() {
     }).join('')}`;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
   $('#allergen-card').onclick = printAllergenCard;
-  const up = $('#pdf-up'); if (up) up.onchange = () => uploadPdf(up.files[0]);
+  const pm = $('#pdf-manage'); if (pm) pm.onclick = managePdfs;
   $$('[data-edit]').forEach((b) => (b.onclick = () => openEditor(items.find((m) => m.id === b.dataset.edit))));
 }
 
@@ -66,25 +66,76 @@ function card(m) {
     </div></div>`;
 }
 
-// Menu PDF: one file at a fixed address, replaced on every upload. Everyone can open or download it.
-async function loadPdf() {
-  menuPdf = null;
+// Menu PDFs: several named menus as buttons. Names and order live in the menu_pdfs table, files in storage.
+const bucket = () => sb.storage.from(PHOTO_BUCKET);
+const fileName = (label) => `Wintertuin-${String(label).trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'menu'}.pdf`;
+async function loadPdfs() {
   try {
-    const { data } = await sb.storage.from(PHOTO_BUCKET).list(PDF_DIR, { limit: 10 });
-    const f = (data || []).find((x) => x.name === 'menu.pdf'); if (!f) return;
-    const v = Date.parse(f.updated_at || f.created_at || '') || Date.now(); // new address after each upload, so nobody sees an old copy
-    const bucket = sb.storage.from(PHOTO_BUCKET);
-    menuPdf = { view: `${bucket.getPublicUrl(PDF_PATH).data.publicUrl}?v=${v}`, download: bucket.getPublicUrl(PDF_PATH, { download: 'Wintertuin-menu.pdf' }).data.publicUrl };
-  } catch { /* no PDF yet, or storage unreachable: the button simply stays away */ }
-}
-async function uploadPdf(file) {
-  if (!file) return;
-  if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { toastError(new Error(t('menu_pdf_only'))); return; }
-  try {
-    const { error } = await sb.storage.from(PHOTO_BUCKET).upload(PDF_PATH, file, { upsert: true, contentType: 'application/pdf', cacheControl: '60' });
+    const { data, error } = await sb.from('menu_pdfs').select('*').order('sort_order').order('created_at');
     if (error) throw error;
-    toast(t('menu_pdf_saved')); renderMenu();
-  } catch (e) { toastError(e); }
+    pdfs = (data || []).map((x) => {
+      const v = Date.parse(x.updated_at || '') || 0; // new address after each replacement, so nobody sees an old copy
+      return { ...x, view: `${bucket().getPublicUrl(x.path).data.publicUrl}?v=${v}`, download: bucket().getPublicUrl(x.path, { download: fileName(x.label) }).data.publicUrl };
+    });
+  } catch { pdfs = []; } // the menu page still works without them
+}
+const isPdf = (f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
+async function putPdf(path, file) {
+  const { error } = await bucket().upload(path, file, { upsert: true, contentType: 'application/pdf', cacheControl: '60' });
+  if (error) throw error;
+}
+function managePdfs() {
+  const row = (x, i) => `<div class="pdf-row" data-id="${x.id}">
+      <input name="label" value="${esc(x.label)}" maxlength="60" aria-label="${t('menu_pdf_name')}">
+      <span class="pdf-acts">
+        <button type="button" class="btn-sm" data-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button>
+        <button type="button" class="btn-sm" data-move="1" ${i === pdfs.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button>
+        <label class="btn btn-sm" title="${t('menu_pdf_replace')}">&#8679; ${t('menu_pdf_replace_short')}<input type="file" accept="application/pdf" data-replace hidden></label>
+        <button type="button" class="btn-sm btn-ghost btn-danger" data-del aria-label="${t('delete')}">&#10005;</button></span></div>`;
+  openModal(`<h2>${t('menu_pdfs_manage')}</h2>
+    <p class="small muted" style="margin-top:-6px">${t('menu_pdfs_hint')}</p>
+    ${pdfs.length ? `<div class="pdf-list">${pdfs.map(row).join('')}</div>` : `<div class="note">${t('menu_pdfs_none')}</div>`}
+    <h3 style="margin:16px 0 6px">${t('menu_pdf_add')}</h3>
+    <form id="pdf-add" class="pdf-row">
+      <input name="label" maxlength="60" required placeholder="${esc(t('menu_pdf_name_ph'))}" value="${pdfs.length ? '' : esc(t('menu_pdf_default'))}" aria-label="${t('menu_pdf_name')}">
+      <span class="pdf-acts"><input type="file" name="file" accept="application/pdf" required aria-label="PDF"><button class="btn-primary btn-sm" type="submit">${t('add')}</button></span>
+    </form>
+    <div class="modal-actions"><button type="button" data-close>${t('close')}</button></div>`, (card, close) => {
+    const again = async (msg) => { if (msg) toast(msg); await loadPdfs(); close(); draw(); managePdfs(); };
+    card.querySelectorAll('.pdf-row[data-id]').forEach((r) => {
+      const x = pdfs.find((p) => p.id === r.dataset.id);
+      const inp = r.querySelector('[name=label]');
+      inp.onchange = async () => {
+        const v = inp.value.trim(); if (!v) { inp.value = x.label; return; }
+        try { check(await sb.from('menu_pdfs').update({ label: v }).eq('id', x.id)); await again(t('saved')); } catch (e) { toastError(e); }
+      };
+      r.querySelectorAll('[data-move]').forEach((b) => (b.onclick = async () => {
+        const i = pdfs.indexOf(x); const j = i + Number(b.dataset.move); if (!pdfs[j]) return;
+        const order = pdfs.map((p) => p.id); [order[i], order[j]] = [order[j], order[i]];
+        try { await Promise.all(order.map((id, k) => sb.from('menu_pdfs').update({ sort_order: (k + 1) * 10 }).eq('id', id).then(check))); await again(); } catch (e) { toastError(e); }
+      }));
+      r.querySelector('[data-replace]').onchange = async (e) => {
+        const f = e.target.files[0]; if (!isPdf(f)) { toastError(new Error(t('menu_pdf_only'))); return; }
+        try { await putPdf(x.path, f); check(await sb.from('menu_pdfs').update({ updated_at: new Date().toISOString() }).eq('id', x.id)); await again(t('menu_pdf_saved')); } catch (err) { toastError(err); }
+      };
+      r.querySelector('[data-del]').onclick = async () => {
+        close();
+        if (!(await confirmDialog(t('menu_pdf_confirm_delete', { n: x.label }), t('delete')))) { managePdfs(); return; }
+        try { check(await sb.from('menu_pdfs').delete().eq('id', x.id)); await bucket().remove([x.path]); toast(t('deleted')); await loadPdfs(); draw(); managePdfs(); } catch (err) { toastError(err); }
+      };
+    });
+    card.querySelector('#pdf-add').onsubmit = async (e) => {
+      e.preventDefault(); const f = e.target.file.files[0]; const label = e.target.label.value.trim();
+      if (!label) return; if (!isPdf(f)) { toastError(new Error(t('menu_pdf_only'))); return; }
+      const path = `${PDF_DIR}/${crypto.randomUUID()}.pdf`;
+      try {
+        await putPdf(path, f);
+        const next = (pdfs.reduce((m, p) => Math.max(m, p.sort_order || 0), 0)) + 10;
+        check(await sb.from('menu_pdfs').insert({ label, path, sort_order: next }));
+        await again(t('menu_pdf_saved'));
+      } catch (err) { toastError(err); }
+    };
+  });
 }
 
 async function uploadPhoto(file) {

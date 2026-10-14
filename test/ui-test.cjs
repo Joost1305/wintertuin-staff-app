@@ -195,11 +195,23 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
-    await step('menu: upload a menu PDF, then view and download buttons appear', async () => {
-      await p.goto(BASE + '#/menu'); await p.waitForSelector('#pdf-up-btn'); if (await p.$('#pdf-view')) throw new Error('PDF button without a PDF');
-      await p.setInputFiles('#pdf-up', { name: 'menu.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') });
-      await p.waitForSelector('#pdf-view'); await p.waitForSelector('#pdf-dl');
-      if (!/New menu PDF/.test(await p.textContent('#pdf-up-btn'))) throw new Error('upload label not switched'); });
+    await step('menu: manager adds named menu PDFs, renames and deletes; buttons follow', async () => {
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('#pdf-manage'); if (await p.$('[data-pdf-view]')) throw new Error('PDF button without a PDF');
+      const pdf = { name: 'x.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
+      await p.click('#pdf-manage'); await p.waitForSelector('#pdf-add');
+      if ((await p.inputValue('#pdf-add [name=label]')) !== 'See the whole menu') throw new Error('default name');
+      await p.setInputFiles('#pdf-add [name=file]', pdf); await p.click('#pdf-add button[type=submit]');
+      await p.waitForSelector('.pdf-row[data-id]');
+      await p.fill('#pdf-add [name=label]', 'Lunch menu'); await p.setInputFiles('#pdf-add [name=file]', pdf); await p.click('#pdf-add button[type=submit]');
+      await p.waitForFunction(() => document.querySelectorAll('.pdf-row[data-id]').length === 2);
+      const first = '.pdf-row[data-id] >> nth=0';
+      await p.fill(`${first} >> [name=label]`, 'BQT menu'); await p.press(`${first} >> [name=label]`, 'Tab'); await p.waitForSelector('a[data-pdf-view]:has-text("BQT menu")');
+      await p.click('[data-close]');
+      const labels = await p.$$eval('a[data-pdf-view]', (as) => as.map((a) => a.textContent.trim()));
+      if (labels.length !== 2 || !/BQT menu/.test(labels[0]) || !/Lunch menu/.test(labels[1])) throw new Error('buttons ' + labels);
+      if ((await p.$$('a[data-pdf-dl]')).length !== 2) throw new Error('download buttons');
+      await p.click('#pdf-manage'); await p.click('.pdf-row[data-id] >> nth=1 >> [data-del]'); await p.click('#cf-ok');
+      await p.waitForFunction(() => document.querySelectorAll('a[data-pdf-view]').length === 1); await p.keyboard.press('Escape'); });
     await step('events: print a blank BEO', async () => {
       await p.goto(BASE + '#/events'); await p.click('summary:has-text("Blank BEO")');
       const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-blank=en]');
@@ -231,6 +243,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (links.includes('#/settings')) throw new Error('settings visible');
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
+      await q.goto(BASE + '#/menu'); await q.waitForSelector('#allergen-card'); if (await q.$('#pdf-manage')) throw new Error('staff can manage menu PDFs');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab');
       if (await q.isVisible('table.roster')) throw new Error('wide table still shown on phone');
       if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('roster scrolls sideways on phone');

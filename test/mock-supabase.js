@@ -12,6 +12,7 @@
              category_en: 'Opening', title_en: 'Morning check kitchen', content_en: 'Before 08:00', items_en: ['Coffee machine on', 'Terrace cushions out'] },
            { id: uid(), category: 'Sluiten', title: 'Bar sluiten', content: '', items: ['Molen schoonmaken'], sort_order: 0, items_en: [] }],
     sop_checks: [], resources: [{ id: uid(), label: 'Recipe database', url: 'https://example.test', note: 'Ask Joost', sort_order: 0 }],
+    menu_pdfs: [],
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0, allergens: ['gluten'] },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],
@@ -105,6 +106,7 @@
     },
     storage: { from: () => ({
       upload: async (path) => { (window.__mockFiles = window.__mockFiles || {})[path] = new Date().toISOString(); return { data: {}, error: null }; },
+      remove: async (paths) => { (paths || []).forEach((k) => { delete (window.__mockFiles || {})[k]; }); return { data: [], error: null }; },
       list: async (dir) => ({ data: Object.entries(window.__mockFiles || {}).filter(([k]) => k.startsWith(dir + '/')).map(([k, at]) => ({ name: k.slice(dir.length + 1), updated_at: at })), error: null }),
       getPublicUrl: (p) => ({ data: { publicUrl: /\.pdf$/.test(p) ? 'about:blank#' + p : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
     functions: { invoke: async (name, { body }) => {
