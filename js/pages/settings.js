@@ -3,12 +3,14 @@
 import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
+import { renderSystemCheck } from './system-check.js';
 
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
   { id: 'templates', label: 'set_templates' },
   { id: 'links', label: 'set_links' },
   { id: 'backup', label: 'set_backup' },
+  { id: 'system', label: 'set_system' },
   { id: 'password', label: 'set_password' },
 ];
 
@@ -24,7 +26,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, links, backup, password })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

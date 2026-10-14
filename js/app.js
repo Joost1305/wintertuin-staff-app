@@ -15,6 +15,8 @@ import { renderSwap, swapBadgeCount } from './pages/swap.js';
 import { renderSettings } from './pages/settings.js';
 
 console.log(`Wintertuin Team, build ${BUILD}`);
+// One tab per app: the switch button in the other app targets this name and reuses this tab
+try { window.name = 'wintertuin-team'; } catch { /* ignore */ }
 
 const routes = [
   { path: 'sops', render: renderSops, nav: 'nav_sops', show: () => true },
@@ -65,7 +67,7 @@ function renderShell() {
   const nav = $('#nav');
   nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`).join('') +
-    `<a class="ext" href="Wintertuin-Intro.html" target="_blank" rel="noopener">${t('nav_about')} &#8599;</a>` +
+    `<a class="ext" href="Wintertuin-Intro.html">${t('nav_about')}</a>` +
     // Managers change their password under Settings; staff (no Settings) keep it in the menu
     (isManager() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
     `<a href="#/logout">${t('nav_logout')}</a>`;

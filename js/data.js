@@ -34,8 +34,10 @@ export async function loadMe() {
   if (!p) throw new ApiError(403, 'no_profile');
   return { ...p, email: p.email || session.user.email };
 }
+// The morning system check signs in with its own test account; it is never shown as a team member
+export const SYSTEM_CHECK_EMAIL = 'system-check@wintertuin.app';
 export async function loadProfiles() {
-  return check(await sb.from('profiles').select('*').order('sort_order').order('full_name'));
+  return (check(await sb.from('profiles').select('*').order('sort_order').order('full_name')) || []).filter((p) => p.email !== SYSTEM_CHECK_EMAIL);
 }
 export async function setLanguage(id, l) { check(await sb.from('profiles').update({ language: l }).eq('id', id)); }
 

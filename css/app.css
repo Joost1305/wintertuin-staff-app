@@ -585,3 +585,17 @@ table.roster th .day-toggle { display: inline-block; margin: 4px 2px 0; }
 .pre { white-space: pre-line; }
 .btn-link { background: none; border: 0; padding: 0 4px; color: var(--primary); font-weight: 600; cursor: pointer; font-size: .9rem; text-decoration: underline; }
 .ev-kpis > .card, .ev-grid > .card { margin: 0; }
+
+/* system check */
+.sc-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.sc-list { list-style: none; padding: 0; margin: 0; }
+.sc-list li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--line); }
+.sc-list li:first-child { border-top: 0; }
+.sc-dot { flex: none; display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-top: 5px; background: var(--ink-3); }
+.sc-dot.sc-ok { background: var(--good); } .sc-dot.sc-warn { background: #D99A2B; } .sc-dot.sc-fail { background: var(--bad); }
+.sc-head .sc-dot { margin-top: 0; }
+.sc-changes { list-style: none; padding: 0; margin: 0; font-size: .92rem; }
+.sc-changes li { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+.tag.sc-app { margin-left: 6px; font-size: .68rem; }
+tr.sc-current td { background: var(--primary-soft); }
+@media (max-width: 560px) { .sc-changes li { grid-template-columns: 1fr; gap: 0; } }

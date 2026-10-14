@@ -21,6 +21,14 @@
   for (let i = 0; i < 4; i++) { const d = new Date(today); d.setDate(d.getDate() + i);
     db.shifts.push({ id: uid(), staff_id: people[i % 3][0], shift_date: iso(d), start_time: '09:00:00', end_time: '17:00:00', section: 'Restaurant' }); }
   db.shift_swap_requests.push({ id: uid(), shift_id: db.shifts[1].id, requested_by: people[1][0], status: 'open', reason: 'Exam', created_at: new Date().toISOString() });
+
+  // a stored morning check with one gap and one change, like the real system_checks table
+  const scRow = (status, minutesAgo) => ({ id: Math.floor(Math.random() * 1e9), run_at: new Date(Date.now() - minutesAgo * 6e4).toISOString(), trigger: 'schedule', status,
+    checks: [{ key: 'database', status: 'ok', detail: 'reachable', ms: 40 }, { key: 'team_app', status: 'ok', detail: 'online, newest version' }, { key: 'weather', status: status === 'fail' ? 'fail' : 'ok', detail: status === 'fail' ? 'HTTP 500' : 'weather service answers' }],
+    gaps: [{ key: 'missing_days', count: 1, items: [new Date(Date.now() - 864e5).toLocaleDateString('sv-SE')] }],
+    changes: [{ at: new Date().toISOString(), user: 'Joost', app: 'team', entity: 'events', action: 'create', name: 'Wedding Jansen' }],
+    window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() });
+  db.system_checks = [scRow('warn', 120), scRow('fail', 60 * 24)];
   window.__mockdb = db;
 
   const JOIN = { staff_id: 'profiles', requested_by: 'profiles', claimed_by: 'profiles', shift_id: 'shifts' };
@@ -97,6 +105,7 @@
     },
     storage: { from: () => ({ upload: async () => ({ data: {}, error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
     functions: { invoke: async (name, { body }) => {
+      if (name === 'system-check') { const r = { id: Math.floor(Math.random() * 1e9), run_at: new Date().toISOString(), trigger: 'manual', status: 'ok', checks: [{ key: 'database', status: 'ok', detail: 'reachable' }], gaps: [], changes: [], window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() }; db.system_checks.unshift(r); return { data: { ok: true, data: r }, error: null }; }
       if (body.action === 'create') db.profiles.push({ id: uid(), full_name: body.full_name, email: body.email, role: 'staff', active: true, language: 'en' });
       return { data: { ok: true }, error: null };
     } },

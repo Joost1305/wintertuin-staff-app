@@ -130,6 +130,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/password'); await p.waitForSelector('#pw');
       await p.fill('#pw [name=pw]', 'abcdefgh1'); await p.fill('#pw [name=pw2]', 'abcdefgh1'); await p.click('#pw button[type=submit]');
       await p.waitForSelector('text=/saved/i'); });
+    await step('settings: system check shows checks, gaps, changes; run now adds a green check', async () => {
+      await p.goto(BASE + '#/settings/system'); await p.waitForSelector('.sc-list');
+      const txt = await p.textContent('#sec'); if (!/Works, but worth a look/.test(txt) || !/Daily closing missing/.test(txt) || !/Wedding Jansen/.test(txt)) throw new Error(txt.slice(0, 300));
+      await p.screenshot({ path: `${OUT}/19-system-check.png`, fullPage: true });
+      await p.click('#sc-run'); await p.waitForSelector('text=Everything works'); });
     for (const sec of ['team', 'templates', 'links', 'backup']) await step(`settings: ${sec}`, async () => { await p.goto(BASE + '#/settings/' + sec); await p.waitForSelector('#sec .card'); });
     await step('settings: create account shows login details', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
