@@ -82,6 +82,19 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.waitForSelector('.tpl-chip');
       if (!(await p.$('th.closed'))) throw new Error('no closed day'); if (!(await p.$('text=Wintertuin Verteld'))) throw new Error('no note');
       await p.screenshot({ path: `${OUT}/04-roster.png`, fullPage: true }); });
+    await step('roster: close and reopen a day with one click', async () => {
+      const b = await p.$('.day-toggle.is-open'); const ds = await b.getAttribute('data-day');
+      await b.click(); await p.waitForSelector(`.day-toggle.is-closed[data-day="${ds}"]`);
+      const o = await p.evaluate((d) => window.__mockdb.day_overrides[d], ds); if (!o || o.is_open !== false) throw new Error(JSON.stringify(o));
+      await p.click(`.day-toggle[data-day="${ds}"]`); await p.waitForSelector(`.day-toggle.is-open[data-day="${ds}"]`); });
+    await step('roster: drag a person to another row, order is saved', async () => {
+      const names = () => p.$$eval('tr[data-row] strong', (s) => s.map((x) => x.textContent));
+      const before = await names();
+      await p.dragAndDrop('tr[data-row]:last-child .row-handle', 'tr[data-row]:first-child td:first-child');
+      await p.waitForTimeout(400);
+      const after = await names(); if (after[0] !== before[before.length - 1]) throw new Error(after.join(','));
+      const saved = await p.evaluate(() => window.__mockdb.profiles.filter((x) => x.sort_order).length); if (!saved) throw new Error('order not saved');
+      await p.screenshot({ path: `${OUT}/04b-roster-order.png`, fullPage: true }); });
     await step('plan a shift with the time bar', async () => {
       await p.click('[data-add] >> nth=0'); await p.waitForSelector('#day-grid');
       const box = await (await p.$('.grid-slot[data-min="600"]')).boundingBox();
@@ -146,6 +159,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (links.includes('#/settings')) throw new Error('settings visible');
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
+      await q.goto(BASE + '#/roster'); await q.waitForSelector('table.roster');
+      if (await q.$('.day-toggle, .row-handle, .row-move')) throw new Error('staff can change days or order');
       await q.goto(BASE + '#/settings'); await q.waitForSelector('.sop-card');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('table.roster'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });

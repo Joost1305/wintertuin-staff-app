@@ -79,9 +79,12 @@
   const client = {
     from: (t) => new Q(t),
     rpc: async (name, args) => {
+      db.day_overrides = db.day_overrides || {};
+      if (name === 'fin_set_day_open') { db.day_overrides[args.p_day] = { is_open: args.p_open, note: args.p_note }; return { data: null, error: null }; }
       if (name !== 'fin_public_calendar') return { data: null, error: null };
       const out = []; const d = new Date(args.p_from + 'T12:00:00'); const end = new Date(args.p_to + 'T12:00:00');
-      for (; d <= end; d.setDate(d.getDate() + 1)) { const wd = d.getDay(); out.push({ day: iso(d), is_open: wd === 0 || wd >= 5 || wd === 4, note: wd === 4 ? 'Wintertuin Verteld' : null }); }
+      for (; d <= end; d.setDate(d.getDate() + 1)) { const wd = d.getDay(); const o = db.day_overrides[iso(d)];
+        out.push({ day: iso(d), is_open: o ? o.is_open : wd === 0 || wd >= 5 || wd === 4, note: o ? o.note : wd === 4 ? 'Wintertuin Verteld' : null }); }
       return { data: out, error: null };
     },
     storage: { from: () => ({ upload: async () => ({ data: {}, error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },

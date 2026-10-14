@@ -35,7 +35,7 @@ export async function loadMe() {
   return { ...p, email: p.email || session.user.email };
 }
 export async function loadProfiles() {
-  return check(await sb.from('profiles').select('*').order('full_name'));
+  return check(await sb.from('profiles').select('*').order('sort_order').order('full_name'));
 }
 export async function setLanguage(id, l) { check(await sb.from('profiles').update({ language: l }).eq('id', id)); }
 

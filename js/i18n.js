@@ -3,10 +3,12 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    open: 'Open', day_click_open: 'Closed. Click to open this day.', day_click_close: 'Open. Click to close this day.', day_now_closed: '{d} is now closed', day_now_open: '{d} is now open',
+    drag_to_reorder: 'Drag to move up or down', move_up: 'Move up', move_down: 'Move down',
     set_password: 'My password', set_password_sub: 'One login for the team app and Wintertuin Finance: this changes both.',
     sops_missing_en: 'No English version yet for {n} SOP(s); they show in Dutch. Click Edit to add English.', sops_lang_hint: 'Fill in one or both languages. Everyone sees their own language, Dutch when there is no English. Keep the checklists line for line the same, the ticks follow the line number.',
     sops_lines: '{n} lines', sops_lines_mismatch: '{n} lines, the Dutch list has {m}. Make them the same.', sops_need_title: 'Give the SOP a title.',
-    no_account_note: 'No account? Ask a manager.', closed: 'closed', opening_from_finance: 'Grey days are closed. Opening hours and themed evenings are managed in Wintertuin Finance.',
+    no_account_note: 'No account? Ask a manager.', closed: 'closed', opening_from_finance: 'Grey days are closed. Managers click Open or Closed under a date to change that day; regular opening hours are set in Wintertuin Finance.',
     allergens: 'Allergens', allergens_hint: 'The 14 allergens you must inform guests about (EU 1169/2011).', allergens_none_set: 'No allergens set',
     allergen_card: 'Allergen card', allergen_card_note: 'Questions about allergies or intolerances? Ask our team. Recipes can change; always check with the kitchen.',
     al_gluten: 'Gluten', al_crustaceans: 'Crustaceans', al_eggs: 'Eggs', al_fish: 'Fish', al_peanuts: 'Peanuts', al_soy: 'Soy', al_milk: 'Milk',
@@ -77,10 +79,12 @@ const dict = {
     restore_partial: 'Partly done, with errors:', restore_done: 'Restored.', other_exports: 'Other exports', other_exports_sub: 'The SOP backup (.txt) is on the SOPs page; calendar files and the roster backup (.csv) are on the Roster page.',
   },
   nl: {
+    open: 'Open', day_click_open: 'Gesloten. Klik om deze dag te openen.', day_click_close: 'Open. Klik om deze dag te sluiten.', day_now_closed: '{d} is nu gesloten', day_now_open: '{d} is nu open',
+    drag_to_reorder: 'Sleep om omhoog of omlaag te zetten', move_up: 'Omhoog', move_down: 'Omlaag',
     set_password: 'Mijn wachtwoord', set_password_sub: 'Eén login voor de team-app en Wintertuin Finance: dit wijzigt beide.',
     sops_missing_en: "{n} SOP's hebben nog geen Engelse versie; die staan in het Nederlands. Klik op Bewerken om Engels toe te voegen.", sops_lang_hint: 'Vul één of beide talen in. Iedereen ziet de eigen taal, Nederlands als er geen Engels is. Houd de checklists regel voor regel gelijk, de vinkjes volgen het regelnummer.',
     sops_lines: '{n} regels', sops_lines_mismatch: '{n} regels, de Nederlandse lijst heeft er {m}. Maak ze gelijk.', sops_need_title: 'Geef de SOP een titel.',
-    no_account_note: 'Geen account? Vraag het een manager.', closed: 'dicht', opening_from_finance: 'Grijze dagen zijn gesloten. Openingstijden en thema-avonden beheer je in Wintertuin Finance.',
+    no_account_note: 'Geen account? Vraag het een manager.', closed: 'dicht', opening_from_finance: 'Grijze dagen zijn gesloten. Managers klikken op Open of Dicht onder een datum om die dag te wijzigen; vaste openingstijden staan in Wintertuin Finance.',
     allergens: 'Allergenen', allergens_hint: 'De 14 allergenen waarover je gasten moet informeren (EU 1169/2011).', allergens_none_set: 'Geen allergenen ingevuld',
     allergen_card: 'Allergenenkaart', allergen_card_note: 'Vragen over allergieën of intoleranties? Vraag het ons team. Recepten kunnen wijzigen; check altijd bij de keuken.',
     al_gluten: 'Gluten', al_crustaceans: 'Schaaldieren', al_eggs: 'Eieren', al_fish: 'Vis', al_peanuts: 'Pinda', al_soy: 'Soja', al_milk: 'Melk',

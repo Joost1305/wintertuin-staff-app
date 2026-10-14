@@ -46,7 +46,8 @@ async function load() {
 }
 
 function draw(days, checkins) {
-  const staff = state.profiles.filter((p) => p.active !== false).sort((a, b) => a.full_name.localeCompare(b.full_name));
+  const staff = state.profiles.filter((p) => p.active !== false)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.full_name.localeCompare(b.full_name));
   const today = isoOf(new Date());
   const range = `${fmt.dayMonth(days[0])} – ${fmt.dayMonth(days[6])}`;
   const mgr = isManager();
@@ -76,8 +77,11 @@ function draw(days, checkins) {
       <div class="roster-wrap"><table class="roster"><thead><tr><th>${t('staff_member')}</th>
         ${days.map((d) => { const c = calendar[isoOf(d)]; const closed = c && !c.is_open;
           return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
-          ${c && c.note ? `<span class="day-note">${esc(c.note)}</span>` : closed ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
-        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p) => `<tr><td><strong>${esc(p.full_name)}</strong></td>
+          ${c && c.note ? `<span class="day-note">${esc(c.note)}</span>` : ''}
+          ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>`
+            : closed && !(c && c.note) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
+        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<strong>${esc(p.full_name)}</strong>
+            ${mgr ? `<span class="row-move"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-down="${i}" ${i === staff.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span>` : ''}</td>
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
             const closed = calendar[ds] && !calendar[ds].is_open;
             return `<td class="${closed ? 'closed' : ''}" ${mgr ? `data-cell="${p.id}|${ds}"` : ''}>${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</td>`; }).join('')}</tr>`).join('')}
@@ -93,18 +97,60 @@ function draw(days, checkins) {
   if (!mgr) return;
   $$('[data-add]').forEach((b) => (b.onclick = () => { const [pid, ds] = b.dataset.add.split('|'); openShift(null, pid, ds); }));
   $$('[data-shift]').forEach((b) => (b.onclick = () => openShift(shifts.find((s) => s.id === b.dataset.shift))));
+  // open or close a day with one click (stored in Wintertuin Finance, same as the opening hours there)
+  $$('[data-day]').forEach((b) => (b.onclick = async () => {
+    const ds = b.dataset.day; const c = calendar[ds] || {};
+    b.disabled = true;
+    try {
+      check(await sb.rpc('fin_set_day_open', { p_day: ds, p_open: !c.is_open, p_note: c.note || null }));
+      toast(t(c.is_open ? 'day_now_closed' : 'day_now_open', { d: fmt.dayMonth(new Date(`${ds}T12:00:00`)) }));
+      renderRoster();
+    } catch (err) { toastError(err); b.disabled = false; }
+  }));
+  // order of people: drag the handle, or the arrows on a phone
+  const saveOrder = async (ids) => {
+    try {
+      await Promise.all(ids.map((id, i) => {
+        const prof = state.profiles.find((x) => x.id === id);
+        if ((prof.sort_order || 0) === (i + 1) * 10) return null;
+        prof.sort_order = (i + 1) * 10;
+        return sb.from('profiles').update({ sort_order: prof.sort_order }).eq('id', id).then(check);
+      }));
+      renderRoster();
+    } catch (err) { toastError(err); }
+  };
+  const order = staff.map((x) => x.id);
+  const move = (from, to) => { const ids = [...order]; const [x] = ids.splice(from, 1); ids.splice(to, 0, x); saveOrder(ids); };
+  $$('[data-up]').forEach((b) => (b.onclick = () => move(Number(b.dataset.up), Number(b.dataset.up) - 1)));
+  $$('[data-down]').forEach((b) => (b.onclick = () => move(Number(b.dataset.down), Number(b.dataset.down) + 1)));
+  $$('[data-handle]').forEach((h) => (h.ondragstart = (e) => {
+    dragged = { type: 'row', id: h.dataset.handle };
+    e.dataTransfer.setData('text/plain', JSON.stringify(dragged)); e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setDragImage(h.closest('tr'), 20, 20);
+  }));
+  $$('[data-row]').forEach((tr) => {
+    const isRow = () => dragged && dragged.type === 'row';
+    tr.addEventListener('dragover', (e) => { if (!isRow()) return; e.preventDefault(); tr.classList.add('row-drop'); });
+    tr.addEventListener('dragleave', () => tr.classList.remove('row-drop'));
+    tr.addEventListener('drop', (e) => {
+      if (!isRow()) return;
+      e.preventDefault(); e.stopPropagation(); tr.classList.remove('row-drop');
+      const from = order.indexOf(dragged.id); const to = order.indexOf(tr.dataset.row); dragged = null;
+      if (from >= 0 && to >= 0 && from !== to) move(from, to);
+    });
+  });
   // drag and drop
   $$('[data-tpl]').forEach((el) => (el.ondragstart = (e) => { dragged = { type: 'template', id: el.dataset.tpl }; e.dataTransfer.setData('text/plain', JSON.stringify(dragged)); e.dataTransfer.effectAllowed = 'copy'; }));
   $$('[data-shift]').forEach((el) => (el.ondragstart = (e) => { dragged = { type: 'shift', id: el.dataset.shift }; e.dataTransfer.setData('text/plain', JSON.stringify(dragged)); e.dataTransfer.effectAllowed = 'move'; }));
   $$('[data-cell]').forEach((td) => {
-    td.ondragover = (e) => { e.preventDefault(); td.classList.add('drop-ok'); };
+    td.ondragover = (e) => { if (dragged && dragged.type === 'row') return; e.preventDefault(); td.classList.add('drop-ok'); };
     td.ondragleave = () => td.classList.remove('drop-ok');
     td.ondrop = async (e) => {
       e.preventDefault(); td.classList.remove('drop-ok');
       let p = dragged;
       try { const raw = e.dataTransfer.getData('text/plain'); if (raw) p = JSON.parse(raw); } catch { /* use fallback */ }
       dragged = null;
-      if (!p) return;
+      if (!p || p.type === 'row') return;
       const [pid, ds] = td.dataset.cell.split('|');
       try {
         if (p.type === 'template') {
