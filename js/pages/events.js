@@ -68,7 +68,11 @@ async function renderList(filter = 'upcoming') {
   const rows = check(await q) || [];
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('nav_events')}</h1><div class="muted small">${t('ev_sub')}</div></div>
-      <div class="page-actions"><a class="btn btn-primary btn-sm" href="#/events/new">+ ${t('ev_new')}</a></div></div>
+      <div class="page-actions">
+        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#128424; ${t('ev_blank_beo')} &#9662;</summary>
+          <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:200px;padding:10px">
+            <button type="button" class="btn-sm" data-blank="nl">Nederlands</button><button type="button" class="btn-sm" data-blank="en">English</button></div></details>
+        <a class="btn btn-primary btn-sm" href="#/events/new">+ ${t('ev_new')}</a></div></div>
     <div class="seg" style="margin-bottom:14px">${['upcoming', 'past', 'all'].map((f) => `<a href="#/events/list/${f}" class="seg-btn ${filter === f ? 'on' : ''}">${t('ev_f_' + f)}</a>`).join('')}</div>
     ${!rows.length ? `<div class="card empty">${t(filter === 'upcoming' ? 'ev_none_upcoming' : 'ev_none')}</div>` : `<div class="ev-list">${rows.map((e) => `
       <a class="card ev-row ${e.status === 'cancelled' ? 'is-cancelled' : ''}" href="#/events/${e.id}">
@@ -77,6 +81,7 @@ async function renderList(filter = 'upcoming') {
           <div class="small muted">${esc(fmt.date(e.event_date))}${e.start_time ? ` · ${fmt.time(e.start_time)}${e.end_time ? `–${fmt.time(e.end_time)}` : ''}` : ''}${e.client_company || e.client_name ? ` · ${esc(e.client_company || e.client_name)}` : ''}${e.area ? ` · ${esc(e.area)}` : ''}</div></div>
         <div class="ev-side">${statusTag(e.status)}${guestsOf(e) ? `<span class="ev-guests">${guestsOf(e)} ${t('ev_p')}</span>` : ''}</div>
       </a>`).join('')}</div>`}`;
+  $$('[data-blank]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; printBlank(b.dataset.blank); }));
 }
 
 // ------------------------------------------------------------------ view (the BEO on screen)
@@ -414,3 +419,55 @@ function printService(ev, shifts) {
   </div>`);
 }
 
+
+// Empty BEO on paper: same sections and words as the app, for taking a request by hand. Typed into the app afterwards.
+function printBlank(l) {
+  const tt = (k) => tIn(l, k);
+  const f = (k, wide) => `<div class="f ${wide ? 'wide' : ''}"><span>${tt(k)}</span></div>`;
+  const lines = (n) => '<div class="ln"></div>'.repeat(n);
+  const box = (k) => `<span class="cb"></span> ${tt(k)}`;
+  const grid = (cols, rows) => `<table class="g"><tr>${cols.map(([k, w]) => `<th style="width:${w}">${tt(k)}</th>`).join('')}</tr>
+    ${`<tr>${cols.map(() => '<td></td>').join('')}</tr>`.repeat(rows)}</table>`;
+  printHtml(`${sheetCss}<style>
+    .beo .f { border-bottom: 1px solid #999; min-height: 30px; padding-top: 2px; }
+    .beo .f span { font-size: 8pt; color: #666; }
+    .beo .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 22px; }
+    .beo .fg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 22px; }
+    .beo .f.wide { grid-column: 1 / -1; }
+    .beo .ln { border-bottom: 1px solid #bbb; height: 21px; }
+    .beo .lbl { font-size: 8pt; color: #666; margin-top: 8px; }
+    .beo table.g { border-collapse: collapse; margin-top: 2px; }
+    .beo table.g th { font-size: 8pt; color: #666; font-weight: 600; text-align: left; padding: 2px 6px; border-bottom: 1px solid #999 !important; }
+    .beo table.g td { border-bottom: 1px solid #bbb !important; height: 22px; }
+    .beo table.g th + th, .beo table.g td + td { border-left: 1px solid #ddd !important; }
+    .beo .cb { display: inline-block; width: 11px; height: 11px; border: 1.2px solid #333; vertical-align: -1px; margin: 0 4px 0 12px; }
+    .beo .opts { padding: 8px 0 4px; font-size: 9.5pt; }
+    .beo .office { border: 1px dashed #999; border-radius: 6px; padding: 6px 10px 10px; margin-top: 16px; }
+    .beo .pb { break-before: page; }
+    .beo .keep { break-inside: avoid; }
+    .beo h2 { margin-top: 11px; }
+  </style><div class="beo">
+    <div class="top"><div><div class="brand">Wintertuin</div><div class="small">Cantonspark, Baarn</div></div>
+      <div style="text-align:right"><div class="big">${tt('ev_blank_title')}</div><div class="small">${tt('ev_blank_sub')}</div></div></div>
+    <h2>${tt('ev_sec_event')}</h2>
+    <div class="fg">${f('ev_title', true)}${f('ev_type')}${f('ev_date')}</div>
+    <div class="fg3">${f('ev_start')}${f('ev_end')}${f('ev_area')}</div>
+    <div class="fg">${f('ev_service_style')}<div class="opts">${tt('ev_exclusive')}: ${box('yes')}${box('no')}</div></div>
+    <h2>${tt('ev_sec_client')}</h2>
+    <div class="fg">${f('ev_client_name')}${f('ev_client_company')}${f('ev_phone')}${f('ev_email')}${f('ev_day_contact')}${f('ev_day_contact_phone')}${f('ev_invoice', true)}${f('ev_reference')}</div>
+    <h2>${tt('ev_guests')}</h2>
+    <div class="fg">${f('ev_guests_expected')}${f('ev_guests_guaranteed')}${f('ev_guarantee_deadline')}${f('ev_children')}</div>
+    <h2>${tt('ev_dietary')}</h2>${grid([['ev_count', '12%'], ['ev_diet_type', '38%'], ['ev_who', '50%']], 5)}
+    <h2>${tt('ev_timeline')}</h2>${grid([['time', '14%'], ['ev_what', '86%']], 8)}
+    <h2 class="pb">${tt('ev_menu')}</h2>${grid([['ev_course', '24%'], ['ev_dish', '76%']], 6)}
+    <h2>${tt('ev_sec_setup')}</h2><div class="lbl">${tt('ev_setup')}</div>${lines(2)}
+    <h2>${tt('ev_sec_drinks_extras')}</h2><div class="lbl">${tt('ev_drinks')}</div>${lines(2)}<div class="lbl">${tt('ev_extras')}</div>${lines(2)}
+    <h2>${tt('ev_sec_money')}</h2>
+    <div class="fg">${f('ev_price_pp')}${f('ev_room_hire')}${f('ev_min_spend')}${f('ev_deposit')}${f('ev_deposit_due')}<div class="opts">${tt('ev_incl_vat')}: ${box('yes')}${box('no')}</div></div>
+    <div class="lbl">${tt('ev_payment_terms')}</div>${lines(1)}<div class="lbl">${tt('ev_cancellation_terms')}</div>${lines(1)}
+    <h2>${tt('ev_blank_notes')}</h2>${lines(3)}
+    <div class="keep"><h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
+    <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
+    <div class="office"><div class="small"><strong>${tt('ev_office')}</strong></div><div class="fg3">${f('ev_status')}${f('ev_sold_by')}${f('ev_entered')}</div></div></div>
+  </div>`);
+}

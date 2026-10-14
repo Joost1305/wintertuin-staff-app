@@ -195,6 +195,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
+    await step('events: print a blank BEO', async () => {
+      await p.goto(BASE + '#/events'); await p.click('summary:has-text("Blank BEO")');
+      const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-blank=en]');
+      await p.waitForFunction((b) => (window.__printed || 0) > b, before);
+      if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('blank form not built'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
