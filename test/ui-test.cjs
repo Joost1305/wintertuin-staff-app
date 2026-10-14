@@ -38,15 +38,27 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#add'); if ((await p.inputValue('.modal [name=title]')) !== 'Lunch prep') throw new Error('draft lost');
       await p.fill('.modal [name=category]', 'Lunch'); await p.fill('.modal [name=items]', 'Cut bread\nSet tables'); await p.click('.modal button[type=submit]');
       await p.waitForSelector('text=Lunch prep'); });
+    await step('no self sign-up on the login page', async () => {
+      const ctx2 = await browser.newContext(); const p2 = await ctx2.newPage();
+      await p2.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
+      await p2.goto(BASE); await p2.waitForSelector('#login-form');
+      if (await p2.$('text=Create account')) throw new Error('sign-up still visible'); await ctx2.close(); });
     await step('menu with food and beverage', async () => { await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card'); await p.screenshot({ path: `${OUT}/03-menu.png`, fullPage: true }); });
     await step('add menu item with photo', async () => {
       await p.click('#add'); await p.fill('.modal [name=name]', 'Apple pie'); await p.fill('.modal [name=price]', '4,50');
       await p.setInputFiles('.modal [name=photo]', { name: 'pie.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Apple pie');
       const price = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie').price); if (price !== 4.5) throw new Error(price); });
+    await step('allergens: set on an item, shown as chips, allergen card prints', async () => {
+      await p.click('.menu-card:has-text("Sourdough") [data-edit]'); await p.check('.modal input[name=al][value=gluten]'); await p.check('.modal input[name=al][value=milk]');
+      await p.click('.modal button[type=submit]'); await p.waitForSelector('.tag.allergen');
+      const al = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Sourdough').allergens); if (JSON.stringify(al) !== '["gluten","milk"]') throw new Error(JSON.stringify(al));
+      const before = await p.evaluate(() => window.__printed || 0); await p.click('#allergen-card'); await p.waitForTimeout(200);
+      if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('no print'); });
     await step('links page', async () => { await p.goto(BASE + '#/links'); await p.waitForSelector('.link-row'); });
     await step('roster week grid with chips and fixed shifts', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.waitForSelector('.tpl-chip');
+      if (!(await p.$('th.closed'))) throw new Error('no closed day'); if (!(await p.$('text=Wintertuin Verteld'))) throw new Error('no note');
       await p.screenshot({ path: `${OUT}/04-roster.png`, fullPage: true }); });
     await step('plan a shift with the time bar', async () => {
       await p.click('[data-add] >> nth=0'); await p.waitForSelector('#day-grid');
@@ -87,6 +99,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
       await p.screenshot({ path: `${OUT}/08-roster-nl.png`, fullPage: true }); });
+    await step('About page: manager edits and saves text', async () => {
+      await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');
+      await p.click('h1[data-edit]'); await p.keyboard.press('End'); await p.keyboard.type(' Baarn');
+      await p.click('#ab-save'); await p.waitForTimeout(300);
+      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.page === 'intro'));
+      if (!row || !/Wintertuin Baarn/.test(row.html)) throw new Error(JSON.stringify(row));
+      await p.screenshot({ path: `${OUT}/10-about.png` });
+      await p.goto(BASE + 'Wintertuin-Cantonspark-Geschiedenis.html'); await p.waitForSelector('#ab-edit');
+      if (!/Seeded history title/.test(await p.textContent('h1'))) throw new Error('saved text not loaded');
+      if (await p.evaluate(() => window.__xss)) throw new Error('script ran'); });
     await A.ctx.close();
     if (A.errors.length) { failed = true; console.log('ERRORS (manager):', A.errors); }
 
@@ -102,6 +124,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('staff: offer own shift for swap', async () => {
       await q.goto(BASE + '#/swap'); await q.waitForSelector('[data-offer]'); await q.click('[data-offer]'); await q.fill('.modal [name=v]', 'Wedding'); await q.click('.modal button[type=submit]');
       await q.waitForSelector('.tag.open'); });
+    await step('staff: About page has no Edit button', async () => { await q.goto(BASE + 'Wintertuin-Intro.html'); await q.waitForTimeout(800); if (await q.$('#ab-edit')) throw new Error('edit for staff'); });
     await B.ctx.close();
     if (B.errors.length) { failed = true; console.log('ERRORS (staff):', B.errors); }
   } catch (e) { failed = true; console.log('\nFAILED:', e.message); }

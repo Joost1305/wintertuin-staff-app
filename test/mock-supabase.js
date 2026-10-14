@@ -14,7 +14,7 @@
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0 },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],
-    shifts: [], checkins: [], shift_swap_requests: [],
+    shifts: [], checkins: [], shift_swap_requests: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
   };
   const today = new Date();
   for (let i = 0; i < 4; i++) { const d = new Date(today); d.setDate(d.getDate() + i);
@@ -77,7 +77,12 @@
   if (/access_token=/.test(location.hash)) { localStorage.setItem(SKEY, '1'); setTimeout(() => { location.hash = ''; }, 50); }
   const client = {
     from: (t) => new Q(t),
-    rpc: async () => ({ data: null, error: null }),
+    rpc: async (name, args) => {
+      if (name !== 'fin_public_calendar') return { data: null, error: null };
+      const out = []; const d = new Date(args.p_from + 'T12:00:00'); const end = new Date(args.p_to + 'T12:00:00');
+      for (; d <= end; d.setDate(d.getDate() + 1)) { const wd = d.getDay(); out.push({ day: iso(d), is_open: wd === 0 || wd >= 5 || wd === 4, note: wd === 4 ? 'Wintertuin Verteld' : null }); }
+      return { data: out, error: null };
+    },
     storage: { from: () => ({ upload: async () => ({ data: {}, error: null }), getPublicUrl: (p) => ({ data: { publicUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
     functions: { invoke: async (name, { body }) => {
       if (body.action === 'create') db.profiles.push({ id: uid(), full_name: body.full_name, email: body.email, role: 'staff', active: true, language: 'en' });

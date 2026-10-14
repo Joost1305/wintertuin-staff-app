@@ -3,6 +3,11 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    no_account_note: 'No account? Ask a manager.', closed: 'closed', opening_from_finance: 'Grey days are closed. Opening hours and themed evenings are managed in Wintertuin Finance.',
+    allergens: 'Allergens', allergens_hint: 'The 14 allergens you must inform guests about (EU 1169/2011).', allergens_none_set: 'No allergens set',
+    allergen_card: 'Allergen card', allergen_card_note: 'Questions about allergies or intolerances? Ask our team. Recipes can change; always check with the kitchen.',
+    al_gluten: 'Gluten', al_crustaceans: 'Crustaceans', al_eggs: 'Eggs', al_fish: 'Fish', al_peanuts: 'Peanuts', al_soy: 'Soy', al_milk: 'Milk',
+    al_nuts: 'Nuts', al_celery: 'Celery', al_mustard: 'Mustard', al_sesame: 'Sesame', al_sulphites: 'Sulphites', al_lupin: 'Lupin', al_molluscs: 'Molluscs',
     nav_sops: 'SOPs', nav_menu: 'Menu', nav_links: 'Links', nav_roster: 'Roster', nav_checkin: 'Clock in', nav_swap: 'Swap', nav_settings: 'Settings',
     nav_about: 'About', nav_finance: 'Finance', nav_password: 'Password', nav_logout: 'Sign out',
     login_title: 'Sign in', signup_title: 'Create account', login_sub: 'Wintertuin Team', email: 'Email', password: 'Password', sign_in: 'Sign in', signup_btn: 'Create account',
@@ -69,6 +74,11 @@ const dict = {
     restore_partial: 'Partly done, with errors:', restore_done: 'Restored.', other_exports: 'Other exports', other_exports_sub: 'The SOP backup (.txt) is on the SOPs page; calendar files and the roster backup (.csv) are on the Roster page.',
   },
   nl: {
+    no_account_note: 'Geen account? Vraag het een manager.', closed: 'dicht', opening_from_finance: 'Grijze dagen zijn gesloten. Openingstijden en thema-avonden beheer je in Wintertuin Finance.',
+    allergens: 'Allergenen', allergens_hint: 'De 14 allergenen waarover je gasten moet informeren (EU 1169/2011).', allergens_none_set: 'Geen allergenen ingevuld',
+    allergen_card: 'Allergenenkaart', allergen_card_note: 'Vragen over allergieën of intoleranties? Vraag het ons team. Recepten kunnen wijzigen; check altijd bij de keuken.',
+    al_gluten: 'Gluten', al_crustaceans: 'Schaaldieren', al_eggs: 'Eieren', al_fish: 'Vis', al_peanuts: 'Pinda', al_soy: 'Soja', al_milk: 'Melk',
+    al_nuts: 'Noten', al_celery: 'Selderij', al_mustard: 'Mosterd', al_sesame: 'Sesam', al_sulphites: 'Sulfiet', al_lupin: 'Lupine', al_molluscs: 'Weekdieren',
     nav_sops: "SOP's", nav_menu: 'Menu', nav_links: 'Links', nav_roster: 'Rooster', nav_checkin: 'Inklokken', nav_swap: 'Ruilen', nav_settings: 'Instellingen',
     nav_about: 'Over', nav_finance: 'Financiën', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', signup_title: 'Account aanmaken', login_sub: 'Wintertuin Team', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen', signup_btn: 'Account aanmaken',

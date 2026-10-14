@@ -489,3 +489,12 @@ table.roster td.drop-ok { background: var(--primary-soft); }
   #printArea table { width: 100%; border-collapse: collapse; }
   #printArea th, #printArea td { border-bottom: 1px solid #ccc; padding: 6px; text-align: left; }
 }
+.allergen-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tag.allergen { background: var(--accent-soft); color: #8a4a22; }
+.allergen-box { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin: 0 0 14px; }
+.allergen-box legend { font-weight: 700; font-size: .85rem; color: var(--ink-2); padding: 0 6px; }
+.allergen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px 10px; }
+.allergen-grid .check { font-size: .9rem; margin: 3px 0; }
+table.roster th.closed, table.roster td.closed { background: var(--surface-2); }
+table.roster th .day-note { display: block; margin-top: 3px; font-size: .68rem; font-weight: 650; color: var(--accent); text-transform: none; letter-spacing: 0; }
+table.roster th .day-closed { display: block; margin-top: 3px; font-size: .68rem; font-weight: 600; color: var(--ink-3); text-transform: none; letter-spacing: 0; }

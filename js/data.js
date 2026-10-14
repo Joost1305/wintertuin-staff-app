@@ -16,9 +16,6 @@ export function check(res) {
 }
 
 export async function signIn(email, password) { check(await sb.auth.signInWithPassword({ email, password })); }
-export async function signUp(email, password, full_name) {
-  check(await sb.auth.signUp({ email, password, options: { data: { full_name } } }));
-}
 export async function signOut() { await sb.auth.signOut(); }
 export async function forgotPassword(email) {
   check(await sb.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}${location.pathname}` }));

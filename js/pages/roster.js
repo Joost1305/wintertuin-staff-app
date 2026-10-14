@@ -9,6 +9,7 @@ let weekStart = null; // a Monday
 let shifts = [];
 let templates = [];
 let dragged = null;
+let calendar = {}; // day -> { is_open, note } from the opening hours in Wintertuin Finance
 
 function mondayOf(d) { const m = new Date(d); const day = m.getDay(); m.setDate(m.getDate() + (day === 0 ? -6 : 1 - day)); m.setHours(12, 0, 0, 0); return m; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -25,6 +26,11 @@ export async function renderRoster() {
 async function load() {
   const days = [...Array(7)].map((_, i) => addDays(weekStart, i));
   const from = isoOf(days[0]); const to = isoOf(days[6]);
+  // Opening days and notes (closed days, themed evenings) come from Wintertuin Finance: one source of truth
+  try {
+    const { data } = await sb.rpc('fin_public_calendar', { p_from: from, p_to: to });
+    calendar = Object.fromEntries((data || []).map((c) => [c.day, c]));
+  } catch { calendar = {}; }
   const [rows, tpl, checkins] = await Promise.all([
     check(await sb.from('shifts').select('*, profiles:staff_id(full_name)').gte('shift_date', from).lte('shift_date', to).order('start_time')),
     check(await sb.from('shift_templates').select('*').order('sort_order').order('start_time')),
@@ -62,15 +68,19 @@ function draw(days, checkins) {
           <button type="button" class="btn-sm" id="this">${t('this_week')}</button>
           <button type="button" class="btn-sm" id="next" aria-label="${t('next_week')}">&#8250;</button></div>
         <span class="week">${esc(range)}</span></div>
+      <div class="tiny muted" style="margin:-4px 0 10px">${t('opening_from_finance')}</div>
       ${mgr ? `<div class="note" style="margin:0 0 12px">
           <div class="row-split" style="margin-bottom:${templates.length ? '8px' : '0'}"><strong>${t('fixed_shifts')}</strong><a href="#/settings/templates" class="small">${t('fixed_manage')}</a></div>
           ${templates.length ? `<div class="tpl-chips">${templates.map((tp) => `<span class="tpl-chip" draggable="true" data-tpl="${tp.id}">${esc(tp.name)} · ${fmt.time(tp.start_time)}–${fmt.time(tp.end_time)}</span>`).join('')}</div>
           <div class="tiny muted" style="margin-top:6px">${t('fixed_drag_hint')}</div>` : `<div class="tiny muted">${t('fixed_none')}</div>`}</div>` : ''}
       <div class="roster-wrap"><table class="roster"><thead><tr><th>${t('staff_member')}</th>
-        ${days.map((d) => `<th class="${isoOf(d) === today ? 'today' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span></th>`).join('')}</tr></thead>
+        ${days.map((d) => { const c = calendar[isoOf(d)]; const closed = c && !c.is_open;
+          return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
+          ${c && c.note ? `<span class="day-note">${esc(c.note)}</span>` : closed ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
         <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p) => `<tr><td><strong>${esc(p.full_name)}</strong></td>
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
-            return `<td ${mgr ? `data-cell="${p.id}|${ds}"` : ''}>${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</td>`; }).join('')}</tr>`).join('')}
+            const closed = calendar[ds] && !calendar[ds].is_open;
+            return `<td class="${closed ? 'closed' : ''}" ${mgr ? `data-cell="${p.id}|${ds}"` : ''}>${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</td>`; }).join('')}</tr>`).join('')}
         </tbody></table></div></div>
     ${hoursOverview(staff, checkins)}`;
 

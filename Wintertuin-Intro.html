@@ -29,12 +29,12 @@
   .btn-primary:hover { background: #264d42; }
   .page { max-width: 800px; margin: 0 auto; padding: 24px 20px 90px; }
   .eyebrow { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--primary); margin: 0 0 10px; }
-  [contenteditable="true"] { border-radius: 6px; transition: background .15s; cursor: text; }
-  [contenteditable="true"]:hover { background: var(--primary-soft); }
-  [contenteditable="true"]:focus { outline: 2px solid var(--primary); outline-offset: 2px; background: var(--surface); }
+  body.editing [data-edit] { border-radius: 6px; transition: background .15s; cursor: text; }
+  body.editing [data-edit]:hover { background: var(--primary-soft); }
+  body.editing [data-edit]:focus { outline: 2px solid var(--primary); outline-offset: 2px; background: var(--surface); }
   footer { font-size: .8rem; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
   @media (max-width: 640px) { .edit-hint { display: none; } .topbar { padding: 8px 14px; } }
-  @media print { .topbar { display: none; } body { background: #fff; } [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; outline: none; } }
+  @media print { .topbar { display: none; } body { background: #fff; } [data-edit] { background: transparent !important; outline: none !important; } }
 
   .hero { margin: 40px 0 44px; text-align: center; }
   .hero h1 { font-size: 3rem; line-height: 1.05; margin-bottom: 14px; font-weight: 750; }
@@ -53,45 +53,50 @@
   .history-card p { color: rgba(255,255,255,.82); font-size: .95rem; max-width: 400px; margin: 0; }
   .history-card a.btn { background: #fff; color: var(--primary); border-color: #fff; padding: 11px 18px; white-space: nowrap; }
   @media (max-width: 640px) { .hero h1 { font-size: 2.2rem; } .facts { grid-template-columns: 1fr; } }
+  .about-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 600; z-index: 50; }
+  .about-toast.error { background: #B5524A; }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <a class="brand" href="index.html"><img src="img/icon.svg" width="28" height="28" alt=""><span>&larr; Wintertuin Team</span></a>
-  <div class="topbar-right"><span class="edit-hint">Klik op tekst om te bewerken (alleen in dit tabblad)</span>
+  <div class="topbar-right"><span class="edit-hint" id="edit-hint"></span><span id="edit-tools"></span>
     <button class="btn" onclick="window.print()">&#128424; Print / PDF</button></div>
 </header>
 
 <div class="page">
 
   <div class="hero">
-    <p class="eyebrow" contenteditable="true">Baarn &middot; Cantonspark</p>
-    <h1 contenteditable="true">Wintertuin</h1>
-    <p contenteditable="true">Een kas van glas en staal uit 1914, gebouwd om het licht van de winter binnen te laten, en al meer dan honderd jaar het hart van een park dat zijn eigen weg zoekt.</p>
+    <p class="eyebrow" data-edit="k1">Baarn &middot; Cantonspark</p>
+    <h1 data-edit="k2">Wintertuin</h1>
+    <p data-edit="k3">Een kas van glas en staal uit 1914, gebouwd om het licht van de winter binnen te laten, en al meer dan honderd jaar het hart van een park dat zijn eigen weg zoekt.</p>
   </div>
 
   <section>
-    <p contenteditable="true">De Wintertuin staat in het Cantonspark in Baarn, een klein botanisch park met een rijke geschiedenis. De kas werd in 1914 gebouwd door August Janssen om zijn verzameling tropische planten uit voormalig Nederlands-Indi&euml; te huisvesten, zuidgericht zodat het schaarse winterlicht optimaal wordt benut. Het gebouw is inmiddels rijksmonument, net als het park eromheen.</p>
-    <p contenteditable="true">In de honderd jaar daarna heeft de Wintertuin veel gedaanten gehad: botanisch laboratorium van de Universiteit Utrecht, jarenlang leegstand, een galerie, een vlindertuin met horeca, en meest recent Wintertuin Experience met een theetuin en escaperooms. Geen van die concepten hield het structureel vol, vooral door de kosten van het onderhouden van een grotendeels glazen monument en onduidelijke afspraken over wie waarvoor verantwoordelijk is.</p>
-    <p contenteditable="true">Sinds maart 2026 is de huur gegund aan Stichting De Wintertuin. Daarbinnen wordt nu een nieuw horecaconcept uitgewerkt: een bakkerij, lunch en een eenvoudig winter- en zomerdiner, gedragen door drie specialismen in één ruimte. Het plan bouwt bewust voort op de lessen van eerdere pogingen, met scherpere afspraken over onderhoud, energie en wat het gebouw wel en niet aankan.</p>
+    <p data-edit="k4">De Wintertuin staat in het Cantonspark in Baarn, een klein botanisch park met een rijke geschiedenis. De kas werd in 1914 gebouwd door August Janssen om zijn verzameling tropische planten uit voormalig Nederlands-Indi&euml; te huisvesten, zuidgericht zodat het schaarse winterlicht optimaal wordt benut. Het gebouw is inmiddels rijksmonument, net als het park eromheen.</p>
+    <p data-edit="k5">In de honderd jaar daarna heeft de Wintertuin veel gedaanten gehad: botanisch laboratorium van de Universiteit Utrecht, jarenlang leegstand, een galerie, een vlindertuin met horeca, en meest recent Wintertuin Experience met een theetuin en escaperooms. Geen van die concepten hield het structureel vol, vooral door de kosten van het onderhouden van een grotendeels glazen monument en onduidelijke afspraken over wie waarvoor verantwoordelijk is.</p>
+    <p data-edit="k6">Sinds maart 2026 is de huur gegund aan Stichting De Wintertuin. Daarbinnen wordt nu een nieuw horecaconcept uitgewerkt: een bakkerij, lunch en een eenvoudig winter- en zomerdiner, gedragen door drie specialismen in één ruimte. Het plan bouwt bewust voort op de lessen van eerdere pogingen, met scherpere afspraken over onderhoud, energie en wat het gebouw wel en niet aankan.</p>
   </section>
 
   <div class="facts">
-    <div class="fact"><span class="val" contenteditable="true">1914</span><span class="label" contenteditable="true">Jaar van bouw</span></div>
-    <div class="fact"><span class="val" contenteditable="true">3,5 ha</span><span class="label" contenteditable="true">Cantonspark</span></div>
-    <div class="fact"><span class="val" contenteditable="true">Rijksmonument</span><span class="label" contenteditable="true">Status kas &amp; park</span></div>
+    <div class="fact"><span class="val" data-edit="k7">1914</span><span class="label" data-edit="k8">Jaar van bouw</span></div>
+    <div class="fact"><span class="val" data-edit="k9">3,5 ha</span><span class="label" data-edit="k10">Cantonspark</span></div>
+    <div class="fact"><span class="val" data-edit="k11">Rijksmonument</span><span class="label" data-edit="k12">Status kas &amp; park</span></div>
   </div>
 
   <div class="history-card">
     <div>
-      <h2 contenteditable="true">Honderd jaar geschiedenis</h2>
-      <p contenteditable="true">Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
+      <h2 data-edit="k13">Honderd jaar geschiedenis</h2>
+      <p data-edit="k14">Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
     </div>
     <a class="btn" href="Wintertuin-Cantonspark-Geschiedenis.html">Bekijk de tijdlijn &rarr;</a>
   </div>
 
-  <footer contenteditable="true">Wintertuin, Baarn &middot; introductie</footer>
+  <footer data-edit="k15">Wintertuin, Baarn &middot; introductie</footer>
 </div>
+<div id="about-toast" class="about-toast" hidden></div>
+<script src="vendor/supabase.js"></script>
+<script type="module">import { initAbout } from "./js/about.js"; initAbout("intro");</script>
 </body>
 </html>
