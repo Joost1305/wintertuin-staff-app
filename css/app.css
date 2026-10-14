@@ -650,3 +650,13 @@ label.btn { cursor: pointer; }
 .order-list { display: flex; flex-direction: column; }
 .order-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-weight: 400; margin: 0; }
 .order-row input { width: 64px; flex: none; text-align: center; font-variant-numeric: tabular-nums; }
+/* SOPs folded by default */
+details.sop-card { padding: 0; }
+.sop-sum { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; }
+.sop-sum::-webkit-details-marker { display: none; }
+.sop-sum h3 { flex: 1; min-width: 0; }
+.sop-chev { color: var(--ink-3); transition: transform .15s; flex: none; }
+details[open] > .sop-sum .sop-chev { transform: rotate(90deg); }
+.sop-actions { display: flex; gap: 6px; align-items: center; flex: none; }
+.sop-body { padding: 0 16px 14px; border-top: 1px solid var(--line); }
+.grid-2 > details.sop-card { align-self: start; }

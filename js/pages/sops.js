@@ -9,6 +9,9 @@ import { sb, check } from '../data.js';
 const DRAFT = 'wintertuinSopDraft_';
 let sops = [];
 let checks = {};
+const OPEN = 'wintertuinSopOpen'; // which SOPs this person has unfolded, remembered per browser
+let openIds = new Set((() => { try { return JSON.parse(localStorage.getItem(OPEN) || '[]'); } catch { return []; } })());
+const rememberOpen = () => { try { localStorage.setItem(OPEN, JSON.stringify([...openIds])); } catch { /* private mode */ } };
 
 const itemText = (it) => (typeof it === 'string' ? it : it.text);
 const listOf = (v) => (Array.isArray(v) ? v.map(itemText) : []);
@@ -54,7 +57,8 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('sops_title')}</h1><div class="muted small">${t('sops_sub')}</div></div>
       <div class="page-actions">
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
+        ${sops.length ? `<button type="button" class="btn-sm" id="sop-expand">${t('sops_expand_all')}</button>` : ''}
+        <button type="button" class="btn-sm" id="print">&#128424; ${t('sops_print_all')}</button>
         <button type="button" class="btn-sm" id="backup">&#11015; ${t('sops_backup')}</button>
         ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('sops_add')}</button>` : ''}</div></div>
     ${missing ? `<div class="note" style="margin:0 0 12px">${t('sops_missing_en', { n: missing })}</div>` : ''}
@@ -64,7 +68,11 @@ function draw() {
   $('#print').onclick = printSops;
   $('#backup').onclick = backupTxt;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
-  $$('[data-edit]').forEach((b) => (b.onclick = () => openEditor(sops.find((s) => s.id === b.dataset.edit))));
+  // buttons inside the folded header must not fold or unfold the card
+  $$('[data-edit]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openEditor(sops.find((s) => s.id === b.dataset.edit)); }));
+  $$('[data-print-one]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); printOne(sops.find((s) => s.id === b.dataset.printOne)); }));
+  $$('details[data-sop]').forEach((d) => d.addEventListener('toggle', () => { if (d.open) openIds.add(d.dataset.sop); else openIds.delete(d.dataset.sop); rememberOpen(); }));
+  const ex = $('#sop-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-sop]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
   $$('[data-check]').forEach((inp) => (inp.onchange = async () => {
     const [id, idx] = inp.dataset.check.split('|');
     inp.closest('.sop-check').classList.toggle('done', inp.checked);
@@ -88,18 +96,22 @@ function updateProgress(id) {
   if (s && el) el.textContent = progress(s);
 }
 
+// Each SOP is folded by default: title, progress and buttons on one line; click to unfold the checklist.
 function card(s) {
   const v = view(s);
-  return `<div class="card sop-card">
-    <div class="row-split"><h3>${esc(v.title)}</h3>
-      <div style="display:flex;gap:8px;align-items:center"><span class="sop-progress" data-progress="${s.id}">${progress(s)}</span>
-      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${s.id}">${t('edit')}</button>` : ''}</div></div>
+  return `<details class="card sop-card" data-sop="${s.id}" ${openIds.has(s.id) ? 'open' : ''}>
+    <summary class="sop-sum"><span class="sop-chev" aria-hidden="true">&#9656;</span><h3>${esc(v.title)}</h3>
+      <span class="sop-actions"><span class="sop-progress" data-progress="${s.id}">${progress(s)}</span>
+      <button type="button" class="btn-sm" data-print-one="${s.id}" title="${t('print')}" aria-label="${t('print')}: ${esc(v.title)}">&#128424;</button>
+      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${s.id}">${t('edit')}</button>` : ''}</span></summary>
+    <div class="sop-body">
     ${v.content ? `<p class="sop-text">${esc(v.content)}</p>` : ''}
     ${v.items.length ? `<div style="margin-top:8px">${v.items.map((it, i) => {
       const on = !!checks[`${s.id}_${i}`];
       return `<label class="sop-check ${on ? 'done' : ''}"><input type="checkbox" data-check="${s.id}|${i}" ${on ? 'checked' : ''}><span>${esc(it)}</span></label>`;
     }).join('')}</div>` : ''}
-  </div>`;
+    </div>
+  </details>`;
 }
 
 function openEditor(s) {
@@ -187,4 +199,20 @@ function printSops() {
     ${cats[cat].map((s) => { const v = view(s); return `<div style="margin-bottom:14px;break-inside:avoid"><h3 style="font-size:12pt;margin:0 0 4px">${esc(v.title)}</h3>
       ${v.content ? `<p style="margin:0 0 6px;white-space:pre-line">${esc(v.content)}</p>` : ''}
       ${v.items.length ? `<ul style="list-style:none;padding-left:0;margin:0">${v.items.map((it) => `<li>&#9633; ${esc(it)}</li>`).join('')}</ul>` : ''}</div>`; }).join('')}`).join('')}`);
+}
+
+// One SOP on paper: title, intro and an empty checklist, plus a line to sign off. Language follows the app.
+function printOne(s) {
+  if (!s) return;
+  const v = view(s);
+  printHtml(`<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #2F5D50;padding-bottom:6px;margin-bottom:12px">
+      <div><div style="font-weight:800;color:#2F5D50">Wintertuin</div><div style="font-size:9pt;color:#666">${t('sops_title')} · ${esc(v.category)}</div></div>
+      <div style="font-size:9pt;color:#666;text-align:right">${t('printed_on')} ${esc(fmt.stamp())}</div></div>
+    <h1 style="font-size:18pt;margin:0 0 8px">${esc(v.title)}</h1>
+    ${v.content ? `<p style="margin:0 0 12px;white-space:pre-line">${esc(v.content)}</p>` : ''}
+    ${v.items.length ? `<table style="width:100%;border-collapse:collapse">${v.items.map((it, i) => `<tr style="break-inside:avoid">
+      <td style="width:26px;padding:7px 4px;border-bottom:1px solid #ddd;vertical-align:top"><span style="display:inline-block;width:13px;height:13px;border:1.5px solid #333"></span></td>
+      <td style="padding:7px 4px;border-bottom:1px solid #ddd">${i + 1}. ${esc(it)}</td></tr>`).join('')}</table>` : ''}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-top:30px;font-size:9pt;color:#555">
+      <div style="border-top:1px solid #333;padding-top:4px">${t('name')}</div><div style="border-top:1px solid #333;padding-top:4px">${t('date')}</div><div style="border-top:1px solid #333;padding-top:4px">${t('sops_signature')}</div></div>`);
 }

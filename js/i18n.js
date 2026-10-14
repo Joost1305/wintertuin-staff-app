@@ -267,7 +267,7 @@ const dict = {
     description: 'Description', price: 'Price (€)', hours: 'Hours', h: 'h', sort_order: 'Order', copy: 'Copy', copied: 'Copied', you: 'you',
     downloaded_on: 'Downloaded on', draft_restored: 'Unsaved draft restored.', text_optional: 'Text (optional)',
     // SOPs
-    sops_title: 'SOPs', sops_sub: 'Opening and closing lists and other fixed procedures. Checklists reset every day at midnight.',
+    printed_on: 'Printed', sops_expand_all: 'Unfold all', sops_collapse_all: 'Fold all', sops_print_all: 'Print all', sops_signature: 'Signature', sops_title: 'SOPs', sops_sub: 'Opening and closing lists and other fixed procedures. Checklists reset every day at midnight.',
     sops_add: 'Add SOP', sops_edit: 'Edit SOP', sops_backup: 'Backup (.txt)', sops_none: 'No SOPs yet.',
     sops_cat_ph: 'For example: Opening', sops_cat_hint: 'Pick an existing category or type a new one.', sops_title_ph: 'For example: Morning check kitchen',
     sops_items: 'Checklist items (one per line, optional)', sops_items_ph: 'Turn on the coffee machine\nPut the terrace cushions outside',
@@ -582,7 +582,7 @@ const dict = {
     name: 'Naam', title: 'Titel', note: 'Notitie', date: 'Datum', time: 'Tijd', from: 'Van', until: 'Tot', active: 'Actief', role: 'Rol', category: 'Categorie',
     description: 'Beschrijving', price: 'Prijs (€)', hours: 'Uren', h: 'u', sort_order: 'Volgorde', copy: 'Kopiëren', copied: 'Gekopieerd', you: 'jij',
     downloaded_on: 'Gedownload op', draft_restored: 'Niet-opgeslagen concept hersteld.', text_optional: 'Tekst (optioneel)',
-    sops_title: "SOP's", sops_sub: 'Openings- en sluitlijsten en andere vaste procedures. Afvinklijsten resetten elke dag om middernacht.',
+    printed_on: 'Geprint', sops_expand_all: 'Alles uitklappen', sops_collapse_all: 'Alles inklappen', sops_print_all: 'Alles printen', sops_signature: 'Paraaf', sops_title: "SOP's", sops_sub: 'Openings- en sluitlijsten en andere vaste procedures. Afvinklijsten resetten elke dag om middernacht.',
     sops_add: 'SOP toevoegen', sops_edit: 'SOP bewerken', sops_backup: 'Back-up (.txt)', sops_none: "Nog geen SOP's.",
     sops_cat_ph: 'Bijvoorbeeld: Opening', sops_cat_hint: 'Kies een bestaande categorie of typ een nieuwe.', sops_title_ph: 'Bijvoorbeeld: Ochtendcheck keuken',
     sops_items: 'Checklist (één per regel, optioneel)', sops_items_ph: 'Koffiemachine aanzetten\nTerraskussens buiten leggen',

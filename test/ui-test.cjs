@@ -43,6 +43,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (nav.some((x) => /Finance/.test(x))) throw new Error('Finance still in menu');
       if (nav.some((x) => /Password/.test(x))) throw new Error('Password in menu for manager');
     });
+    await step('SOPs folded by default; unfold one; print one SOP on its own', async () => {
+      if (await p.isVisible('.sop-check >> nth=0')) throw new Error('SOP not folded');
+      await p.click('.sop-sum >> nth=0'); await p.waitForSelector('.sop-check >> nth=0', { state: 'visible' });
+      const before = await p.evaluate(() => window.__printed || 0); await p.click('[data-print-one] >> nth=0'); await p.waitForTimeout(300);
+      if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('no print');
+      if (!(await p.isVisible('.sop-check >> nth=0'))) throw new Error('print button folded the card');
+      const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
+      if ((html.match(/<h1/g) || []).length !== 1 || !/Signature/.test(html)) throw new Error('single SOP sheet'); });
     await step('tick a checklist item, progress updates', async () => {
       await p.click('.sop-check >> nth=0'); await p.waitForTimeout(200);
       if (!(await p.textContent('[data-progress]')).startsWith('1/')) throw new Error(await p.textContent('[data-progress]'));
