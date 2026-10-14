@@ -220,10 +220,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (links.includes('#/settings')) throw new Error('settings visible');
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
-      await q.goto(BASE + '#/roster'); await q.waitForSelector('table.roster');
+      await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab');
+      if (await q.isVisible('table.roster')) throw new Error('wide table still shown on phone');
+      if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('roster scrolls sideways on phone');
       if (await q.$('.day-toggle, .row-handle, .row-move')) throw new Error('staff can change days or order');
+      await q.click('.day-tab:not(.on)'); await q.waitForSelector('.day-tab.on');
+      await q.screenshot({ path: `${OUT}/09b-roster-phone.png`, fullPage: true });
       await q.goto(BASE + '#/settings'); await q.waitForSelector('.sop-card');
-      await q.goto(BASE + '#/roster'); await q.waitForSelector('table.roster'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
+      await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
     await step('staff: offer own shift for swap', async () => {
       await q.goto(BASE + '#/swap'); await q.waitForSelector('[data-offer]'); await q.click('[data-offer]'); await q.fill('.modal [name=v]', 'Wedding'); await q.click('.modal button[type=submit]');

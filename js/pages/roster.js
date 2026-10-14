@@ -10,6 +10,7 @@ let shifts = [];
 let templates = [];
 let dragged = null;
 let calendar = {}; // day -> { is_open, note } from the opening hours in Wintertuin Finance
+let mDay = null; // the day shown in the phone view (iso date)
 
 function mondayOf(d) { const m = new Date(d); const day = m.getDay(); m.setDate(m.getDate() + (day === 0 ? -6 : 1 - day)); m.setHours(12, 0, 0, 0); return m; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -86,7 +87,8 @@ function draw(days, checkins) {
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
             const closed = calendar[ds] && !calendar[ds].is_open;
             return `<td class="${closed ? 'closed' : ''}" ${mgr ? `data-cell="${p.id}|${ds}"` : ''}>${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</td>`; }).join('')}</tr>`).join('')}
-        </tbody></table></div></div>
+        </tbody></table></div>
+      ${mobileView(days, staff, mgr, today)}</div>
     ${hoursOverview(staff, checkins)}`;
 
   $('#prev').onclick = () => { weekStart = addDays(weekStart, -7); renderRoster(); };
@@ -95,6 +97,7 @@ function draw(days, checkins) {
   $('#print-today').onclick = printToday;
   $$('[data-ics]').forEach((b) => (b.onclick = () => exportIcs(b.dataset.ics)));
   const csv = $('#csv'); if (csv) csv.onclick = exportCsv;
+  $$('[data-mday]').forEach((b) => (b.onclick = () => { mDay = b.dataset.mday; draw(days, checkins); }));
   if (!mgr) return;
   $$('[data-add]').forEach((b) => (b.onclick = () => { const [pid, ds] = b.dataset.add.split('|'); openShift(null, pid, ds); }));
   $$('[data-shift]').forEach((b) => (b.onclick = () => openShift(shifts.find((s) => s.id === b.dataset.shift))));
@@ -169,6 +172,33 @@ function draw(days, checkins) {
       } catch (err) { toastError(err); }
     };
   });
+}
+
+// Phone view: one day at a time, picked from a strip of seven day buttons. No sideways scrolling.
+function mobileView(days, staff, mgr, today) {
+  const isos = days.map(isoOf);
+  if (!isos.includes(mDay)) mDay = isos.includes(today) ? today : isos[0];
+  const ds = mDay; const c = calendar[ds]; const closed = c && !c.is_open;
+  const tabs = days.map((d) => { const iso = isoOf(d); const cc = calendar[iso]; const n = shifts.some((s) => s.shift_date === iso);
+    return `<button type="button" class="day-tab ${iso === ds ? 'on' : ''} ${iso === today ? 'today' : ''} ${cc && !cc.is_open ? 'closed' : ''}" data-mday="${iso}">
+      ${esc(fmt.weekdayShort(d))}<b>${d.getDate()}</b><span class="dot ${n ? '' : 'none'}"></span></button>`; }).join('');
+  const dayShifts = shifts.filter((s) => s.shift_date === ds);
+  const working = staff.filter((p) => dayShifts.some((s) => s.staff_id === p.id))
+    .sort((a, b) => toMin(dayShifts.find((s) => s.staff_id === a.id).start_time) - toMin(dayShifts.find((s) => s.staff_id === b.id).start_time));
+  const off = staff.filter((p) => !working.includes(p));
+  const row = (p) => { const here = dayShifts.filter((s) => s.staff_id === p.id);
+    return `<div class="m-row ${p.id === state.me.id ? 'me' : ''}"><strong>${esc(p.full_name)}</strong>
+      <div class="m-shifts">${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</div></div>`; };
+  return `<div class="roster-m">
+    <div class="day-tabs">${tabs}</div>
+    <div class="m-day-head"><strong>${esc(fmt.dateLong(ds))}</strong>
+      <span>${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${ds}">${t(closed ? 'closed' : 'open')}</button>
+        <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${ds}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
+        : closed ? `<span class="day-closed">${t('closed')}</span>` : ''}</span></div>
+    ${c && c.note ? `<div class="day-note m-note">${esc(c.note)}</div>` : ''}
+    ${working.length ? working.map(row).join('') : `<div class="muted small" style="padding:12px 0">${t('m_nobody')}</div>`}
+    ${mgr && off.length ? `<div class="m-sub">${t('m_not_planned')}</div>${off.map(row).join('')}` : ''}
+  </div>`;
 }
 
 function chip(s) {

@@ -599,3 +599,35 @@ table.roster th .day-toggle { display: inline-block; margin: 4px 2px 0; }
 .tag.sc-app { margin-left: 6px; font-size: .68rem; }
 tr.sc-current td { background: var(--primary-soft); }
 @media (max-width: 560px) { .sc-changes li { grid-template-columns: 1fr; gap: 0; } }
+
+/* roster on a phone: one day at a time instead of a wide table */
+.roster-m { display: none; }
+@media (max-width: 700px) {
+  .roster-wrap { display: none; }
+  .roster-m { display: block; }
+}
+.day-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.day-tab { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 0; padding: 6px 0 5px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); color: var(--ink-2); font-size: .68rem; font-weight: 600; line-height: 1.2; text-transform: capitalize; }
+.day-tab b { font-size: 1.05rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.day-tab .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--primary); margin-top: 2px; }
+.day-tab .dot.none { visibility: hidden; }
+.day-tab.today { border-color: var(--primary); }
+.day-tab.closed { background: var(--surface-2); color: var(--ink-3); }
+.day-tab.closed b { color: var(--ink-3); }
+.day-tab.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.day-tab.on b { color: #fff; }
+.day-tab.on .dot { background: #fff; }
+.m-day-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); text-transform: capitalize; }
+.m-day-head .day-toggle { display: inline-block; margin: 0; }
+.m-day-head .day-closed { font-size: .8rem; color: var(--ink-3); font-weight: 600; text-transform: none; }
+.m-note { color: var(--accent); font-weight: 650; font-size: .85rem; padding: 8px 0 0; }
+.m-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.m-shifts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.m-row .shift-chip { width: auto; margin: 0; font-size: .88rem; padding: 6px 10px; text-align: right; }
+.m-row .add-shift { width: 44px; padding: 5px; font-size: .95rem; }
+.m-sub { margin: 16px 0 0; font-size: .72rem; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); }
+@media (max-width: 700px) {
+  table.num-table th { white-space: normal; }
+  table.num-table th, table.num-table td { padding-left: 6px; padding-right: 6px; }
+}
