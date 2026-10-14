@@ -256,36 +256,80 @@ function bindWeekNav(redraw) {
   $$('[data-wk]').forEach((b) => (b.onclick = () => { const n = Number(b.dataset.wk); week = n ? addDays(week, n) : mondayOf(todayIso()); redraw(); }));
 }
 
+// What each tile says: how often it must be done, and how far you are this week
+const SHORT_FREQ = {
+  temperatures: { nl: 'Dagelijks', en: 'Daily' },
+  receiving: { nl: 'Wekelijks per leverancier', en: 'Weekly per supplier' },
+  cooking: { nl: 'Wekelijks per onderdeel', en: 'Weekly per part' },
+  cleaning: { nl: 'Dagelijks afvinken', en: 'Tick off daily' },
+  thermometers: { nl: 'Elke 3 maanden', en: 'Every 3 months' },
+  hygiene: { nl: 'Wekelijks', en: 'Weekly' },
+  suppliers: { nl: 'Bijhouden', en: 'Keep up to date' },
+  sousvide: { nl: 'Elke productierun', en: 'Every production run' },
+  acidified: { nl: 'Elke batch', en: 'Every batch' },
+  buffet: { nl: 'Elke presentatie, max. 2 uur', en: 'Every display, max. 2 hours' },
+};
+function tileStatus(k, entries, ctx) {
+  const mine = entries.filter((e) => e.list_key === k);
+  const bad = k === 'buffet' ? buffetRows(entries).filter((r) => r.bad).length : mine.filter((e) => e.ok === false).length;
+  const out = (txt, cls) => {
+    if (bad) { txt += L({ nl: ` · ${bad} afwijking${bad > 1 ? 'en' : ''}`, en: ` · ${bad} deviation${bad > 1 ? 's' : ''}` }); cls = 'bad'; }
+    return { txt, cls };
+  };
+  const dayCount = new Set(mine.map((e) => e.entry_date)).size;
+  switch (k) {
+    case 'temperatures': case 'cleaning':
+      return out(L({ nl: `${dayCount} van ${ctx.days} dagen gedaan`, en: `${dayCount} of ${ctx.days} days done` }), dayCount >= ctx.days ? 'ok' : 'todo');
+    case 'receiving': {
+      const names = new Set(mine.map((e) => String(e.data.supplier || '').trim().toLowerCase()).filter(Boolean));
+      const total = cfg.suppliers.length;
+      const checked = total ? cfg.suppliers.filter((x) => names.has(x.name.trim().toLowerCase())).length : names.size;
+      return out(total ? L({ nl: `${checked} van ${total} leveranciers gecontroleerd`, en: `${checked} of ${total} suppliers checked` })
+        : L({ nl: `${mine.length} controles`, en: `${mine.length} checks` }), total ? (checked >= total ? 'ok' : 'todo') : (mine.length ? 'ok' : 'todo'));
+    }
+    case 'cooking': {
+      const parts = new Set(mine.map((e) => e.data.kind)).size;
+      return out(parts ? L({ nl: `${parts} onderdel${parts > 1 ? 'en' : ''} gemeten`, en: `${parts} part${parts > 1 ? 's' : ''} measured` }) : L({ nl: 'Nog niets gemeten', en: 'Nothing measured yet' }), parts ? 'ok' : 'todo');
+    }
+    case 'hygiene':
+      return out(mine.length ? L({ nl: 'Gedaan', en: 'Done' }) : L({ nl: 'Nog niet gedaan', en: 'Not done yet' }), mine.length ? 'ok' : 'todo');
+    case 'thermometers': {
+      const last = ctx.lastThermo;
+      if (!last) return out(L({ nl: 'Nog nooit getest', en: 'Never tested yet' }), 'todo');
+      const due = addDays(last, 91);
+      const f = (iso) => new Intl.DateTimeFormat(lang() === 'en' ? 'en-GB' : 'nl-NL', { day: 'numeric', month: 'short' }).format(new Date(`${iso}T12:00:00`));
+      const overdue = due < todayIso();
+      return out(overdue ? L({ nl: `Te laat: was vóór ${f(due)}`, en: `Overdue: was due ${f(due)}` }) : L({ nl: `Laatst ${f(last)}, volgende vóór ${f(due)}`, en: `Last ${f(last)}, next before ${f(due)}` }), overdue ? 'bad' : 'ok');
+    }
+    case 'suppliers':
+      return { txt: L({ nl: `${cfg.suppliers.length} goedgekeurd`, en: `${cfg.suppliers.length} approved` }), cls: '' };
+    case 'buffet': {
+      const rows = buffetRows(entries); const open = rows.filter((r) => !r.end).length;
+      return out(L({ nl: `${rows.length} deze week`, en: `${rows.length} this week` }) + (open ? L({ nl: ` · ${open} open`, en: ` · ${open} open` }) : ''), open ? 'todo' : '');
+    }
+    default: // sousvide, acidified: as often as you make it
+      return out(L({ nl: `${mine.length} deze week`, en: `${mine.length} this week` }), '');
+  }
+}
+
 async function renderOverview() {
   const keys = enabledLists();
   const entries = await loadWeek(keys.filter((k) => k !== 'suppliers'), week);
-  const days = Math.min(7, Math.max(1, Math.round((new Date(`${todayIso()}T12:00:00`) - new Date(`${week}T12:00:00`)) / 864e5) + 1));
   const isThisWeek = week === mondayOf(todayIso());
+  const days = isThisWeek ? Math.min(7, Math.round((new Date(`${todayIso()}T12:00:00`) - new Date(`${week}T12:00:00`)) / 864e5) + 1) : 7;
+  let lastThermo = null;
+  if (keys.includes('thermometers')) {
+    const r = check(await sb.from('haccp_entries').select('entry_date').eq('list_key', 'thermometers').order('entry_date', { ascending: false }).limit(1)) || [];
+    lastThermo = r[0] ? r[0].entry_date : null;
+  }
   app().innerHTML = `
     <div class="page-head"><div><h1>HACCP</h1><div class="muted small">${L({ nl: 'Registraties volgens de Hygiënecode voor de Horeca. Alles wordt automatisch bewaard; managers vinden het archief onder Instellingen, HACCP.', en: 'Records under the Hygiënecode voor de Horeca. Everything is saved automatically; managers find the archive under Settings, HACCP.' })}</div></div>
       <div class="page-actions"><button type="button" class="btn-sm" id="hc-print-all">&#128424; ${L({ nl: 'Print deze week (alle lijsten)', en: 'Print this week (all lists)' })}</button></div></div>
     ${weekNav()}
     <div class="hc-tiles">${keys.map((k) => {
-      const def = LISTS[k];
-      const mine = k === 'buffet' ? buffetRows(entries) : entries.filter((e) => e.list_key === k);
-      let status = ''; let cls = '';
-      if (k === 'suppliers') { status = L({ nl: `${cfg.suppliers.length} goedgekeurd`, en: `${cfg.suppliers.length} approved` }); }
-      else {
-        const bad = k === 'buffet' ? mine.filter((r) => r.bad).length : mine.filter((e) => e.ok === false).length;
-        const open = k === 'buffet' ? mine.filter((r) => !r.end).length : 0;
-        if (k === 'temperatures') {
-          const filled = new Set(mine.map((e) => e.entry_date)).size;
-          status = isThisWeek ? L({ nl: `${filled} van ${days} dagen ingevuld`, en: `${filled} of ${days} days filled in` }) : L({ nl: `${filled} van 7 dagen ingevuld`, en: `${filled} of 7 days filled in` });
-          cls = filled >= (isThisWeek ? days : 7) ? 'ok' : 'todo';
-        } else {
-          status = mine.length ? L({ nl: `${mine.length} deze week`, en: `${mine.length} this week` }) : L({ nl: 'Nog niets deze week', en: 'Nothing this week yet' });
-          cls = mine.length ? 'ok' : 'todo';
-        }
-        if (open) status += L({ nl: ` · ${open} open`, en: ` · ${open} open` });
-        if (bad) { status += L({ nl: ` · ${bad} afwijking${bad > 1 ? 'en' : ''}`, en: ` · ${bad} deviation${bad > 1 ? 's' : ''}` }); cls = 'bad'; }
-      }
+      const def = LISTS[k]; const st = tileStatus(k, entries, { days, lastThermo });
       return `<a class="card hc-tile" href="#/haccp/${k}"><span class="hc-ico" aria-hidden="true">${def.icon}</span>
-        <span class="hc-tt"><strong>${esc(L(def.short))}</strong><span class="hc-st ${cls}">${esc(status)}</span></span><span aria-hidden="true" class="hc-go">&#8250;</span></a>`;
+        <span class="hc-tt"><strong>${esc(L(def.short))}</strong><span class="hc-freq">${esc(L(SHORT_FREQ[k]))}</span><span class="hc-st ${st.cls}">${esc(st.txt)}</span></span><span aria-hidden="true" class="hc-go">&#8250;</span></a>`;
     }).join('')}</div>`;
   bindWeekNav(renderOverview);
   $('#hc-print-all').onclick = () => printWeek(keys, week);

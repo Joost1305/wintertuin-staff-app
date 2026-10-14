@@ -723,3 +723,4 @@ table.hc-ed td { padding: 4px 6px; }
   .hc-tiles { grid-template-columns: 1fr; }
   table.hc-t { font-size: .8rem; }
 }
+.hc-freq { font-size: .76rem; color: var(--ink-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
