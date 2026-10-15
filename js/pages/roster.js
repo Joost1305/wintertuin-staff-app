@@ -10,6 +10,12 @@ let shifts = [];
 let templates = [];
 let dragged = null;
 let calendar = {}; // day -> { is_open, note } from the opening hours in Wintertuin Finance
+let weekEvents = []; // events this week (not cancelled), shown on their day and linking to the BEO
+// notes like 'Event: ...' are written automatically for confirmed events; the event itself is shown instead
+const noteOf = (c) => (c && c.note && !/^Event:/.test(c.note) ? c.note : '');
+const guestsOfEv = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
+const evLabels = (ds) => weekEvents.filter((e) => e.event_date === ds).map((e) => `<a class="ro-ev ev-${esc(e.status)}" href="#/events/${e.id}" title="${esc(e.title)} · ${t('evs_' + e.status)}">
+  <span class="evdot ev-${esc(e.status)}"></span><span class="ro-ev-t">${e.start_time ? `${fmt.time(e.start_time)} ` : ''}${esc(e.title)}</span>${guestsOfEv(e) ? `<span class="ro-ev-g">${guestsOfEv(e)} ${t('ev_p')}</span>` : ''}</a>`).join('');
 let mDay = null; // the day shown in the phone view (iso date)
 
 function mondayOf(d) { const m = new Date(d); const day = m.getDay(); m.setDate(m.getDate() + (day === 0 ? -6 : 1 - day)); m.setHours(12, 0, 0, 0); return m; }
@@ -32,6 +38,10 @@ async function load() {
     const { data } = await sb.rpc('fin_public_calendar', { p_from: from, p_to: to });
     calendar = Object.fromEntries((data || []).map((c) => [c.day, c]));
   } catch { calendar = {}; }
+  try {
+    weekEvents = check(await sb.from('events').select('id, title, event_date, start_time, status, guests_expected, guests_guaranteed, guests_final')
+      .gte('event_date', from).lte('event_date', to).neq('status', 'cancelled').order('start_time')) || [];
+  } catch { weekEvents = []; } // the roster still works without them
   const [rows, tpl, checkins] = await Promise.all([
     check(await sb.from('shifts').select('*, profiles:staff_id(full_name)').gte('shift_date', from).lte('shift_date', to).order('start_time')),
     check(await sb.from('shift_templates').select('*').order('sort_order').order('start_time')),
@@ -78,10 +88,10 @@ function draw(days, checkins) {
       <div class="roster-wrap"><table class="roster"><thead><tr><th>${t('staff_member')}</th>
         ${days.map((d) => { const c = calendar[isoOf(d)]; const closed = c && !c.is_open;
           return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
-          ${c && c.note ? `<span class="day-note">${esc(c.note)}</span>` : ''}
+          ${noteOf(c) ? `<span class="day-note">${esc(noteOf(c))}</span>` : ''}${evLabels(isoOf(d)) ? `<span class="ro-evs">${evLabels(isoOf(d))}</span>` : ''}
           ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>
             <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${isoOf(d)}" title="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
-            : closed && !(c && c.note) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
+            : closed && !noteOf(c) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
         <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<strong>${esc(p.full_name)}</strong>
             ${mgr ? `<span class="row-move"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-down="${i}" ${i === staff.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span>` : ''}</td>
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
@@ -181,7 +191,7 @@ function mobileView(days, staff, mgr, today) {
   const ds = mDay; const c = calendar[ds]; const closed = c && !c.is_open;
   const tabs = days.map((d) => { const iso = isoOf(d); const cc = calendar[iso]; const n = shifts.some((s) => s.shift_date === iso);
     return `<button type="button" class="day-tab ${iso === ds ? 'on' : ''} ${iso === today ? 'today' : ''} ${cc && !cc.is_open ? 'closed' : ''}" data-mday="${iso}">
-      ${esc(fmt.weekdayShort(d))}<b>${d.getDate()}</b><span class="dot ${n ? '' : 'none'}"></span></button>`; }).join('');
+      ${esc(fmt.weekdayShort(d))}<b>${d.getDate()}</b><span class="dot ${n ? '' : 'none'}"></span>${weekEvents.some((e) => e.event_date === iso) ? '<span class="ev-flag" aria-hidden="true">&#9733;</span>' : ''}</button>`; }).join('');
   const dayShifts = shifts.filter((s) => s.shift_date === ds);
   const working = staff.filter((p) => dayShifts.some((s) => s.staff_id === p.id))
     .sort((a, b) => toMin(dayShifts.find((s) => s.staff_id === a.id).start_time) - toMin(dayShifts.find((s) => s.staff_id === b.id).start_time));
@@ -195,7 +205,8 @@ function mobileView(days, staff, mgr, today) {
       <span>${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${ds}">${t(closed ? 'closed' : 'open')}</button>
         <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${ds}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
         : closed ? `<span class="day-closed">${t('closed')}</span>` : ''}</span></div>
-    ${c && c.note ? `<div class="day-note m-note">${esc(c.note)}</div>` : ''}
+    ${noteOf(c) ? `<div class="day-note m-note">${esc(noteOf(c))}</div>` : ''}
+    ${evLabels(ds) ? `<div class="ro-evs m-evs">${evLabels(ds)}</div>` : ''}
     ${working.length ? working.map(row).join('') : `<div class="muted small" style="padding:12px 0">${t('m_nobody')}</div>`}
     ${mgr && off.length ? `<div class="m-sub">${t('m_not_planned')}</div>${off.map(row).join('')}` : ''}
   </div>`;

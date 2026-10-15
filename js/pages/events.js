@@ -49,8 +49,10 @@ export async function renderEvents(args = []) {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active').order('group_type').order('category').order('sort_order')) || [];
   const [id, sub] = args;
-  if (!id) return renderList(sub);
-  if (id === 'new') return renderEditor(null);
+  if (id === 'cal') { rememberView('cal'); return renderCalendar(sub); }
+  if (!id && !sub && savedView() === 'cal') return renderCalendar();
+  if (!id) { rememberView('list'); return renderList(sub); }
+  if (id === 'new') return renderEditor(null, /^\d{4}-\d{2}-\d{2}$/.test(sub || '') ? sub : null);
   const ev = check(await sb.from('events').select('*').eq('id', id).maybeSingle());
   if (!ev) { toastError(new Error(t('ev_not_found'))); location.hash = '#/events'; return; }
   if (sub === 'edit') return renderEditor(ev);
@@ -66,14 +68,9 @@ async function renderList(filter = 'upcoming') {
   else if (filter === 'past') q = q.lt('event_date', today).order('event_date', { ascending: false });
   else q = q.order('event_date', { ascending: false });
   const rows = check(await q) || [];
-  app().innerHTML = `
-    <div class="page-head"><div><h1>${t('nav_events')}</h1><div class="muted small">${t('ev_sub')}</div></div>
-      <div class="page-actions">
-        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#128424; ${t('ev_blank_beo')} &#9662;</summary>
-          <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:200px;padding:10px">
-            <button type="button" class="btn-sm" data-blank="nl">Nederlands</button><button type="button" class="btn-sm" data-blank="en">English</button></div></details>
-        <a class="btn btn-primary btn-sm" href="#/events/new">+ ${t('ev_new')}</a></div></div>
-    <div class="seg" style="margin-bottom:14px">${['upcoming', 'past', 'all'].map((f) => `<a href="#/events/list/${f}" class="seg-btn ${filter === f ? 'on' : ''}">${t('ev_f_' + f)}</a>`).join('')}</div>
+  app().innerHTML = `${eventsHead()}
+    <div class="ev-bar">${viewSwitch('list')}
+      <div class="seg">${['upcoming', 'past', 'all'].map((f) => `<a href="#/events/list/${f}" class="seg-btn ${filter === f ? 'on' : ''}">${t('ev_f_' + f)}</a>`).join('')}</div></div>
     ${!rows.length ? `<div class="card empty">${t(filter === 'upcoming' ? 'ev_none_upcoming' : 'ev_none')}</div>` : `<div class="ev-list">${rows.map((e) => `
       <a class="card ev-row ${e.status === 'cancelled' ? 'is-cancelled' : ''}" href="#/events/${e.id}">
         <div class="ev-date"><span class="d">${new Date(`${e.event_date}T12:00:00`).getDate()}</span><span class="m">${esc(new Intl.DateTimeFormat(lang() === 'en' ? 'en-GB' : 'nl-NL', { month: 'short' }).format(new Date(`${e.event_date}T12:00:00`)))}</span></div>
@@ -81,6 +78,83 @@ async function renderList(filter = 'upcoming') {
           <div class="small muted">${esc(fmt.date(e.event_date))}${e.start_time ? ` · ${fmt.time(e.start_time)}${e.end_time ? `–${fmt.time(e.end_time)}` : ''}` : ''}${e.client_company || e.client_name ? ` · ${esc(e.client_company || e.client_name)}` : ''}${e.area ? ` · ${esc(e.area)}` : ''}</div></div>
         <div class="ev-side">${statusTag(e.status)}${guestsOf(e) ? `<span class="ev-guests">${guestsOf(e)} ${t('ev_p')}</span>` : ''}</div>
       </a>`).join('')}</div>`}`;
+  $$('[data-blank]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; printBlank(b.dataset.blank); }));
+}
+
+// ------------------------------------------------------------------ calendar
+// Same events as the list, laid out per month. Closed days come from the opening calendar in Wintertuin Finance.
+// Laptop: month grid with the events written in. Phone: compact month with dots; tap a day to see its events.
+const VIEW = 'wintertuinEventsView';
+const savedView = () => { try { return localStorage.getItem(VIEW); } catch { return null; } };
+const rememberView = (v) => { try { localStorage.setItem(VIEW, v); } catch { /* private mode */ } };
+const viewSwitch = (on) => `<div class="seg"><a href="#/events/list" class="seg-btn ${on === 'list' ? 'on' : ''}">&#9776; ${t('ev_view_list')}</a><a href="#/events/cal" class="seg-btn ${on === 'cal' ? 'on' : ''}">&#128197; ${t('ev_view_cal')}</a></div>`;
+function eventsHead() {
+  return `    <div class="page-head"><div><h1>${t('nav_events')}</h1><div class="muted small">${t('ev_sub')}</div></div>
+      <div class="page-actions">
+        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#128424; ${t('ev_blank_beo')} &#9662;</summary>
+          <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:200px;padding:10px">
+            <button type="button" class="btn-sm" data-blank="nl">Nederlands</button><button type="button" class="btn-sm" data-blank="en">English</button></div></details>
+        <a class="btn btn-primary btn-sm" href="#/events/new">+ ${t('ev_new')}</a></div></div>
+`;
+}
+let calSel = null; // selected day in the phone view
+async function renderCalendar(month) {
+  const today = todayIso();
+  const ym = /^\d{4}-\d{2}$/.test(month || '') ? month : today.slice(0, 7);
+  const first = new Date(`${ym}-01T12:00:00`);
+  const start = new Date(first); start.setDate(1 - ((first.getDay() + 6) % 7)); // Monday on or before the 1st
+  const days = []; for (let d = new Date(start); days.length < 42; d.setDate(d.getDate() + 1)) days.push(d.toLocaleDateString('sv-SE'));
+  while (days.length > 35 && days[35].slice(0, 7) !== ym) days.length = 35; // 5 weeks when the 6th is all next month
+  const from = days[0]; const to = days[days.length - 1];
+  const [rows, calRes] = await Promise.all([
+    sb.from('events').select('id, title, event_date, start_time, end_time, status, client_name, client_company, guests_expected, guests_guaranteed, guests_final, area')
+      .gte('event_date', from).lte('event_date', to).order('event_date').order('start_time'),
+    sb.rpc('fin_public_calendar', { p_from: from, p_to: to }).then((r) => r, () => ({ data: [] })),
+  ]);
+  const events = check(rows) || [];
+  const cal = Object.fromEntries(((calRes && calRes.data) || []).map((c) => [c.day, c]));
+  const byDay = {}; events.forEach((e) => { (byDay[e.event_date] = byDay[e.event_date] || []).push(e); });
+  if (!calSel || calSel.slice(0, 7) !== ym) calSel = today.slice(0, 7) === ym ? today : (days.find((d) => d.slice(0, 7) === ym && byDay[d]) || `${ym}-01`);
+  const mgr = isManager();
+  const loc = lang() === 'en' ? 'en-GB' : 'nl-NL';
+  const monthName = new Intl.DateTimeFormat(loc, { month: 'long', year: 'numeric' }).format(first);
+  const shift = (n) => { const d = new Date(first); d.setMonth(d.getMonth() + n); return d.toLocaleDateString('sv-SE').slice(0, 7); };
+  const wd = [...Array(7)].map((_, i) => new Intl.DateTimeFormat(loc, { weekday: 'short' }).format(new Date(`${days[i]}T12:00:00`)));
+  const closed = (d) => cal[d] && !cal[d].is_open;
+  const dayNote = (d) => (cal[d] && cal[d].note && !/^Event:/.test(cal[d].note) ? cal[d].note : ''); // event notes come from these events themselves
+  const chip = (e) => `<a class="ev-chip ev-${esc(e.status)}" href="#/events/${e.id}" title="${esc(e.title)}">${e.start_time || guestsOf(e) ? `<b>${e.start_time ? fmt.time(e.start_time) : ''}${guestsOf(e) ? `<span>${guestsOf(e)} ${t('ev_p')}</span>` : ''}</b>` : ''}<span class="ev-chip-t">${esc(e.title)}</span></a>`;
+  app().innerHTML = `${eventsHead()}
+    <div class="ev-bar">${viewSwitch('cal')}
+      <div class="ev-month"><a class="btn btn-sm" href="#/events/cal/${shift(-1)}" aria-label="${t('ev_prev_month')}">&#8249;</a>
+        <a class="btn btn-sm" href="#/events/cal/${today.slice(0, 7)}">${t('ev_this_month')}</a>
+        <a class="btn btn-sm" href="#/events/cal/${shift(1)}" aria-label="${t('ev_next_month')}">&#8250;</a>
+        <strong class="ev-month-name">${esc(monthName)}</strong></div></div>
+    <div class="card ev-cal">
+      <div class="ev-grid">${wd.map((w) => `<div class="ev-wd">${esc(w)}</div>`).join('')}
+        ${days.map((d) => `<div class="ev-day ${d.slice(0, 7) !== ym ? 'out' : ''} ${d === today ? 'today' : ''} ${closed(d) ? 'closed' : ''} ${mgr ? 'can-add' : ''}" data-day="${d}">
+          <div class="ev-dn"><span>${Number(d.slice(8))}</span>${mgr ? `<a class="ev-add" href="#/events/new/${d}" aria-label="${t('ev_new_on')} ${esc(fmt.date(d))}">+</a>` : ''}</div>
+          ${dayNote(d) ? `<div class="ev-note">${esc(dayNote(d))}</div>` : ''}
+          ${(byDay[d] || []).map(chip).join('')}</div>`).join('')}</div>
+      <div class="ev-mgrid">${wd.map((w) => `<div class="ev-wd">${esc(w.slice(0, 2))}</div>`).join('')}
+        ${days.map((d) => `<button type="button" class="ev-mday ${d.slice(0, 7) !== ym ? 'out' : ''} ${d === today ? 'today' : ''} ${closed(d) ? 'closed' : ''} ${d === calSel ? 'sel' : ''}" data-sel="${d}">
+          <span>${Number(d.slice(8))}</span><i>${(byDay[d] || []).slice(0, 3).map((e) => `<em class="evdot ev-${esc(e.status)}"></em>`).join('')}</i></button>`).join('')}</div>
+      <div class="ev-mlist" id="ev-mlist"></div>
+      <div class="ev-legend"><span><em class="evdot ev-confirmed"></em>${t('evs_confirmed')}</span><span><em class="evdot ev-option"></em>${t('evs_option')}</span><span><em class="evdot ev-cancelled"></em>${t('evs_cancelled')}</span><span><em class="sq"></em>${t('ev_closed_day')}</span></div>
+    </div>`;
+  const drawDay = () => {
+    const list = byDay[calSel] || [];
+    $('#ev-mlist').innerHTML = `<div class="ev-mhead"><strong>${esc(fmt.dateLong(calSel))}</strong>${closed(calSel) ? ` <span class="tag">${t('ev_closed_day')}</span>` : ''}</div>
+      ${dayNote(calSel) ? `<div class="ev-note">${esc(dayNote(calSel))}</div>` : ''}
+      ${list.length ? list.map((e) => `<a class="ev-mrow ev-${esc(e.status)}" href="#/events/${e.id}"><span class="t">${e.start_time ? fmt.time(e.start_time) : ''}</span>
+        <span class="n"><strong>${esc(e.title)}</strong><span class="small muted">${[e.client_company || e.client_name, e.area].filter(Boolean).map(esc).join(' · ')}</span></span>
+        <span class="s">${statusTag(e.status)}${guestsOf(e) ? `<span class="small">${guestsOf(e)} ${t('ev_p')}</span>` : ''}</span></a>`).join('')
+        : `<div class="small muted" style="padding:8px 0">${t('ev_none_day')}</div>`}
+      ${mgr ? `<a class="btn btn-sm" href="#/events/new/${calSel}" style="margin-top:8px">+ ${t('ev_new_on')} ${esc(fmt.date(calSel))}</a>` : ''}`;
+  };
+  drawDay();
+  $$('[data-sel]').forEach((b) => (b.onclick = () => { calSel = b.dataset.sel; $$('.ev-mday.sel').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); drawDay(); }));
+  // laptop: a click on the empty part of a day starts a new event on that day (managers)
+  if (mgr) $$('.ev-day').forEach((c) => (c.onclick = (e) => { if (e.target.closest('a')) return; location.hash = `#/events/new/${c.dataset.day}`; }));
   $$('[data-blank]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; printBlank(b.dataset.blank); }));
 }
 
@@ -176,11 +250,12 @@ function dateIn(iso, l) {
 }
 
 // ------------------------------------------------------------------ editor
-function renderEditor(ev) {
+function renderEditor(ev, date = null) {
   const key = ev ? ev.id : 'new';
   const draft = loadDraft(key);
   const base = ev ? { ...ev } : { status: 'option', event_date: todayIso(), prices_incl_vat: true, exclusive: false, deposit_paid: false, menu: [], dietary: [], timeline: [], sold_by: state.me.id };
   const v = draft ? { ...base, ...draft } : base;
+  if (date) v.event_date = date; // started from a day in the calendar
   const people = state.profiles.filter((p) => p.active !== false || p.id === v.sold_by);
   const inp = (k, type = 'text', extra = '') => {
     const val = v[k] == null ? '' : (type === 'time' ? fmt.time(v[k]) : v[k]);

@@ -26,7 +26,7 @@ const routes = [
   { path: 'menu', render: renderMenu, nav: 'nav_menu', show: () => true },
   { path: 'links', render: renderLinks, nav: 'nav_links', show: () => true },
   { path: 'roster', render: renderRoster, nav: 'nav_roster', show: () => true },
-  { path: 'events', render: (args) => renderEvents(args[0] === 'list' ? [null, args[1]] : args), nav: 'nav_events', show: () => true },
+  { path: 'events', render: (args) => renderEvents(args[0] === 'list' ? [null, args[1] || 'upcoming'] : args), nav: 'nav_events', show: () => true },
   { path: 'haccp', render: renderHaccp, nav: 'nav_haccp', show: () => true },
   { path: 'checkin', render: renderCheckin, nav: 'nav_checkin', show: () => true },
   { path: 'swap', render: renderSwap, nav: 'nav_swap', show: () => true, badge: true },

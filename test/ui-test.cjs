@@ -215,6 +215,18 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
+    await step('events: calendar view shows the event, starts a new event on a day; roster shows it too', async () => {
+      const d = new Date(); d.setDate(d.getDate() + 1); const ds = d.toLocaleDateString('sv-SE');
+      await p.goto(BASE + '#/events/cal/' + ds.slice(0, 7)); await p.waitForSelector('.ev-cal');
+      const href = await p.getAttribute('.ev-chip.ev-confirmed', 'href'); if (!/#\/events\/[\w-]+$/.test(href)) throw new Error('chip ' + href);
+      await p.click('.ev-chip.ev-confirmed'); await p.waitForSelector('summary:has-text("Print")');
+      await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-cal'); // the chosen view is remembered
+      await p.goto(BASE + '#/events/new/2026-12-24'); await p.waitForSelector('#ev-form');
+      if ((await p.inputValue('[name=event_date]')) !== '2026-12-24') throw new Error('date not prefilled');
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('.roster-bar');
+      if (!(await p.$('table.roster .ro-ev'))) { await p.click('#next'); await p.waitForSelector('.roster-bar'); }
+      if (!(await p.$('table.roster .ro-ev.ev-confirmed'))) throw new Error('no event label in the roster');
+      await p.goto(BASE + '#/events/list'); await p.waitForSelector('.ev-bar'); });
     await step('menu: manager adds named menu PDFs, renames and deletes; buttons follow', async () => {
       await p.goto(BASE + '#/menu'); await p.waitForSelector('#pdf-manage'); if (await p.$('[data-pdf-view]')) throw new Error('PDF button without a PDF');
       const pdf = { name: 'x.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF') };
