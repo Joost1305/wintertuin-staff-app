@@ -130,7 +130,7 @@ async function renderCalendar(month) {
         <a class="btn btn-sm" href="#/events/cal/${shift(1)}" aria-label="${t('ev_next_month')}">&#8250;</a>
         <strong class="ev-month-name">${esc(monthName)}</strong></div></div>
     <div class="card ev-cal">
-      <div class="ev-grid">${wd.map((w) => `<div class="ev-wd">${esc(w)}</div>`).join('')}
+      <div class="evc-grid">${wd.map((w) => `<div class="ev-wd">${esc(w)}</div>`).join('')}
         ${days.map((d) => `<div class="ev-day ${d.slice(0, 7) !== ym ? 'out' : ''} ${d === today ? 'today' : ''} ${closed(d) ? 'closed' : ''} ${mgr ? 'can-add' : ''}" data-day="${d}">
           <div class="ev-dn"><span>${Number(d.slice(8))}</span>${mgr ? `<a class="ev-add" href="#/events/new/${d}" aria-label="${t('ev_new_on')} ${esc(fmt.date(d))}">+</a>` : ''}</div>
           ${dayNote(d) ? `<div class="ev-note">${esc(dayNote(d))}</div>` : ''}

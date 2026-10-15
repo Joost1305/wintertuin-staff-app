@@ -220,6 +220,9 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/events/cal/' + ds.slice(0, 7)); await p.waitForSelector('.ev-cal');
       const href = await p.getAttribute('.ev-chip.ev-confirmed', 'href'); if (!/#\/events\/[\w-]+$/.test(href)) throw new Error('chip ' + href);
       await p.click('.ev-chip.ev-confirmed'); await p.waitForSelector('summary:has-text("Print")');
+      // the BEO keeps its own two-column layout (the calendar grid must not leak into it)
+      const cols = await p.$eval('.ev-grid', (g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
+      if (cols !== 2) throw new Error('BEO layout has ' + cols + ' columns');
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-cal'); // the chosen view is remembered
       await p.goto(BASE + '#/events/new/2026-12-24'); await p.waitForSelector('#ev-form');
       if ((await p.inputValue('[name=event_date]')) !== '2026-12-24') throw new Error('date not prefilled');

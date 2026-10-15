@@ -736,7 +736,7 @@ details[open] > .dish-sum { border-bottom: 1px solid var(--line); }
 .ev-month { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .ev-month-name { margin-left: 6px; text-transform: capitalize; }
 .ev-cal { padding: 12px; }
-.ev-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.evc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .ev-wd { font-size: .72rem; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; text-align: center; padding: 2px 0 4px; }
 .ev-day { min-height: 104px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 4px 5px 6px; background: var(--surface); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ev-day.can-add { cursor: pointer; }
@@ -766,7 +766,7 @@ details[open] > .dish-sum { border-bottom: 1px solid var(--line); }
 /* phone: compact month with dots, tap a day */
 .ev-mgrid, .ev-mlist { display: none; }
 @media (max-width: 700px) {
-  .ev-grid { display: none; }
+  .evc-grid { display: none; }
   .ev-mgrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
   .ev-mlist { display: block; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
   .ev-mday { min-height: 0; padding: 6px 0 5px; border: 1px solid transparent; border-radius: 10px; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 3px; font-weight: 650; color: var(--ink); }
