@@ -147,12 +147,13 @@ function credentialsPopup(name, email, password) {
 const FIN_ROLES = ['staff', 'manager', 'org_admin'];
 async function loadFinanceAccess() {
   try {
-    const { data: r } = await sb.from('fin_restaurants').select('organization_id').limit(1).maybeSingle();
-    if (!r) return null;
+    const { data: r, error: e1 } = await sb.from('fin_restaurants').select('organization_id').limit(1).maybeSingle();
+    if (e1 || !r) return { failed: e1 ? e1.message : 'no restaurant found' };
     const { data, error } = await sb.functions.invoke('fin-admin-users', { body: { action: 'list', organization_id: r.organization_id } });
-    if (error || !data || data.error) return null;
+    if (error) { let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch { /* keep */ } return { failed: msg }; }
+    if (!data || data.error) return { failed: (data && data.error) || 'no answer' };
     return { org: r.organization_id, users: data.users || [] };
-  } catch { return null; }
+  } catch (e) { return { failed: e.message }; }
 }
 async function finAdmin(body) {
   const { data, error } = await sb.functions.invoke('fin-admin-users', { body });
@@ -163,7 +164,9 @@ async function finAdmin(body) {
 
 async function team(el) {
   el.innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
-  const [profiles, fin] = await Promise.all([loadProfiles(), loadFinanceAccess()]);
+  const [profiles, finRes] = await Promise.all([loadProfiles(), loadFinanceAccess()]);
+  const fin = finRes && !finRes.failed ? finRes : null;
+  if (finRes && finRes.failed) console.warn('Finance access not loaded:', finRes.failed);
   state.profiles = profiles;
   const rows = state.profiles;
   const finOf = (p) => (fin ? fin.users.find((u) => u.user_id === p.id || (p.email && u.email && u.email.toLowerCase() === p.email.toLowerCase())) : null);
@@ -182,7 +185,7 @@ async function team(el) {
       <td class="actions"><button type="button" class="btn-sm" data-edit="${p.id}">${t('edit')}</button>
         ${self ? '' : `<button type="button" class="btn-sm" data-reset="${p.id}">${t('reset_password')}</button>`}</td></tr>`; }).join('')}
     </tbody></table></div>
-    <div class="note">${fin ? t('team_note_both') : t('team_note')}</div></div>`;
+    <div class="note">${fin ? t('team_note_both') : `${t('team_note_nofin')}${finRes && finRes.failed ? ` <span class="small muted">(${esc(finRes.failed)})</span>` : ''}`}</div></div>`;
   $('#add', el).onclick = () => {
     const fields = [
       { name: 'full_name', label: t('name'), required: true, placeholder: t('name_ph') },
