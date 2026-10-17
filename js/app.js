@@ -83,9 +83,9 @@ function renderShell() {
     // Managers change their password under Settings; staff (no Settings) keep it in the menu
     (isManager() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
     `<a href="#/logout">${t('nav_logout')}</a>`;
-  // Switch to the other app: on a phone or tablet in the same window (iOS freezes on, or jumps to a stale copy of,
+  // Switch to the other app: on a phone, tablet or as an app in the Dock (anything not a normal browser tab) in the same window (iOS freezes on, or jumps to a stale copy of,
   // a separate named tab and opens the start page of an old tab); on a computer in its own tab, reused each time
-  const touch = window.matchMedia('(pointer: coarse)').matches || window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  const touch = window.matchMedia('(pointer: coarse)').matches || window.navigator.standalone || !window.matchMedia('(display-mode: browser)').matches;
   const appSw = $('#app-switch');
   if (appSw) { if (touch) appSw.removeAttribute('target'); else appSw.setAttribute('target', 'wintertuin-finance'); }
   $('#app-switch-label').textContent = t('nav_finance');
