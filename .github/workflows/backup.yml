@@ -53,11 +53,12 @@ jobs:
           sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 p7zip-full > /dev/null
-          pg_dump --version
+          /usr/lib/postgresql/17/bin/pg_dump --version
 
       - name: Copy the data
         run: |
           set -euo pipefail
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"   # the runner also has an older version; use 17 (same as Supabase)
           # on failure: show the reason as an error (without the connection details)
           exec 2> >(tee err.log >&2)
           trap 'msg=$(tail -n 4 err.log | sed -E "s#postgres(ql)?://[^ ]*#[database]#g; s#password=[^ ]*#password=***#g" | tr "\n" " "); echo "::error::Copying failed: ${msg:-unknown error}"' ERR
