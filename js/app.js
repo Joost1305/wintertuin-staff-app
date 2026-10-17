@@ -35,12 +35,8 @@ const routes = [
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
-// Start page: the first item of the top menu in the order set under Settings (SOPs when nothing is set yet)
-const homePath = () => {
-  if (!state.me) return 'sops';
-  const visible = routes.filter((r) => r.nav && r.show()).map((r) => r.path);
-  return orderPaths(visible, state.navOrder)[0] || 'sops';
-};
+// Start page: always About, the welcome of the app; from there everyone clicks on (menu, Finance and the rest)
+const homePath = () => 'about';
 let badge = 0;
 let badgeTimer = null;
 

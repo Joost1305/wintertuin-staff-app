@@ -299,7 +299,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
       let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
-      await p.goto(BASE + '#/home'); await p.waitForSelector('.hc-tile'); if (!/#\/haccp$/.test(p.url())) throw new Error('start page is ' + p.url());
+      await p.goto(BASE + '#/home'); await p.waitForSelector('.about-app'); if (!/#\/about$/.test(p.url())) throw new Error('start page is ' + p.url());
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
       first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
