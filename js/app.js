@@ -14,6 +14,7 @@ import { renderCheckin } from './pages/checkin.js';
 import { renderSwap, swapBadgeCount } from './pages/swap.js';
 import { renderSettings } from './pages/settings.js';
 import { renderHaccp } from './pages/haccp.js';
+import { renderAbout } from './pages/about-team.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 
 console.log(`Wintertuin Team, build ${BUILD}`);
@@ -22,6 +23,8 @@ window.addEventListener('nav-order-changed', () => renderShell());
 try { window.name = 'wintertuin-team'; } catch { /* ignore */ }
 
 const routes = [
+  // About is always first in the top menu, before the order set under Settings (so never the start page)
+  { path: 'about', render: renderAbout, nav: null, show: () => true },
   { path: 'sops', render: renderSops, nav: 'nav_sops', show: () => true },
   { path: 'menu', render: renderMenu, nav: 'nav_menu', show: () => true },
   { path: 'links', render: renderLinks, nav: 'nav_links', show: () => true },
@@ -76,9 +79,8 @@ function renderShell() {
   const nav = $('#nav');
   const visible = routes.filter((r) => r.nav && r.show());
   const sorted = orderPaths(visible.map((r) => r.path), state.navOrder).map((p) => visible.find((r) => r.path === p));
-  nav.innerHTML = sorted.map((r) =>
+  nav.innerHTML = `<a href="#/about" class="${current === 'about' ? 'active' : ''}">${t('nav_about')}</a>` + sorted.map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`).join('') +
-    `<a class="ext" href="Wintertuin-Intro.html">${t('nav_about')}</a>` +
     // Managers change their password under Settings; staff (no Settings) keep it in the menu
     (isManager() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
     `<a href="#/logout">${t('nav_logout')}</a>`;
@@ -158,7 +160,7 @@ window.addEventListener('wt:badge', () => refreshBadge());
 sb.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; }
 });
-const known = /^#\/(login|home|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
+const known = /^#\/(login|home|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
 // unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
 if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();

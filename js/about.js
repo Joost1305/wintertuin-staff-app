@@ -13,7 +13,7 @@ try { lang = localStorage.getItem('wtteam_lang') === 'nl' ? 'nl' : 'en'; } catch
 const t = (k) => L[lang][k];
 
 // Keep only harmless markup: no scripts, frames or event handlers
-function clean(html) {
+export function clean(html) {
   const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
   doc.querySelectorAll('script, style, iframe, object, embed, link, meta').forEach((n) => n.remove());
   doc.querySelectorAll('*').forEach((n) => [...n.attributes].forEach((a) => {

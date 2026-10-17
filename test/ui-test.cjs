@@ -298,17 +298,34 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('settings: top menu order by number and arrows, applied to the menu', async () => {
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
+      let first = await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
       await p.goto(BASE + '#/home'); await p.waitForSelector('.hc-tile'); if (!/#\/haccp$/.test(p.url())) throw new Error('start page is ' + p.url());
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
+      first = await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
       await p.click('#reset-nav'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      if ((await p.$eval('#nav a', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
+      if ((await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
       await p.screenshot({ path: `${OUT}/08-roster-nl.png`, fullPage: true }); });
+    await step('About in the app: first in the menu, team edit, direct links', async () => {
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('#nav', { state: 'attached' });
+      const first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/about') throw new Error('first nav item ' + first);
+      await p.click('#nav a[href="#/about"]'); await p.waitForSelector('.about-app .ab-person');
+      if ((await p.$$('.ab-person')).length !== 4) throw new Error('team cards');
+      const hrefs = await p.$$eval('.ab-link', (as) => as.map((a) => a.getAttribute('href')));
+      if (!hrefs.includes('Wintertuin-Intro.html') || !hrefs.includes('Wintertuin-Cantonspark-Geschiedenis.html')) throw new Error('links ' + hrefs);
+      if (!(await p.$('.ab-gi[href="#/haccp"]'))) throw new Error('app guide missing');
+      await p.click('#ab-edit'); await p.click('#ab-add');
+      await p.click('.ab-person:last-child [data-f="name"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Testpersoon');
+      await p.click('.ab-person:first-child [data-rm]');
+      await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
+      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'people'));
+      const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name === 'Joost') throw new Error(row.html);
+      await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
+      await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
+      if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded'); });
     await step('About page: manager edits and saves text', async () => {
       await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');
       await p.click('h1[data-edit]'); await p.keyboard.press('End'); await p.keyboard.type(' Baarn');
@@ -348,6 +365,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await q.goto(BASE + '#/events/new'); await q.waitForSelector('#ev-form'); await q.fill('[name=title]', 'Birthday Sam');
       await q.click('#ev-form button[type=submit]'); await q.waitForSelector('h1:has-text("Birthday Sam")');
       if (await q.$('#del')) throw new Error('delete for staff'); });
+    await step('staff: About in the app, no edit, fits the phone', async () => {
+      await q.goto(BASE + '#/about'); await q.waitForSelector('.ab-person'); if (await q.$('#ab-edit')) throw new Error('edit for staff');
+      if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('about scrolls sideways');
+      await q.screenshot({ path: `${OUT}/10b-about-phone.png`, fullPage: true }); });
     await step('staff: About page has no Edit button', async () => { await q.goto(BASE + 'Wintertuin-Intro.html'); await q.waitForTimeout(800); if (await q.$('#ab-edit')) throw new Error('edit for staff'); });
     await B.ctx.close();
     if (B.errors.length) { failed = true; console.log('ERRORS (staff):', B.errors); }
