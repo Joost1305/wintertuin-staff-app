@@ -58,6 +58,10 @@ jobs:
       - name: Copy the data
         run: |
           set -euo pipefail
+          # on failure: show the reason as an error (without the connection details)
+          exec 2> >(tee err.log >&2)
+          trap 'msg=$(tail -n 4 err.log | sed -E "s#postgres(ql)?://[^ ]*#[database]#g; s#password=[^ ]*#password=***#g" | tr "\n" " "); echo "::error::Copying failed: ${msg:-unknown error}"' ERR
+          psql "$DB" -At -c "select 'Database: ' || split_part(version(), ' on ', 1)"
           STAMP=$(TZ=Europe/Amsterdam date +%Y-%m-%d_%H%M)
           echo "STAMP=$STAMP" >> "$GITHUB_ENV"
           OUT="wintertuin-backup-$STAMP"; mkdir -p "$OUT/tables" "$OUT/files"
