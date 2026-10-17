@@ -38,6 +38,16 @@
     window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() });
   db.system_checks = [scRow('warn', 120), scRow('fail', 60 * 24)];
   window.__mockdb = db;
+  // translation service: answers '[nl] text' / '[en] text' so tests can see what was translated
+  const realFetch = window.fetch.bind(window);
+  window.fetch = async (url, opts) => {
+    const u = String(url);
+    if (u.startsWith('https://translate.googleapis.com/')) {
+      const q = new URL(u).searchParams; const out = `[${q.get('tl')}] ${q.get('q')}`;
+      return new Response(JSON.stringify([[[out, q.get('q')]]]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    return realFetch(url, opts);
+  };
 
   const JOIN = { staff_id: 'profiles', requested_by: 'profiles', claimed_by: 'profiles', shift_id: 'shifts' };
   function project(row, sel) {

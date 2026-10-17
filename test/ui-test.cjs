@@ -342,7 +342,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.$eval('.ab-pillar:nth-child(2)', (e) => e.dataset.pi) !== '1') throw new Error('concept tile did not move');
       if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('move failed');
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
-      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'people'));
+      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'team'));
       const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name !== 'Kees') throw new Error(row.html);
       await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
       await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
@@ -352,7 +352,19 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const nlBtn = async (re) => p.evaluate((src) => { const b = [...document.querySelectorAll('#lang-toggle button')].find((x) => new RegExp(src).test(x.textContent)); b && b.click(); }, re);
       await nlBtn('NL'); await p.waitForSelector('text=Het team');
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team edits not shown in Dutch');
-      if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('order not shown in Dutch');
+      // a new person's text is written in one language and translated into the other
+      const roleRows = () => p.evaluate(() => window.__mockdb.about_content.filter((r) => /^p:p\d+:role$/.test(r.key)));
+      let rr = await roleRows();
+      const manual = rr.find((r) => !r.html.startsWith('<!--auto-->')); const auto = rr.find((r) => r.html.startsWith('<!--auto-->'));
+      if (!manual || !auto || manual.page === auto.page) throw new Error('no translation saved ' + JSON.stringify(rr));
+      // correcting the translation by hand changes only that language
+      const autoLang = auto.page.slice(4);
+      await nlBtn(autoLang.toUpperCase()); await p.waitForSelector(autoLang === 'nl' ? 'text=Het team' : 'text=The team');
+      await p.click('#ab-edit'); await p.click('.ab-person:last-child [data-f="role"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Gastheer');
+      await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
+      rr = await roleRows();
+      if (rr.find((r) => r.page === auto.page).html !== 'Gastheer') throw new Error('correction not saved ' + JSON.stringify(rr));
+      if (rr.find((r) => r.page === manual.page).html !== manual.html) throw new Error('original overwritten by a correction ' + JSON.stringify(rr));
       await nlBtn('EN'); await p.waitForSelector('text=The team');
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('[data-nav=about]'); });
     await step('About page: manager edits and saves text', async () => {
