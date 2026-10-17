@@ -19,7 +19,7 @@ async function session(browser, role, viewport) {
   return { ctx, page, errors };
 }
 const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await fn(); console.log('ok'); };
-const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login-form'); await p.fill('[name=email]', 'a@b.c'); await p.fill('[name=password]', 'test'); await p.click('button[type=submit]'); await p.waitForSelector('.sop-card'); };
+const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login-form'); await p.fill('[name=email]', 'a@b.c'); await p.fill('[name=password]', 'test'); await p.click('button[type=submit]'); await p.waitForSelector('.about-app'); await p.goto(BASE + '#/sops'); await p.waitForSelector('.sop-card'); };
 
 (async () => {
   const browser = await chromium.launch();
@@ -28,7 +28,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     const A = await session(browser, 'manager', { width: 1280, height: 900 });
     const p = A.page;
     await step('login page in English', async () => { await p.goto(BASE); await p.waitForSelector('#login-form'); if (!/Sign in/.test(await p.textContent('h1'))) throw new Error('not English'); await p.screenshot({ path: `${OUT}/01-login.png` }); });
-    await step('login lands on SOPs', async () => { await login(p); await p.screenshot({ path: `${OUT}/02-sops.png`, fullPage: true }); });
+    await step('login lands on About (first in the menu)', async () => { await login(p); await p.screenshot({ path: `${OUT}/02-sops.png`, fullPage: true }); });
     await step('SOPs in English, Dutch fallback, translation hint', async () => {
       const body = await p.textContent('#app');
       if (!/Morning check kitchen/.test(body) || !/Coffee machine on/.test(body)) throw new Error('English not shown');
@@ -298,11 +298,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('settings: top menu order by number and arrows, applied to the menu', async () => {
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      let first = await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
+      let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
       await p.goto(BASE + '#/home'); await p.waitForSelector('.hc-tile'); if (!/#\/haccp$/.test(p.url())) throw new Error('start page is ' + p.url());
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      first = await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
+      first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
       await p.click('#reset-nav'); await p.click('#save-nav'); await p.waitForTimeout(400);
       if ((await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
     await step('switch to Dutch, saved in profile', async () => {
@@ -320,12 +320,17 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#ab-edit'); await p.click('#ab-add');
       await p.click('.ab-person:last-child [data-f="name"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Testpersoon');
       await p.click('.ab-person:first-child [data-rm]');
+      if (!(await p.$('.ab-person:first-child .ab-photo-edit .ab-ph'))) throw new Error('no photo placeholder');
+      await p.click('[data-down="team"]');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('move failed');
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
       const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'people'));
       const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name === 'Joost') throw new Error(row.html);
       await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
       await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
-      if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded'); });
+      if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('order not kept');
+      await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('[data-nav=about]'); });
     await step('About page: manager edits and saves text', async () => {
       await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');
       await p.click('h1[data-edit]'); await p.keyboard.press('End'); await p.keyboard.type(' Baarn');
@@ -355,7 +360,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await q.$('.day-toggle, .row-handle, .row-move')) throw new Error('staff can change days or order');
       await q.click('.day-tab:not(.on)'); await q.waitForSelector('.day-tab.on');
       await q.screenshot({ path: `${OUT}/09b-roster-phone.png`, fullPage: true });
-      await q.goto(BASE + '#/settings'); await q.waitForSelector('.sop-card');
+      await q.goto(BASE + '#/settings'); await q.waitForSelector('.about-app');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
     await step('staff: offer own shift for swap', async () => {

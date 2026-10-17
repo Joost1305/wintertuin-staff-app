@@ -4,13 +4,15 @@ import { state } from './core.js';
 import { sb } from './data.js';
 
 export const NAV_ITEMS = [
-  ['sops', 'nav_sops'], ['menu', 'nav_menu'], ['links', 'nav_links'], ['roster', 'nav_roster'], ['events', 'nav_events'],
+  ['about', 'nav_about'], ['sops', 'nav_sops'], ['menu', 'nav_menu'], ['links', 'nav_links'], ['roster', 'nav_roster'], ['events', 'nav_events'],
   ['haccp', 'nav_haccp'], ['checkin', 'nav_checkin'], ['swap', 'nav_swap'], ['settings', 'nav_settings'],
 ];
 
 export function orderPaths(paths, order) {
   const o = Array.isArray(order) ? order : [];
-  const rank = (p) => { const i = o.indexOf(p); return i === -1 ? o.length + NAV_ITEMS.findIndex(([x]) => x === p) : i; };
+  const rank = (p) => { const i = o.indexOf(p);
+    if (i === -1 && p === 'about') return -1; // About (added later) starts first until a manager places it
+    return i === -1 ? o.length + NAV_ITEMS.findIndex(([x]) => x === p) : i; };
   return [...paths].sort((a, b) => rank(a) - rank(b));
 }
 

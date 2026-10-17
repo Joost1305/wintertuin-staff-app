@@ -28,8 +28,8 @@ const TEXT = {
     more_h: 'Meer over de Wintertuin',
     intro_h: 'Het gebouw en het park', intro_p: 'De kas, het Cantonspark en wat we hier gaan doen.',
     hist_h: 'Honderd jaar geschiedenis', hist_p: 'De tijdlijn van landgoed tot botanische tuin tot horeca.',
-    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, daarna Opslaan.',
-    add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
+    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, op de cirkel voor een foto, en zet blokken met de pijltjes op hun plek. Daarna Opslaan.',
+    add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', photo_add: '+ Foto', photo_change: 'Wijzig', up: 'Omhoog', down: 'Omlaag', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
     new_name: 'Naam', new_role: 'Rol', new_bio: 'Een paar zinnen over jezelf.',
     guide: {
       menu: 'Gerechten, allergenen en de menukaarten.', sops: 'Hoe we dingen doen: openen, sluiten, recepturen en werkwijzen.',
@@ -60,8 +60,8 @@ const TEXT = {
     more_h: 'More about the Wintertuin',
     intro_h: 'The building and the park', intro_p: 'The greenhouse, the Cantonspark and what we are going to do here.',
     hist_h: 'A hundred years of history', hist_p: 'The timeline from country estate to botanical garden to restaurant.',
-    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, then Save.',
-    add_person: '+ Person', remove: 'Remove', photo: 'Photo', saved: 'Saved for everyone', nothing: 'Nothing changed',
+    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, the circle for a photo, and move blocks with the arrows. Then Save.',
+    add_person: '+ Person', remove: 'Remove', photo: 'Photo', photo_add: '+ Photo', photo_change: 'Change', up: 'Up', down: 'Down', saved: 'Saved for everyone', nothing: 'Nothing changed',
     new_name: 'Name', new_role: 'Role', new_bio: 'A few sentences about yourself.',
     guide: {
       menu: 'Dishes, allergens and the menus.', sops: 'How we do things: opening, closing, recipes and procedures.',
@@ -74,19 +74,20 @@ const TEXT = {
   },
 };
 
-const initials = (n) => String(n || '?').trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+// Silhouette shown until a photo is uploaded
+const PLACEHOLDER = '<svg class="ab-ph" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="25" r="11" fill="currentColor"/><path d="M12 56c2-11 10-17 20-17s18 6 20 17z" fill="currentColor"/></svg>';
 const safePhoto = (u) => (typeof u === 'string' && u.startsWith(`${SUPABASE_URL}/storage/`) ? u : '');
 
 function personHtml(p, editing, T) {
   const photo = safePhoto(p.photo);
   return `<article class="ab-person" data-photo="${esc(photo)}">
-    <div class="ab-photo">${photo ? `<img src="${esc(photo)}" alt="">` : `<span>${esc(initials(p.name))}</span>`}</div>
+    ${editing ? `<label class="ab-photo ab-photo-edit" title="${T.photo}">` : '<div class="ab-photo">'}${photo ? `<img src="${esc(photo)}" alt="">` : PLACEHOLDER}
+      ${editing ? `<span class="ab-cam">${photo ? T.photo_change : T.photo_add}</span><input type="file" accept="image/*" hidden data-photo-in></label>` : '</div>'}
     <div class="ab-pbody">
       <h3 data-f="name">${esc(p.name)}</h3>
       <div class="ab-role" data-f="role">${esc(p.role)}</div>
       <p data-f="bio">${esc(p.bio)}</p>
-      ${editing ? `<div class="ab-ptools"><label class="btn btn-sm">${T.photo}<input type="file" accept="image/*" hidden data-photo-in></label>
-        <button type="button" class="btn btn-sm" data-rm>${T.remove}</button></div>` : ''}
+      ${editing ? `<div class="ab-ptools"><button type="button" class="btn btn-sm" data-rm>${T.remove}</button></div>` : ''}
     </div></article>`;
 }
 
@@ -108,6 +109,30 @@ export async function renderAbout() {
   const navLabel = (p) => ($(`#nav a[href="#/${p}"]`)?.childNodes[0]?.textContent || p);
   const editable = (k, tag, cls = '') => `<${tag} data-edit="${k}"${cls ? ` class="${cls}"` : ''}>${txt(k)}</${tag}>`;
 
+  const arrows = (k) => `<div class="ab-move"><button type="button" class="btn btn-sm" data-up="${k}" aria-label="${T.up}">&#9650;</button><button type="button" class="btn btn-sm" data-down="${k}" aria-label="${T.down}">&#9660;</button></div>`;
+  const SEC = {
+    concept: (ed) => `<section class="ab-sec" data-sec="concept">${ed ? arrows('concept') : ''}${editable('concept_h', 'h2')}
+        <div class="ab-pillars">${[1, 2, 3, 4, 5].map((i) => `<div class="ab-pillar">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}</div>`).join('')}</div>
+      </section>`,
+    team: (ed) => `<section class="ab-sec" data-sec="team">${ed ? arrows('team') : ''}${editable('team_h', 'h2')}${editable('team_intro', 'p', 'muted')}
+        <div class="ab-people" id="ab-people">${people.map((p) => personHtml(p, ed, T)).join('')}</div>
+        ${ed ? `<button type="button" class="btn btn-sm" id="ab-add" style="margin-top:12px">${T.add_person}</button>` : ''}
+      </section>`,
+    app: (ed) => `<section class="ab-sec" data-sec="app">${ed ? arrows('app') : ''}${editable('app_h', 'h2')}${editable('app_intro', 'p', 'muted')}
+        <div class="card ab-guide">${guideKeys.map((p) => `<a class="ab-gi" href="#/${p}"><strong>${esc(navLabel(p))}</strong><span>${esc(T.guide[p])}</span></a>`).join('')}
+          <a class="ab-gi" id="ab-fin" href="${esc($('#app-switch')?.getAttribute('href') || '#')}"><strong>Finance</strong><span>${esc(T.finance)}</span></a></div>
+      </section>`,
+    more: (ed) => `<section class="ab-sec" data-sec="more">${ed ? arrows('more') : ''}${editable('more_h', 'h2')}
+        <div class="ab-more">
+          <a class="card ab-link" href="Wintertuin-Intro.html">${editable('intro_h', 'h3')}${editable('intro_p', 'p', 'muted')}<span class="ab-arrow">&rarr;</span></a>
+          <a class="card ab-link" href="Wintertuin-Cantonspark-Geschiedenis.html">${editable('hist_h', 'h3')}${editable('hist_p', 'p', 'muted')}<span class="ab-arrow">&rarr;</span></a>
+        </div>
+      </section>`,
+  };
+  const DEFAULT_ORDER = ['concept', 'team', 'app', 'more'];
+  let order = DEFAULT_ORDER;
+  try { if (saved.order) { const o = JSON.parse(saved.order).filter((k) => SEC[k]); order = [...o, ...DEFAULT_ORDER.filter((k) => !o.includes(k))]; } } catch { /* default order */ }
+
   const draw = (editing) => {
     app().innerHTML = `<div class="about-app ${editing ? 'editing' : ''}">
       <div class="page-head ab-head"><div>
@@ -118,26 +143,7 @@ export async function renderAbout() {
       </div>
       ${editing ? `<div class="note ab-hint">${T.editing}</div>` : ''}
 
-      <section class="ab-sec">${editable('concept_h', 'h2')}
-        <div class="ab-pillars">${[1, 2, 3, 4, 5].map((i) => `<div class="ab-pillar">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}</div>`).join('')}</div>
-      </section>
-
-      <section class="ab-sec">${editable('team_h', 'h2')}${editable('team_intro', 'p', 'muted')}
-        <div class="ab-people" id="ab-people">${people.map((p) => personHtml(p, editing, T)).join('')}</div>
-        ${editing ? `<button type="button" class="btn btn-sm" id="ab-add" style="margin-top:12px">${T.add_person}</button>` : ''}
-      </section>
-
-      <section class="ab-sec">${editable('app_h', 'h2')}${editable('app_intro', 'p', 'muted')}
-        <div class="card ab-guide">${guideKeys.map((p) => `<a class="ab-gi" href="#/${p}"><strong>${esc(navLabel(p))}</strong><span>${esc(T.guide[p])}</span></a>`).join('')}
-          <a class="ab-gi" id="ab-fin" href="${esc($('#app-switch')?.getAttribute('href') || '#')}"><strong>Finance</strong><span>${esc(T.finance)}</span></a></div>
-      </section>
-
-      <section class="ab-sec">${editable('more_h', 'h2')}
-        <div class="ab-more">
-          <a class="card ab-link" href="Wintertuin-Intro.html">${editable('intro_h', 'h3')}${editable('intro_p', 'p', 'muted')}<span class="ab-arrow">&rarr;</span></a>
-          <a class="card ab-link" href="Wintertuin-Cantonspark-Geschiedenis.html">${editable('hist_h', 'h3')}${editable('hist_p', 'p', 'muted')}<span class="ab-arrow">&rarr;</span></a>
-        </div>
-      </section></div>`;
+      <div id="ab-secs">${order.map((k) => SEC[k](editing)).join('')}</div></div>`;
 
     if (!isManager()) return;
     if (!editing) { $('#ab-edit').onclick = () => draw(true); return; }
@@ -158,7 +164,8 @@ export async function renderAbout() {
           if (error) throw error;
           const url = sb.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
           card.dataset.photo = url;
-          $('.ab-photo', card).innerHTML = `<img src="${esc(url)}" alt="">`;
+          const old = $('.ab-photo img, .ab-photo .ab-ph', card); if (old) old.outerHTML = `<img src="${esc(url)}" alt="">`;
+          $('.ab-cam', card).textContent = T.photo_change;
         } catch (err) { toastError(err); }
       };
     };
@@ -168,6 +175,14 @@ export async function renderAbout() {
       wrap.innerHTML = personHtml({ name: T.new_name, role: T.new_role, bio: T.new_bio }, true, T);
       const card = wrap.firstElementChild; $('#ab-people').appendChild(card); wirePerson(card);
     };
+    const orderBefore = JSON.stringify(order);
+    const move = (k, d) => {
+      const secs = $$('#ab-secs > .ab-sec'); const i = secs.findIndex((x) => x.dataset.sec === k); const j = i + d;
+      if (j < 0 || j >= secs.length) return;
+      if (d < 0) secs[j].before(secs[i]); else secs[j].after(secs[i]);
+    };
+    $$('[data-up]').forEach((b) => (b.onclick = () => move(b.dataset.up, -1)));
+    $$('[data-down]').forEach((b) => (b.onclick = () => move(b.dataset.down, 1)));
     $('#ab-cancel').onclick = () => draw(false);
     $('#ab-save').onclick = async () => {
       const now = new Date().toISOString();
@@ -178,11 +193,13 @@ export async function renderAbout() {
         bio: $('[data-f="bio"]', c).textContent.trim(), photo: safePhoto(c.dataset.photo),
       })).filter((p) => p.name);
       if (JSON.stringify(next) !== peopleBefore) rows.push({ page, key: 'people', html: JSON.stringify(next), updated_at: now });
+      const nextOrder = $$('#ab-secs > .ab-sec').map((x) => x.dataset.sec);
+      if (JSON.stringify(nextOrder) !== orderBefore) rows.push({ page, key: 'order', html: JSON.stringify(nextOrder), updated_at: now });
       if (!rows.length) { toast(T.nothing); draw(false); return; }
       const { error } = await sb.from('about_content').upsert(rows, { onConflict: 'page,key' });
       if (error) { toastError(error); return; }
       rows.forEach((r) => { saved[r.key] = r.html; });
-      people = next;
+      people = next; order = nextOrder;
       toast(T.saved); draw(false);
     };
   };

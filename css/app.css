@@ -818,7 +818,7 @@ table.roster th .ro-ev .evdot { margin-top: 3px; }
 .ab-pillar p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
 .ab-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
 .ab-person { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); display: flex; gap: 14px; align-items: flex-start; }
-.ab-photo { flex: 0 0 64px; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; font-size: 20px; }
+.ab-photo { flex: 0 0 84px; width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: var(--primary-soft); color: var(--primary); display: grid; place-items: center; font-weight: 700; font-size: 20px; }
 .ab-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ab-pbody { min-width: 0; flex: 1; }
 .ab-pbody h3 { margin: 2px 0 2px; font-size: 17px; }
@@ -839,3 +839,9 @@ table.roster th .ro-ev .evdot { margin-top: 3px; }
 .about-app.editing [data-edit], .about-app.editing [data-f] { border-radius: 6px; outline: 1px dashed var(--line); outline-offset: 2px; cursor: text; }
 .about-app.editing [data-edit]:focus, .about-app.editing [data-f]:focus { outline: 2px solid var(--primary); background: var(--surface); }
 @media (max-width: 640px) { .ab-more { grid-template-columns: 1fr; } .ab-head h1 { font-size: 25px; } }
+.ab-ph { align-self: end; width: 80%; height: 80%; color: #b9cdc5; }
+.ab-photo { position: relative; }
+.ab-photo-edit { cursor: pointer; outline: 2px dashed var(--primary); outline-offset: 2px; }
+.ab-cam { position: absolute; inset: auto 0 0 0; background: rgba(31, 42, 39, .62); color: #fff; font-size: 10.5px; font-weight: 600; text-align: center; padding: 3px 0 6px; }
+.about-app.editing .ab-sec { position: relative; border: 1px dashed var(--line); border-radius: var(--radius); padding: 12px 14px 14px; }
+.ab-move { float: right; display: flex; gap: 4px; margin: 0 0 6px 8px; }

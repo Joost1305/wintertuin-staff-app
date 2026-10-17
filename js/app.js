@@ -23,8 +23,7 @@ window.addEventListener('nav-order-changed', () => renderShell());
 try { window.name = 'wintertuin-team'; } catch { /* ignore */ }
 
 const routes = [
-  // About is always first in the top menu, before the order set under Settings (so never the start page)
-  { path: 'about', render: renderAbout, nav: null, show: () => true },
+  { path: 'about', render: renderAbout, nav: 'nav_about', show: () => true },
   { path: 'sops', render: renderSops, nav: 'nav_sops', show: () => true },
   { path: 'menu', render: renderMenu, nav: 'nav_menu', show: () => true },
   { path: 'links', render: renderLinks, nav: 'nav_links', show: () => true },
@@ -79,7 +78,7 @@ function renderShell() {
   const nav = $('#nav');
   const visible = routes.filter((r) => r.nav && r.show());
   const sorted = orderPaths(visible.map((r) => r.path), state.navOrder).map((p) => visible.find((r) => r.path === p));
-  nav.innerHTML = `<a href="#/about" class="${current === 'about' ? 'active' : ''}">${t('nav_about')}</a>` + sorted.map((r) =>
+  nav.innerHTML = sorted.map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`).join('') +
     // Managers change their password under Settings; staff (no Settings) keep it in the menu
     (isManager() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
