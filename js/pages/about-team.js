@@ -1,7 +1,7 @@
 // About: the concept, the team and a short guide to this app. First item of the top menu.
 // Texts and the team cards live in about_content (page 'app', shared by both languages), so a manager's edits are saved for
 // everyone. Managers click Edit: texts become editable, people can be added, removed and given a photo.
-import { isManager, app, esc, toast, toastError, $, $$ } from '../core.js';
+import { isManager, app, esc, toast, toastError, $, $$, openModal } from '../core.js';
 import { t, lang } from '../i18n.js';
 import { sb } from '../data.js';
 import { SUPABASE_URL, PHOTO_BUCKET } from '../config.js';
@@ -29,6 +29,7 @@ const TEXT = {
     intro_h: 'Het gebouw en het park', intro_p: 'De kas, het Cantonspark en wat we hier gaan doen.',
     hist_h: 'Honderd jaar geschiedenis', hist_p: 'De tijdlijn van landgoed tot botanische tuin tot horeca.',
     edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, op de cirkel voor een foto, en zet blokken en tegels met de pijltjes op hun plek. Daarna Opslaan.',
+    nl_title: 'Ook in het Nederlands?', nl_sub: 'Engels is leidend. Hieronder de vertaling, pas aan waar nodig.', nl_save: 'Nederlands opslaan', nl_skip: 'Nederlands laten zoals het is',
     add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', photo_add: '+ Foto', photo_change: 'Wijzig', up: 'Omhoog', down: 'Omlaag', left: 'Naar links', right: 'Naar rechts', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
     new_name: 'Naam', new_role: 'Rol', new_bio: 'Een paar zinnen over jezelf.',
     guide: {
@@ -61,6 +62,7 @@ const TEXT = {
     intro_h: 'The building and the park', intro_p: 'The greenhouse, the Cantonspark and what we are going to do here.',
     hist_h: 'A hundred years of history', hist_p: 'The timeline from country estate to botanical garden to restaurant.',
     edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, the circle for a photo, and move blocks and tiles with the arrows. Then Save.',
+    nl_title: 'Update the Dutch too?', nl_sub: 'English leads. Below is the Dutch translation; adjust where needed and save, or leave the Dutch as it is.', nl_save: 'Save Dutch', nl_skip: 'Leave Dutch as it is',
     add_person: '+ Person', remove: 'Remove', photo: 'Photo', photo_add: '+ Photo', photo_change: 'Change', up: 'Up', down: 'Down', left: 'Move left', right: 'Move right', saved: 'Saved for everyone', nothing: 'Nothing changed',
     new_name: 'Name', new_role: 'Role', new_bio: 'A few sentences about yourself.',
     guide: {
@@ -118,6 +120,21 @@ export async function translate(text, from, to) {
 const slug = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '') || `p${Date.now()}`;
 const SHARED = ['order', 'pillars', 'team', 'people'];
 
+// Hand-written Dutch for the texts Joost wrote in English on 17 October (replaces the machine translation once)
+const NL_FIX_AT = '2026-10-17T19:45:00.000Z';
+const NL_FIX = {
+  c4: 'In de zomer open tot 21:00, met lange tafels, diners en bijzondere avonden. In de winter een vroeg diner tot 19:00.',
+  c5: 'Thema-avonden met een eigen menu: over bijen, bomen, foerageren, koffie, brood en meer.',
+  'p:joost:role': 'Creatieve duizendpoot',
+  'p:joost:bio': 'Chef-kok, sinds 2007 in het horeca-onderwijs. Imker, wildplukker en kruidenkenner, en organiseert graag thema-avonden.',
+  'p:carel:role': 'Broodfluisteraar',
+  'p:carel:bio': 'Bakker die zeven jaar een succesvol restaurant runde. Zorgt voor het brood en de patisserie en houdt de keuken draaiende.',
+  'p:kees:role': 'Koffiekenner',
+  'p:kees:bio': 'Oud-restauranteigenaar en brander van specialty koffie. Reist naar de landen waar de koffie vandaan komt en organiseert koffieavonden.',
+  'p:jane:role': 'Hart van de zaak',
+  'p:jane:bio': 'Het gezicht van de zaak voor onze gasten: ontvangst, bediening en een geweldige barista.',
+};
+
 export async function renderAbout() {
   const L = lang() === 'nl' ? 'nl' : 'en';
   const O = L === 'nl' ? 'en' : 'nl';
@@ -155,6 +172,16 @@ export async function renderAbout() {
       legacy.forEach((p) => { put(l, `p:${slug(p.name)}:role`, esc(p.role || ''), shared.people.at); put(l, `p:${slug(p.name)}:bio`, esc(p.bio || ''), shared.people.at); });
     }
   } catch { /* default team */ }
+  // replace machine translations of 17 October with the hand-written Dutch (kept for good once a manager opens the page)
+  const fixes = [];
+  Object.entries(NL_FIX).forEach(([k, v]) => {
+    const cur = tx.nl[k];
+    if (cur && !(cur.auto && String(cur.at) < NL_FIX_AT)) return;
+    if (!cur && !tx.en[k]) return; // never written in English: the default Dutch text already fits
+    tx.nl[k] = { html: esc(v), auto: false, at: NL_FIX_AT };
+    fixes.push({ page: 'app-nl', key: k, html: esc(v), updated_at: NL_FIX_AT });
+  });
+  if (fixes.length && isManager()) sb.from('about_content').upsert(fixes, { onConflict: 'page,key' }).then(() => {}, () => {});
   const defaultOf = (l, k) => (T && TEXT[l][k] != null && typeof TEXT[l][k] === 'string' ? esc(TEXT[l][k]) : DEF[l][k] != null ? esc(DEF[l][k]) : null);
 
   // A text written in the other language and not yet here: translate it now (and keep it, if you may save)
@@ -282,15 +309,8 @@ export async function renderAbout() {
         if (!was || was.bio !== bio) changed.push([`p:${id}:bio`, esc(bio)]);
         return { id, name: $('[data-f="name"]', c).textContent.trim(), photo: safePhoto(c.dataset.photo) };
       }).filter((p) => p.name);
-      // write in this language; translate into the other one, unless you were correcting a translation
-      await Promise.all(changed.map(async ([k, html]) => {
-        const correcting = tx[L][k] && tx[L][k].auto;
-        rows.push({ page: `app-${L}`, key: k, html, updated_at: now });
-        tx[L][k] = { html, auto: false, at: now };
-        if (correcting) return;
-        const out = await translate(plain(html), L, O);
-        if (out) { rows.push({ page: `app-${O}`, key: k, html: AUTO + esc(out), updated_at: now }); tx[O][k] = { html: esc(out), auto: true, at: now }; }
-      }));
+      // English leads: saving in English then suggests the Dutch for you to check. Saving in Dutch changes only Dutch.
+      changed.forEach(([k, html]) => { rows.push({ page: `app-${L}`, key: k, html, updated_at: now }); tx[L][k] = { html, auto: false, at: now }; });
       if (JSON.stringify(nextTeam) !== teamBefore) rows.push({ page: 'app', key: 'team', html: JSON.stringify(nextTeam), updated_at: now });
       const nextOrder = $$('#ab-secs > .ab-sec').map((x) => x.dataset.sec);
       const nextPillars = $$('.ab-pillar').map((x) => Number(x.dataset.pi));
@@ -301,7 +321,30 @@ export async function renderAbout() {
       if (error) { btn.disabled = false; toastError(error); return; }
       team = nextTeam; order = nextOrder; pillars = nextPillars;
       toast(T.saved); draw(false);
+      if (L === 'en' && changed.length) suggestDutch(changed);
     };
   };
+  // After an English edit: the Dutch, translated, ready to check and adjust (or leave the Dutch as it is)
+  async function suggestDutch(changed) {
+    const items = await Promise.all(changed.map(async ([k, html]) => [k, plain(html), (await translate(plain(html), 'en', 'nl')) || '']));
+    openModal(`<h2>${T.nl_title}</h2><p class="small muted">${T.nl_sub}</p>
+      <form id="nlf">${items.map(([k, en, nl], i) => `<div class="field"><div class="small muted" style="margin-bottom:4px">${esc(en)}</div>
+        <textarea name="nl${i}" rows="${Math.min(5, Math.max(2, Math.ceil(nl.length / 60)))}" style="width:100%">${esc(nl)}</textarea></div>`).join('')}
+      <div class="modal-actions"><button type="button" data-close>${T.nl_skip}</button><button class="btn-primary" type="submit">${T.nl_save}</button></div></form>`,
+    (card, close) => {
+      card.querySelector('#nlf').onsubmit = async (e) => {
+        e.preventDefault();
+        const now = new Date().toISOString();
+        const rows = items.map(([k], i) => [k, card.querySelector(`[name=nl${i}]`).value.trim()]).filter(([, v]) => v)
+          .map(([k, v]) => ({ page: 'app-nl', key: k, html: esc(v), updated_at: now }));
+        if (rows.length) {
+          const { error } = await sb.from('about_content').upsert(rows, { onConflict: 'page,key' });
+          if (error) { toastError(error); return; }
+          rows.forEach((r) => { tx.nl[r.key] = { html: r.html, auto: false, at: now }; });
+        }
+        close(); toast(T.saved);
+      };
+    });
+  }
   draw(false);
 }

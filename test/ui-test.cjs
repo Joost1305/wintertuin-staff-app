@@ -352,19 +352,22 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const nlBtn = async (re) => p.evaluate((src) => { const b = [...document.querySelectorAll('#lang-toggle button')].find((x) => new RegExp(src).test(x.textContent)); b && b.click(); }, re);
       await nlBtn('NL'); await p.waitForSelector('text=Het team');
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team edits not shown in Dutch');
-      // a new person's text is written in one language and translated into the other
-      const roleRows = () => p.evaluate(() => window.__mockdb.about_content.filter((r) => /^p:p\d+:role$/.test(r.key)));
-      let rr = await roleRows();
-      const manual = rr.find((r) => !r.html.startsWith('<!--auto-->')); const auto = rr.find((r) => r.html.startsWith('<!--auto-->'));
-      if (!manual || !auto || manual.page === auto.page) throw new Error('no translation saved ' + JSON.stringify(rr));
-      // correcting the translation by hand changes only that language
-      const autoLang = auto.page.slice(4);
-      await nlBtn(autoLang.toUpperCase()); await p.waitForSelector(autoLang === 'nl' ? 'text=Het team' : 'text=The team');
-      await p.click('#ab-edit'); await p.click('.ab-person:last-child [data-f="role"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Gastheer');
+      // English leads: an English edit suggests the Dutch, which you can adjust before saving
+      await nlBtn('EN'); await p.waitForSelector('text=The team');
+      await p.click('#ab-edit'); await p.click('.ab-person:first-child [data-f="role"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Coffee expert');
+      await p.click('#ab-save'); await p.waitForSelector('.modal textarea');
+      if (!/\[nl\] Coffee expert/.test(await p.inputValue('.modal textarea'))) throw new Error('no Dutch suggestion');
+      await p.fill('.modal textarea', 'Koffiekenner'); await p.click('.modal button[type=submit]'); await p.waitForTimeout(400);
+      const rows = await p.evaluate(() => window.__mockdb.about_content.filter((r) => r.key === 'p:kees:role'));
+      if (rows.find((r) => r.page === 'app-en')?.html !== 'Coffee expert' || rows.find((r) => r.page === 'app-nl')?.html !== 'Koffiekenner') throw new Error(JSON.stringify(rows));
+      // a Dutch edit changes only Dutch
+      await nlBtn('NL'); await p.waitForSelector('text=Het team');
+      if (!/Koffiekenner/.test(await p.textContent('#ab-people'))) throw new Error('Dutch role not shown');
+      await p.click('#ab-edit'); await p.click('.ab-person:first-child [data-f="role"]'); await p.keyboard.press('Control+A'); await p.keyboard.type('Koffieman');
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
-      rr = await roleRows();
-      if (rr.find((r) => r.page === auto.page).html !== 'Gastheer') throw new Error('correction not saved ' + JSON.stringify(rr));
-      if (rr.find((r) => r.page === manual.page).html !== manual.html) throw new Error('original overwritten by a correction ' + JSON.stringify(rr));
+      if (await p.$('.modal:not([hidden]) textarea')) throw new Error('Dutch edit asked for a translation');
+      const rows2 = await p.evaluate(() => window.__mockdb.about_content.filter((r) => r.key === 'p:kees:role'));
+      if (rows2.find((r) => r.page === 'app-en')?.html !== 'Coffee expert' || rows2.find((r) => r.page === 'app-nl')?.html !== 'Koffieman') throw new Error(JSON.stringify(rows2));
       await nlBtn('EN'); await p.waitForSelector('text=The team');
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('[data-nav=about]'); });
     await step('About page: manager edits and saves text', async () => {
