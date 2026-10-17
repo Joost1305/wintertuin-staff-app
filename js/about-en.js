@@ -1,0 +1,61 @@
+// English default texts for the two background pages (Wintertuin-Intro and the history timeline).
+// The Dutch text lives in the HTML itself; with English chosen these replace it, block by block (data-edit keys).
+// A manager's English edits are saved separately (page 'intro-en' / 'history-en'), so both languages stay intact.
+export const EN = {
+  intro: {
+    k1: 'Baarn &middot; Cantonspark',
+    k2: 'Wintertuin',
+    k3: 'A greenhouse of glass and steel from 1914, built to let in the winter light, and for more than a hundred years the heart of a park that finds its own way.',
+    k4: 'The Wintertuin stands in the Cantonspark in Baarn, a small botanical park with a rich history. The greenhouse was built in 1914 by August Janssen to house his collection of tropical plants from the former Dutch East Indies, facing south to make the most of the scarce winter light. The building is now a national monument, as is the park around it.',
+    k5: 'In the hundred years since, the Wintertuin has taken many forms: botanical laboratory of Utrecht University, years of standing empty, a gallery, a butterfly garden with a café, and most recently Wintertuin Experience with a tea garden and escape rooms. None of these concepts lasted, mainly because of the cost of maintaining a largely glass monument and unclear agreements about who is responsible for what.',
+    k6: 'Since March 2026 the lease has been awarded to Stichting De Wintertuin. Within it a new hospitality concept is being developed: a bakery, lunch and a simple winter and summer dinner, carried by three specialisms in one space. The plan deliberately builds on the lessons of earlier attempts, with clearer agreements about maintenance, energy and what the building can and cannot handle.',
+    k7: '1914', k8: 'Year built',
+    k9: '3.5 ha', k10: 'Cantonspark',
+    k11: 'National monument', k12: 'Status greenhouse &amp; park',
+    k13: 'A hundred years of history',
+    k14: 'From country estate to botanical garden to restaurant: the full timeline of the Wintertuin and the Cantonspark around it.',
+    k15: 'Wintertuin, Baarn &middot; introduction',
+  },
+  history: {
+    k1: 'Background &middot; history',
+    k2: 'The Wintertuin &amp; the Cantonspark',
+    k3: 'Two stories in one: the park around the greenhouse and the greenhouse itself. Both begin with the same man, in the same year, and have been inseparable ever since.',
+    k4: 'The Cantonspark, the estate and park around it',
+    k5: 'The Wintertuin, the greenhouse itself',
+    k6: '1800', k7: 'Richard Scheerenberg has Huize Schoonoord built.<span class="sub">The later estate, part of which would one day become the Cantonspark.</span>',
+    k8: '1817', k9: 'Estate bought by jhr. Gerbrand Faas Elias.<span class="sub">It stays in the family until 1902.</span>',
+    k10: '1902', k11: 'The last of the line, freule A. Faas Elias, dies without children.<span class="sub">No heirs; the estate is broken up.</span>',
+    k12: '1905&ndash;1915', k13: 'August Janssen lays out a garden on part of the former grounds.<span class="sub">Janssen (1865&ndash;1918) had made his fortune in the then Dutch East Indies and owned the villas Peking, Java and Canton, hence the name.</span>',
+    k14: '1914', k15: 'The Wintertuin is built, a greenhouse of glass and steel.<span class="sub">Facing south for winter light, to house his collection of tropical plants from the Indies.</span>',
+    k16: '1915', k17: 'Janssen buys the natural stone colonnade for the park at an auction.',
+    k18: '1916', k19: 'Janssen funds the building of a swimming pool on the river Eem.<span class="sub">One of his social projects in Baarn; the street next to it is named after him.</span>',
+    k20: '1918', k21: 'August Janssen dies.<span class="sub">Utrecht University becomes the owner and turns the park into a botanical garden.</span>',
+    k22: '1918&ndash;1987', k23: 'The Wintertuin serves as the university\'s botanical laboratory and classroom.',
+    k24: '1960s&ndash;1970s', k25: 'The university moves to the Uithof, with a new, modern botanical garden.<span class="sub">Greenhouse plants and greenhouses move along, the classroom disappears. Only the Wintertuin itself remains.</span>',
+    k26: '1987', k27: 'The park is handed over to the municipality of Baarn for one guilder.<span class="sub">Condition: its special botanical value must be preserved. From now on a public park.</span>',
+    k28: '1987', k29: 'The Wintertuin becomes a national monument, as does the park itself.',
+    k30: '1987&ndash;2012', k31: 'The Wintertuin stands largely empty, used now and then as a gallery.',
+    k32: '1995', k33: 'The Friends of the Cantonspark foundation is set up.<span class="sub">It advises the municipality on maintenance and planting, to this day.</span>',
+    k34: '2012', k35: 'The Wintertuin is restored with a national grant.',
+    k36: '2013', k37: 'A café combined with a butterfly garden opens in the Wintertuin and soon closes again.',
+    k38: '2015', k39: 'The Cantonspark celebrates its 100th anniversary.<span class="sub">The Friends foundation puts the full history of the park online.</span>',
+    k40: '2018', k41: 'Restoration of the park itself begins.<span class="sub">Aimed at bringing back the original atmosphere, with new Asian trees and shrubs.</span>',
+    k42: '2019', k43: 'Wintertuin Experience opens: tea garden, terrace, two escape rooms.',
+    k44: '2020&ndash;2022', k45: 'Covid closures and a growing maintenance dispute with the municipality hit the business.',
+    k46: '2022', k47: 'Gas prices rise about 8&times;; the municipality steps in with more than &euro;120,000 in support.',
+    k48: '10 Jul 2023', k49: 'The café in the Wintertuin closes for good; the building has not been open to the public for that purpose since.',
+    k50: 'Dec 2025', k51: 'Subsidence of the Wintertuin\'s foundation is first reported.',
+    k52: 'Jul 2026', k53: 'The Wintertuin is closed with immediate effect because of the foundation.<span class="sub">The municipality sets aside &euro;100,000 for repairs.</span>',
+    k54: 'Mar 2026', k55: 'The lease of the Wintertuin is awarded to Stichting De Wintertuin (Mette te Velde and others).',
+    k56: 'Now', k57: '<b>A new hospitality concept is being developed within the Wintertuin</b>, in a park that for more than a hundred years has found its own way between decline and recovery.',
+    k58: 'Sources',
+    k59: 'Wikipedia, "Cantonspark" &middot; Stichting Vrienden van het Cantonspark (cantonspark.nl) &middot; svjmedia.nl, "De geschiedenis van het Cantonspark" &middot; Eemland1 &middot; koloniaalerfgoedtevoet.nl &middot; opdeheuvelrug.nl &middot; RTV Utrecht &middot; Gemeente Baarn (baarn.nl) &middot; BaarnscheCourant',
+    k60: 'Wintertuin &amp; Cantonspark, Baarn &middot; background',
+  },
+};
+
+// Fixed bits of the pages that are not editable (back link, buttons)
+export const UI = {
+  nl: { back_intro: '&larr; Introductie', timeline: 'Bekijk de tijdlijn &rarr;', print: '&#128424; Print / PDF' },
+  en: { back_intro: '&larr; Introduction', timeline: 'View the timeline &rarr;', print: '&#128424; Print / PDF' },
+};

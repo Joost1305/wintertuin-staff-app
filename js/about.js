@@ -1,6 +1,7 @@
 // About pages (intro and history): text blocks are stored in the database (about_content),
 // so a manager's edits are saved for everyone. Everyone else reads; without a login you see the default text.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
+import { EN, UI } from './about-en.js';
 
 const L = {
   en: { hint: 'Managers: click Edit to change the text', edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, then Save',
@@ -27,7 +28,25 @@ function toast(msg, error) {
   clearTimeout(toast.timer); toast.timer = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
-export async function initAbout(page) {
+// The pages follow the language of the Team app (EN / NL), with their own switch at the top.
+function applyLanguage(base) {
+  document.documentElement.lang = lang;
+  if (lang === 'en' && EN[base]) document.querySelectorAll('[data-edit]').forEach((b) => { const v = EN[base][b.dataset.edit]; if (v != null) b.innerHTML = v; });
+  document.querySelectorAll('[data-ui]').forEach((el) => { const v = UI[lang][el.dataset.ui]; if (v != null) el.innerHTML = v; });
+  const tools = document.querySelector('.topbar-right');
+  if (tools && !document.getElementById('lang-sw')) {
+    const sw = document.createElement('span');
+    sw.id = 'lang-sw'; sw.className = 'lang-sw';
+    sw.innerHTML = ['en', 'nl'].map((l) => `<button type="button" class="${l === lang ? 'on' : ''}" data-l="${l}">${l.toUpperCase()}</button>`).join('');
+    sw.onclick = (e) => { const l = e.target.dataset && e.target.dataset.l; if (!l || l === lang) return; try { localStorage.setItem('wtteam_lang', l); } catch { /* private mode */ } location.reload(); };
+    tools.prepend(sw);
+  }
+}
+
+export async function initAbout(base) {
+  applyLanguage(base);
+  // Dutch edits are stored under the page name itself (as before), English edits under '<page>-en'
+  const page = lang === 'en' ? `${base}-en` : base;
   const blocks = [...document.querySelectorAll('[data-edit]')];
   if (!window.supabase) return;
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });

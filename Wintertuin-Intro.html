@@ -55,6 +55,10 @@
   @media (max-width: 640px) { .hero h1 { font-size: 2.2rem; } .facts { grid-template-columns: 1fr; } }
   .about-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 12px; font-weight: 600; z-index: 50; }
   .about-toast.error { background: #B5524A; }
+  .lang-sw { display: inline-flex; border: 1px solid var(--line, #E3DFD5); border-radius: 99px; overflow: hidden; margin-right: 6px; }
+  .lang-sw button { border: 0; background: transparent; font: 600 12px/1 inherit; font-family: inherit; padding: 7px 10px; cursor: pointer; color: inherit; }
+  .lang-sw button.on { background: #2F5D50; color: #fff; }
+  @media print { .lang-sw { display: none; } }
 </style>
 </head>
 <body>
@@ -62,7 +66,7 @@
 <header class="topbar">
   <a class="brand" href="index.html#/about"><img src="img/icon.svg" width="28" height="28" alt=""><span>&larr; Wintertuin Team</span></a>
   <div class="topbar-right"><span class="edit-hint" id="edit-hint"></span><span id="edit-tools"></span>
-    <button class="btn" onclick="window.print()">&#128424; Print / PDF</button></div>
+    <button class="btn" onclick="window.print()" data-ui="print">&#128424; Print / PDF</button></div>
 </header>
 
 <div class="page">
@@ -90,13 +94,13 @@
       <h2 data-edit="k13">Honderd jaar geschiedenis</h2>
       <p data-edit="k14">Van landgoed tot botanische tuin tot horecapand, de volledige tijdlijn van de Wintertuin &eacute;n het Cantonspark eromheen.</p>
     </div>
-    <a class="btn" href="Wintertuin-Cantonspark-Geschiedenis.html">Bekijk de tijdlijn &rarr;</a>
+    <a class="btn" href="Wintertuin-Cantonspark-Geschiedenis.html" data-ui="timeline">Bekijk de tijdlijn &rarr;</a>
   </div>
 
   <footer data-edit="k15">Wintertuin, Baarn &middot; introductie</footer>
 </div>
 <div id="about-toast" class="about-toast" hidden></div>
 <script src="vendor/supabase.js"></script>
-<script type="module">import { initAbout } from "./js/about.js"; initAbout("intro");</script>
+<script type="module">import { initAbout } from "./js/about.js?v=2026-10-17-2"; initAbout("intro");</script>
 </body>
 </html>

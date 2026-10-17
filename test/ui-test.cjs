@@ -359,12 +359,19 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');
       await p.click('h1[data-edit]'); await p.keyboard.press('End'); await p.keyboard.type(' Baarn');
       await p.click('#ab-save'); await p.waitForTimeout(300);
-      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.page === 'intro'));
+      const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.page === 'intro-en'));
       if (!row || !/Wintertuin Baarn/.test(row.html)) throw new Error(JSON.stringify(row));
       await p.screenshot({ path: `${OUT}/10-about.png` });
       await p.goto(BASE + 'Wintertuin-Cantonspark-Geschiedenis.html'); await p.waitForSelector('#ab-edit');
       if (!/Seeded history title/.test(await p.textContent('h1'))) throw new Error('saved text not loaded');
-      if (await p.evaluate(() => window.__xss)) throw new Error('script ran'); });
+      if (await p.evaluate(() => window.__xss)) throw new Error('script ran');
+      if (!/Background/.test(await p.textContent('.eyebrow'))) throw new Error('history not in English');
+      await p.click('#lang-sw [data-l=nl]'); await p.waitForSelector('#lang-sw [data-l=nl].on');
+      if (!/Opgeslagen titel/.test(await p.textContent('h1')) || !/Achtergrond/.test(await p.textContent('.eyebrow'))) throw new Error('history not in Dutch');
+      await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#lang-sw');
+      if (!/Bekijk de tijdlijn/.test(await p.textContent('.history-card'))) throw new Error('intro not in Dutch');
+      await p.click('#lang-sw [data-l=en]'); await p.waitForSelector('#lang-sw [data-l=en].on');
+      if (!/View the timeline/.test(await p.textContent('.history-card'))) throw new Error('intro not back in English'); });
     await A.ctx.close();
     if (A.errors.length) { failed = true; console.log('ERRORS (manager):', A.errors); }
 

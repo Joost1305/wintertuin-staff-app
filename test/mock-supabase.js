@@ -23,7 +23,7 @@
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0, allergens: ['gluten'] },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],
-    shifts: [], checkins: [], events: [], event_versions: [], shift_swap_requests: [], fin_restaurants: [{ id: 'r1', organization_id: 'org1' }], fin_users: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
+    shifts: [], checkins: [], events: [], event_versions: [], shift_swap_requests: [], fin_restaurants: [{ id: 'r1', organization_id: 'org1' }], fin_users: [], about_content: [{ page: 'history-en', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }, { page: 'history', key: 'k2', html: 'Opgeslagen titel' }],
   };
   const today = new Date();
   for (let i = 0; i < 4; i++) { const d = new Date(today); d.setDate(d.getDate() + i);
