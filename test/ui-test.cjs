@@ -160,6 +160,20 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'New Person'); await p.fill('.modal [name=email]', 'new@example.test'); await p.click('.modal button[type=submit]');
       await p.waitForSelector('.pw-card code'); await p.screenshot({ path: `${OUT}/07-settings.png` }); await p.keyboard.press('Escape'); });
+    await step('settings: one account for both apps, Finance access set from the Team app', async () => {
+      await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
+      await p.fill('.modal [name=full_name]', 'Shared Login'); await p.fill('.modal [name=email]', 'shared@example.test');
+      await p.selectOption('.modal [name=role]', 'manager'); await p.selectOption('.modal [name=fin_role]', 'org_admin');
+      await p.click('.modal button[type=submit]'); await p.waitForSelector('.pw-card code'); await p.keyboard.press('Escape');
+      const st = await p.evaluate(() => ({ prof: window.__mockdb.profiles.find((x) => x.email === 'shared@example.test'), fin: window.__mockdb.fin_users.find((x) => x.email === 'shared@example.test') }));
+      if (!st.prof || st.prof.role !== 'manager') throw new Error('team role ' + JSON.stringify(st.prof));
+      if (!st.fin || st.fin.role !== 'org_admin') throw new Error('finance access ' + JSON.stringify(st.fin));
+      await p.goto(BASE + '#/settings/sops'); await p.goto(BASE + '#/settings/team'); await p.waitForSelector('text=Admin (everything)');
+      await p.click(`[data-edit="${st.prof.id}"]`); await p.selectOption('.modal [name=fin_role]', ''); await p.click('.modal button[type=submit]'); await p.waitForTimeout(400);
+      if (await p.evaluate(() => window.__mockdb.fin_users.some((x) => x.email === 'shared@example.test'))) throw new Error('finance access not removed');
+      await p.click(`[data-edit="${st.prof.id}"]`); await p.selectOption('.modal [name=fin_role]', 'staff'); await p.click('.modal button[type=submit]'); await p.waitForTimeout(400);
+      if (!(await p.evaluate(() => window.__mockdb.fin_users.some((x) => x.email === 'shared@example.test' && x.role === 'staff')))) throw new Error('finance access not given back');
+      await p.screenshot({ path: `${OUT}/07b-accounts.png`, fullPage: true }); });
     await step('settings: add fixed shift', async () => {
       await p.goto(BASE + '#/settings/templates'); await p.click('#add'); await p.fill('.modal [name=name]', 'Evening'); await p.fill('.modal [name=start_time]', '17:00'); await p.fill('.modal [name=end_time]', '23:00');
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Evening'); });

@@ -142,35 +142,73 @@ function credentialsPopup(name, email, password) {
   });
 }
 
+// Finance access is managed from here too (same login), through the finance app's own admin function.
+// Shown only when you may manage finance users; otherwise the Finance column and choices stay hidden.
+const FIN_ROLES = ['staff', 'manager', 'org_admin'];
+async function loadFinanceAccess() {
+  try {
+    const { data: r } = await sb.from('fin_restaurants').select('organization_id').limit(1).maybeSingle();
+    if (!r) return null;
+    const { data, error } = await sb.functions.invoke('fin-admin-users', { body: { action: 'list', organization_id: r.organization_id } });
+    if (error || !data || data.error) return null;
+    return { org: r.organization_id, users: data.users || [] };
+  } catch { return null; }
+}
+async function finAdmin(body) {
+  const { data, error } = await sb.functions.invoke('fin-admin-users', { body });
+  if (error) { let msg = error.message; try { const j = await error.context.json(); msg = j.error || msg; } catch { /* keep */ } throw new Error(msg); }
+  if (data && data.error) throw new Error(data.error);
+  return data;
+}
+
 async function team(el) {
-  state.profiles = await loadProfiles();
+  el.innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
+  const [profiles, fin] = await Promise.all([loadProfiles(), loadFinanceAccess()]);
+  state.profiles = profiles;
   const rows = state.profiles;
+  const finOf = (p) => (fin ? fin.users.find((u) => u.user_id === p.id || (p.email && u.email && u.email.toLowerCase() === p.email.toLowerCase())) : null);
+  const finLabel = (u) => (u && u.active !== false ? t('fin_role_' + u.role) || u.role : '–');
+  const finOptions = [{ value: '', label: t('fin_none') }, ...FIN_ROLES.map((r) => ({ value: r, label: t('fin_role_' + r) }))];
+  const teamRoles = [{ value: 'staff', label: t('role_staff') }, { value: 'manager', label: t('role_manager') }];
   el.innerHTML = `<div class="card"><div class="split"><div><h2 style="margin:0">${t('set_team')}</h2><div class="small muted">${t('set_team_sub')}</div></div>
       <button type="button" class="btn-primary btn-sm" id="add">+ ${t('add_account')}</button></div>
-    <div class="table-wrap" style="margin-top:12px"><table class="stack"><thead><tr><th>${t('name')}</th><th>${t('email')}</th><th>${t('role')}</th><th>${t('active')}</th><th></th></tr></thead><tbody>
+    <div class="table-wrap" style="margin-top:12px"><table class="stack"><thead><tr><th>${t('name')}</th><th>${t('email')}</th><th>${t('role')}</th>${fin ? `<th>Finance</th>` : ''}<th>${t('active')}</th><th></th></tr></thead><tbody>
     ${rows.map((p) => { const self = p.id === state.me.id; return `<tr>
       <td data-label="${t('name')}"><strong>${esc(p.full_name)}</strong>${self ? ` <span class="small muted">(${t('you')})</span>` : ''}</td>
       <td data-label="${t('email')}" class="small">${esc(p.email || '')}</td>
       <td data-label="${t('role')}">${t('role_' + p.role)}</td>
+      ${fin ? `<td data-label="Finance">${finLabel(finOf(p))}</td>` : ''}
       <td data-label="${t('active')}">${p.active === false ? '–' : '&#10003;'}</td>
       <td class="actions"><button type="button" class="btn-sm" data-edit="${p.id}">${t('edit')}</button>
         ${self ? '' : `<button type="button" class="btn-sm" data-reset="${p.id}">${t('reset_password')}</button>`}</td></tr>`; }).join('')}
     </tbody></table></div>
-    <div class="note">${t('team_note')}</div></div>`;
+    <div class="note">${fin ? t('team_note_both') : t('team_note')}</div></div>`;
   $('#add', el).onclick = () => {
     const fields = [
       { name: 'full_name', label: t('name'), required: true, placeholder: t('name_ph') },
       { name: 'email', label: t('email'), type: 'email', required: true },
       { name: 'password', label: t('password'), required: true, hint: t('password_hint') },
+      { name: 'role', label: t('acc_team_role'), type: 'select', options: teamRoles },
     ];
-    openModal(`<h2>${t('add_account')}</h2><form id="f">${formHtml(fields, { password: generatePassword() })}
+    if (fin) fields.push({ name: 'fin_role', label: t('acc_fin_role'), type: 'select', options: finOptions, hint: t('acc_fin_hint') });
+    openModal(`<h2>${t('add_account')}</h2><form id="f">${formHtml(fields, { password: generatePassword(), role: 'staff', fin_role: '' })}
       <div class="modal-actions"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('create_account')}</button></div></form>`,
     (card, close) => {
       card.querySelector('#f').onsubmit = async (e) => {
         e.preventDefault();
         const v = readForm(card, fields);
-        try { await adminUsers({ action: 'create', ...v }); close(); credentialsPopup(v.full_name, v.email, v.password); team(el); }
-        catch (err) { toastError(err); }
+        const { role, fin_role: finRole, ...acc } = v;
+        try { await adminUsers({ action: 'create', ...acc }); } catch (err) { toastError(err); return; }
+        try {
+          // the new profile starts as staff; give it the chosen team role
+          if (role === 'manager') {
+            const fresh = await loadProfiles();
+            const np = fresh.find((x) => (x.email || '').toLowerCase() === acc.email.trim().toLowerCase());
+            if (np) check(await sb.from('profiles').update({ role }).eq('id', np.id));
+          }
+          if (fin && finRole) await finAdmin({ action: 'create', organization_id: fin.org, email: acc.email, full_name: acc.full_name, role: finRole, language: state.me.language || 'nl', password: acc.password });
+        } catch (err) { toastError(err); }
+        close(); credentialsPopup(acc.full_name, acc.email, acc.password); team(el);
       };
     });
   };
@@ -181,15 +219,25 @@ async function team(el) {
     if (!self) fields.push({ name: 'role', label: t('role'), type: 'select', options: [{ value: 'staff', label: t('role_staff') }, { value: 'manager', label: t('role_manager') }] },
       { name: 'active', label: t('active'), type: 'checkbox' });
     else fields.push({ type: 'help', label: t('self_note') });
-    openModal(`<h2>${esc(p.email || p.full_name)}</h2><form id="f">${formHtml(fields, { ...p, active: p.active !== false })}
+    const fu = finOf(p);
+    const finNow = fu && fu.active !== false ? fu.role : '';
+    // your own finance access and a super admin's are managed in the finance app
+    const finEditable = fin && !self && !(fu && fu.role === 'super_admin');
+    if (finEditable) fields.push({ name: 'fin_role', label: t('acc_fin_role'), type: 'select', options: finOptions });
+    openModal(`<h2>${esc(p.email || p.full_name)}</h2><form id="f">${formHtml(fields, { ...p, active: p.active !== false, fin_role: finNow })}
       <div class="modal-actions"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></form>`,
     (card, close) => {
       card.querySelector('#f').onsubmit = async (e) => {
         e.preventDefault();
-        const v = readForm(card, fields);
+        const { fin_role: finRole, ...v } = readForm(card, fields);
         if (!v.full_name) return;
         try {
           check(await sb.from('profiles').update(self ? { full_name: v.full_name } : v).eq('id', p.id));
+          if (finEditable && (finRole || '') !== finNow) {
+            if (!finRole) await finAdmin({ action: 'remove', organization_id: fin.org, id: fu.id });
+            else if (fu) await finAdmin({ action: 'update', organization_id: fin.org, id: fu.id, role: finRole, active: true });
+            else await finAdmin({ action: 'create', organization_id: fin.org, email: p.email, full_name: v.full_name, role: finRole, language: p.language || 'nl' });
+          }
           if (self) state.me.full_name = v.full_name;
           close(); toast(t('saved')); team(el);
         } catch (err) { toastError(err); }

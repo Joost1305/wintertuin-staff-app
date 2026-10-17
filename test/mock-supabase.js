@@ -23,7 +23,7 @@
     menu_items: [{ id: uid(), name: 'Sourdough', category: 'bakery', group_type: 'food', price: 6.5, description: 'Our own bread', active: true, sort_order: 0, allergens: ['gluten'] },
                  { id: uid(), name: 'Flat white', category: 'coffee', group_type: 'beverage', price: 3.8, description: '', active: true, sort_order: 0 }],
     shift_templates: [{ id: uid(), name: 'Morning bakery', start_time: '07:00:00', end_time: '15:00:00', section: 'Bakery', sort_order: 0 }],
-    shifts: [], checkins: [], events: [], event_versions: [], shift_swap_requests: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
+    shifts: [], checkins: [], events: [], event_versions: [], shift_swap_requests: [], fin_restaurants: [{ id: 'r1', organization_id: 'org1' }], fin_users: [], about_content: [{ page: 'history', key: 'k2', html: 'Seeded history title<script>window.__xss=1</script>' }],
   };
   const today = new Date();
   for (let i = 0; i < 4; i++) { const d = new Date(today); d.setDate(d.getDate() + i);
@@ -118,6 +118,14 @@
       getPublicUrl: (p) => ({ data: { publicUrl: /\.pdf$/.test(p) ? 'about:blank#' + p : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' } }) }) },
     functions: { invoke: async (name, { body }) => {
       if (name === 'system-check') { const r = { id: Math.floor(Math.random() * 1e9), run_at: new Date().toISOString(), trigger: 'manual', status: 'ok', checks: [{ key: 'database', status: 'ok', detail: 'reachable' }], gaps: [], changes: [], window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() }; db.system_checks.unshift(r); return { data: { ok: true, data: r }, error: null }; }
+      if (name === 'fin-admin-users') {
+        const U = db.fin_users;
+        if (body.action === 'list') return { data: { users: U }, error: null };
+        if (body.action === 'create') { const pr = db.profiles.find((x) => x.email === body.email); U.push({ id: uid(), user_id: pr ? pr.id : uid(), email: body.email, full_name: body.full_name, role: body.role, active: true }); }
+        if (body.action === 'update') Object.assign(U.find((x) => x.id === body.id), { role: body.role, active: body.active });
+        if (body.action === 'remove') U.splice(U.findIndex((x) => x.id === body.id), 1);
+        return { data: { ok: true }, error: null };
+      }
       if (body.action === 'create') db.profiles.push({ id: uid(), full_name: body.full_name, email: body.email, role: 'staff', active: true, language: 'en' });
       return { data: { ok: true }, error: null };
     } },
