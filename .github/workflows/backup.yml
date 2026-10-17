@@ -1,0 +1,123 @@
+# Nightly backup of both Wintertuin apps (Team and Finance share one database).
+# Makes a password-protected zip with:
+#   - wintertuin-database.sql  full copy of all app data, ready to restore
+#   - logins.sql               the login accounts (so everyone keeps their password after a restore)
+#   - tables/*.csv             every table as a spreadsheet you can open in Excel or Numbers
+#   - files/                   photos, menu PDFs and other uploads
+#   - LEESMIJ.txt              what is in the zip and how to restore it
+# and e-mails it. When something goes wrong this job fails and GitHub e-mails a "workflow failed" message.
+#
+# Needed once, under github.com > this repository > Settings > Secrets and variables > Actions:
+#   SUPABASE_DB_URL      Supabase > Project Settings > Database > Connect > Session pooler (URI, with the password)
+#   GMAIL_USER           the Gmail address that sends the mail, e.g. wintertuinrestaurant@gmail.com
+#   GMAIL_APP_PASSWORD   Google account > Security > App passwords (16 letters; needs 2-step verification)
+#   BACKUP_TO            where the backup goes (several addresses: separate with a comma)
+#   BACKUP_PASSWORD      password of the zip; keep it somewhere safe, without it the backup cannot be opened
+# Nothing from the data is ever printed in the log (this repository is public).
+name: Nightly backup
+
+on:
+  schedule:
+    - cron: '30 1 * * *'   # 01:30 UTC = 03:30 in Amsterdam in summer, 02:30 in winter
+  workflow_dispatch:        # "Run workflow" in the Actions tab makes a backup right away
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB: ${{ secrets.SUPABASE_DB_URL }}
+      GMAIL_USER: ${{ secrets.GMAIL_USER }}
+      GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+      BACKUP_TO: ${{ secrets.BACKUP_TO }}
+      BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+      SUPABASE_URL: https://foaoyjxzclvvdhuxvsck.supabase.co
+    steps:
+      - name: Check the settings
+        run: |
+          missing=""
+          for v in DB GMAIL_USER GMAIL_APP_PASSWORD BACKUP_TO BACKUP_PASSWORD; do [ -z "${!v}" ] && missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::Missing secrets:$missing (DB = SUPABASE_DB_URL). See the top of backup.yml."; exit 1; fi
+
+      - name: Install the database tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 p7zip-full > /dev/null
+          pg_dump --version
+
+      - name: Copy the data
+        run: |
+          set -euo pipefail
+          STAMP=$(TZ=Europe/Amsterdam date +%Y-%m-%d_%H%M)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          OUT="wintertuin-backup-$STAMP"; mkdir -p "$OUT/tables" "$OUT/files"
+          # 1. all app data (both apps), restorable
+          pg_dump "$DB" --schema=public --no-owner --no-privileges --quote-all-identifiers -f "$OUT/wintertuin-database.sql"
+          # 2. the login accounts
+          pg_dump "$DB" --data-only --table=auth.users --table=auth.identities --no-owner --no-privileges -f "$OUT/logins.sql" || echo "::warning::Logins could not be copied; the app data is still complete"
+          # 3. every table as CSV
+          psql "$DB" -At -c "select tablename from pg_tables where schemaname = 'public' order by 1" > tables.txt
+          while read -r t; do
+            psql "$DB" -q -c "\copy (select * from public.\"$t\") to '$OUT/tables/$t.csv' with csv header"
+          done < tables.txt
+          echo "Tables: $(wc -l < tables.txt)"
+          # 4. uploaded files from the public storage bucket(s)
+          psql "$DB" -At -F $'\t' -c "select o.bucket_id, o.name from storage.objects o join storage.buckets b on b.id = o.bucket_id where b.public and o.name not like '%/.emptyFolderPlaceholder' order by 1, 2" > files.tsv || true
+          n=0
+          while IFS=$'\t' read -r bucket name; do
+            [ -z "$name" ] && continue
+            mkdir -p "$OUT/files/$bucket/$(dirname "$name")"
+            enc=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$name")
+            curl -fsS --retry 2 -o "$OUT/files/$bucket/$name" "$SUPABASE_URL/storage/v1/object/public/$bucket/$enc" && n=$((n+1)) || echo "::warning::A file could not be downloaded"
+          done < files.tsv
+          echo "Files: $n"
+          # e-mail limit: leave the files out when they make the zip too big (the data always goes)
+          if [ "$(du -sm "$OUT/files" | cut -f1)" -gt 18 ]; then
+            rm -rf "$OUT/files"; echo "FILES_NOTE=Foto's en pdf's zijn deze keer weggelaten (te groot voor e-mail)." >> "$GITHUB_ENV"
+          fi
+          cat > "$OUT/LEESMIJ.txt" <<TXT
+          Back-up Wintertuin (Team en Finance), $STAMP
+
+          wintertuin-database.sql  Alle gegevens van beide apps. Terugzetten: Supabase > SQL Editor, of
+                                   psql "<database-url>" -f wintertuin-database.sql  (op een lege database)
+          logins.sql               De accounts, zodat iedereen na het terugzetten zijn wachtwoord houdt.
+          tables/                  Elke tabel als CSV: te openen in Excel of Numbers.
+          files/                   Foto's, menukaarten en andere uploads.
+
+          Vraag bij twijfel hulp voordat je iets terugzet: terugzetten overschrijft de huidige gegevens.
+          TXT
+          7z a -tzip -mem=AES256 -p"$BACKUP_PASSWORD" "$OUT.zip" "$OUT" > /dev/null
+          rm -rf "$OUT" tables.txt files.tsv
+          echo "ZIP=$OUT.zip" >> "$GITHUB_ENV"
+          echo "Zip: $(du -h "$OUT.zip" | cut -f1)"
+
+      - name: E-mail the backup
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+          zip_path = os.environ['ZIP']
+          to = [a.strip() for a in os.environ['BACKUP_TO'].split(',') if a.strip()]
+          m = EmailMessage()
+          m['Subject'] = f"Wintertuin back-up {os.environ['STAMP'].replace('_', ' ')}"
+          m['From'] = f"Wintertuin back-up <{os.environ['GMAIL_USER']}>"
+          m['To'] = ', '.join(to)
+          size = os.path.getsize(zip_path) / 1e6
+          m.set_content(
+              "Hoi,\n\nIn de bijlage de back-up van vannacht van de Wintertuin-apps (Team en Finance): "
+              "alle gegevens, de accounts, elke tabel als spreadsheet en de foto's en pdf's.\n\n"
+              f"Grootte: {size:.1f} MB. {os.environ.get('FILES_NOTE', '')}\n\n"
+              "Openen gaat met het back-upwachtwoord. Bewaar deze mail; Gmail houdt hem gewoon bij.\n"
+              "Komt er een nacht geen mail, dan stuurt GitHub een melding dat de back-up mislukt is.\n")
+          with open(zip_path, 'rb') as f:
+              m.add_attachment(f.read(), maintype='application', subtype='zip', filename=os.path.basename(zip_path))
+          with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
+              s.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
+              s.send_message(m)
+          print(f"Sent to {len(to)} address(es), {size:.1f} MB")
+          PY
