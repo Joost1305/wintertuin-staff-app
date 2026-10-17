@@ -845,3 +845,5 @@ table.roster th .ro-ev .evdot { margin-top: 3px; }
 .ab-cam { position: absolute; inset: auto 0 0 0; background: rgba(31, 42, 39, .62); color: #fff; font-size: 10.5px; font-weight: 600; text-align: center; padding: 3px 0 6px; }
 .about-app.editing .ab-sec { position: relative; border: 1px dashed var(--line); border-radius: var(--radius); padding: 12px 14px 14px; }
 .ab-move { float: right; display: flex; gap: 4px; margin: 0 0 6px 8px; }
+.ab-lr { display: inline-flex; gap: 4px; }
+.ab-pillar .ab-ptools { margin-top: 6px; }

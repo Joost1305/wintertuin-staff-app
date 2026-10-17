@@ -322,14 +322,19 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('.ab-person:first-child [data-rm]');
       if (!(await p.$('.ab-person:first-child .ab-photo-edit .ab-ph'))) throw new Error('no photo placeholder');
       await p.click('[data-down="team"]');
+      await p.click('.ab-person:nth-child(2) [data-left]');
+      if (await p.$eval('.ab-person:first-child [data-f="name"]', (e) => e.textContent) !== 'Kees') throw new Error('tile did not move left');
+      await p.click('.ab-pillar:first-child [data-right]');
+      if (await p.$eval('.ab-pillar:nth-child(2)', (e) => e.dataset.pi) !== '1') throw new Error('concept tile did not move');
       if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('move failed');
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
       const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'people'));
-      const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name === 'Joost') throw new Error(row.html);
+      const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name !== 'Kees') throw new Error(row.html);
       await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
       await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded');
       if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('order not kept');
+      if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('concept order not kept');
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('[data-nav=about]'); });
     await step('About page: manager edits and saves text', async () => {
       await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');

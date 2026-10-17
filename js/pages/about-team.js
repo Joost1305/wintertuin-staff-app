@@ -28,8 +28,8 @@ const TEXT = {
     more_h: 'Meer over de Wintertuin',
     intro_h: 'Het gebouw en het park', intro_p: 'De kas, het Cantonspark en wat we hier gaan doen.',
     hist_h: 'Honderd jaar geschiedenis', hist_p: 'De tijdlijn van landgoed tot botanische tuin tot horeca.',
-    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, op de cirkel voor een foto, en zet blokken met de pijltjes op hun plek. Daarna Opslaan.',
-    add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', photo_add: '+ Foto', photo_change: 'Wijzig', up: 'Omhoog', down: 'Omlaag', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
+    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, op de cirkel voor een foto, en zet blokken en tegels met de pijltjes op hun plek. Daarna Opslaan.',
+    add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', photo_add: '+ Foto', photo_change: 'Wijzig', up: 'Omhoog', down: 'Omlaag', left: 'Naar links', right: 'Naar rechts', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
     new_name: 'Naam', new_role: 'Rol', new_bio: 'Een paar zinnen over jezelf.',
     guide: {
       menu: 'Gerechten, allergenen en de menukaarten.', sops: 'Hoe we dingen doen: openen, sluiten, recepturen en werkwijzen.',
@@ -60,8 +60,8 @@ const TEXT = {
     more_h: 'More about the Wintertuin',
     intro_h: 'The building and the park', intro_p: 'The greenhouse, the Cantonspark and what we are going to do here.',
     hist_h: 'A hundred years of history', hist_p: 'The timeline from country estate to botanical garden to restaurant.',
-    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, the circle for a photo, and move blocks with the arrows. Then Save.',
-    add_person: '+ Person', remove: 'Remove', photo: 'Photo', photo_add: '+ Photo', photo_change: 'Change', up: 'Up', down: 'Down', saved: 'Saved for everyone', nothing: 'Nothing changed',
+    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, the circle for a photo, and move blocks and tiles with the arrows. Then Save.',
+    add_person: '+ Person', remove: 'Remove', photo: 'Photo', photo_add: '+ Photo', photo_change: 'Change', up: 'Up', down: 'Down', left: 'Move left', right: 'Move right', saved: 'Saved for everyone', nothing: 'Nothing changed',
     new_name: 'Name', new_role: 'Role', new_bio: 'A few sentences about yourself.',
     guide: {
       menu: 'Dishes, allergens and the menus.', sops: 'How we do things: opening, closing, recipes and procedures.',
@@ -87,7 +87,7 @@ function personHtml(p, editing, T) {
       <h3 data-f="name">${esc(p.name)}</h3>
       <div class="ab-role" data-f="role">${esc(p.role)}</div>
       <p data-f="bio">${esc(p.bio)}</p>
-      ${editing ? `<div class="ab-ptools"><button type="button" class="btn btn-sm" data-rm>${T.remove}</button></div>` : ''}
+      ${editing ? `<div class="ab-ptools"><span class="ab-lr"><button type="button" class="btn btn-sm" data-left aria-label="${T.left}">&#9664;</button><button type="button" class="btn btn-sm" data-right aria-label="${T.right}">&#9654;</button></span><button type="button" class="btn btn-sm" data-rm>${T.remove}</button></div>` : ''}
     </div></article>`;
 }
 
@@ -112,7 +112,7 @@ export async function renderAbout() {
   const arrows = (k) => `<div class="ab-move"><button type="button" class="btn btn-sm" data-up="${k}" aria-label="${T.up}">&#9650;</button><button type="button" class="btn btn-sm" data-down="${k}" aria-label="${T.down}">&#9660;</button></div>`;
   const SEC = {
     concept: (ed) => `<section class="ab-sec" data-sec="concept">${ed ? arrows('concept') : ''}${editable('concept_h', 'h2')}
-        <div class="ab-pillars">${[1, 2, 3, 4, 5].map((i) => `<div class="ab-pillar">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}</div>`).join('')}</div>
+        <div class="ab-pillars">${pillars.map((i) => `<div class="ab-pillar" data-pi="${i}">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}${ed ? `<div class="ab-ptools"><span class="ab-lr"><button type="button" class="btn btn-sm" data-left aria-label="${T.left}">&#9664;</button><button type="button" class="btn btn-sm" data-right aria-label="${T.right}">&#9654;</button></span></div>` : ''}</div>`).join('')}</div>
       </section>`,
     team: (ed) => `<section class="ab-sec" data-sec="team">${ed ? arrows('team') : ''}${editable('team_h', 'h2')}${editable('team_intro', 'p', 'muted')}
         <div class="ab-people" id="ab-people">${people.map((p) => personHtml(p, ed, T)).join('')}</div>
@@ -130,6 +130,8 @@ export async function renderAbout() {
       </section>`,
   };
   const DEFAULT_ORDER = ['concept', 'team', 'app', 'more'];
+  let pillars = [1, 2, 3, 4, 5];
+  try { if (saved.pillars) { const o = JSON.parse(saved.pillars).filter((i) => pillars.includes(i)); pillars = [...o, ...pillars.filter((i) => !o.includes(i))]; } } catch { /* default order */ }
   let order = DEFAULT_ORDER;
   try { if (saved.order) { const o = JSON.parse(saved.order).filter((k) => SEC[k]); order = [...o, ...DEFAULT_ORDER.filter((k) => !o.includes(k))]; } } catch { /* default order */ }
 
@@ -176,6 +178,16 @@ export async function renderAbout() {
       const card = wrap.firstElementChild; $('#ab-people').appendChild(card); wirePerson(card);
     };
     const orderBefore = JSON.stringify(order);
+    const pillarsBefore = JSON.stringify(pillars);
+    // Tiles (team cards and concept tiles) move one place left or right
+    const side = (tile, d) => {
+      const sib = d < 0 ? tile.previousElementSibling : tile.nextElementSibling;
+      if (sib) { if (d < 0) sib.before(tile); else sib.after(tile); }
+    };
+    $('#ab-secs').onclick = (e) => {
+      const b = e.target.closest('[data-left], [data-right]'); if (!b) return;
+      side(b.closest('.ab-person, .ab-pillar'), b.hasAttribute('data-left') ? -1 : 1);
+    };
     const move = (k, d) => {
       const secs = $$('#ab-secs > .ab-sec'); const i = secs.findIndex((x) => x.dataset.sec === k); const j = i + d;
       if (j < 0 || j >= secs.length) return;
@@ -194,12 +206,14 @@ export async function renderAbout() {
       })).filter((p) => p.name);
       if (JSON.stringify(next) !== peopleBefore) rows.push({ page, key: 'people', html: JSON.stringify(next), updated_at: now });
       const nextOrder = $$('#ab-secs > .ab-sec').map((x) => x.dataset.sec);
+      const nextPillars = $$('.ab-pillar').map((x) => Number(x.dataset.pi));
+      if (JSON.stringify(nextPillars) !== pillarsBefore) rows.push({ page, key: 'pillars', html: JSON.stringify(nextPillars), updated_at: now });
       if (JSON.stringify(nextOrder) !== orderBefore) rows.push({ page, key: 'order', html: JSON.stringify(nextOrder), updated_at: now });
       if (!rows.length) { toast(T.nothing); draw(false); return; }
       const { error } = await sb.from('about_content').upsert(rows, { onConflict: 'page,key' });
       if (error) { toastError(error); return; }
       rows.forEach((r) => { saved[r.key] = r.html; });
-      people = next; order = nextOrder;
+      people = next; order = nextOrder; pillars = nextPillars;
       toast(T.saved); draw(false);
     };
   };
