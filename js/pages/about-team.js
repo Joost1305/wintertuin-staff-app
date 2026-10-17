@@ -120,13 +120,19 @@ export async function translate(text, from, to) {
 const slug = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '') || `p${Date.now()}`;
 const SHARED = ['order', 'pillars', 'team', 'people'];
 
+// Texts Joost chose in the chat (17 October, 21:40): they replace older saved versions once
+const SET_AT = '2026-10-17T19:40:00.000Z';
+const SET = {
+  en: { 'p:joost:bio': 'Chef with one foot in the kitchen and one in the classroom: almost twenty years in hospitality education and counting. Beekeeper, forager and herb expert who loves a good theme evening.' },
+  nl: { 'p:joost:bio': 'Chef-kok met één been in de keuken en één in het klaslokaal: al bijna twintig jaar in het horeca-onderwijs, en nog steeds. Imker, wildplukker en kruidenkenner, en dol op een goede thema-avond.' },
+};
+
 // Hand-written Dutch for the texts Joost wrote in English on 17 October (replaces the machine translation once)
 const NL_FIX_AT = '2026-10-17T19:45:00.000Z';
 const NL_FIX = {
   c4: 'In de zomer open tot 21:00, met lange tafels, diners en bijzondere avonden. In de winter een vroeg diner tot 19:00.',
   c5: 'Thema-avonden met een eigen menu: over bijen, bomen, foerageren, koffie, brood en meer.',
   'p:joost:role': 'Creatieve duizendpoot',
-  'p:joost:bio': 'Chef-kok, sinds 2007 in het horeca-onderwijs. Imker, wildplukker en kruidenkenner, en organiseert graag thema-avonden.',
   'p:carel:role': 'Broodfluisteraar',
   'p:carel:bio': 'Bakker die zeven jaar een succesvol restaurant runde. Zorgt voor het brood en de patisserie en houdt de keuken draaiende.',
   'p:kees:role': 'Koffiekenner',
@@ -181,6 +187,12 @@ export async function renderAbout() {
     tx.nl[k] = { html: esc(v), auto: false, at: NL_FIX_AT };
     fixes.push({ page: 'app-nl', key: k, html: esc(v), updated_at: NL_FIX_AT });
   });
+  ['en', 'nl'].forEach((l) => Object.entries(SET[l]).forEach(([k, v]) => {
+    const cur = tx[l][k];
+    if (cur && String(cur.at) >= SET_AT) return;
+    tx[l][k] = { html: esc(v), auto: false, at: SET_AT };
+    fixes.push({ page: `app-${l}`, key: k, html: esc(v), updated_at: SET_AT });
+  }));
   if (fixes.length && isManager()) sb.from('about_content').upsert(fixes, { onConflict: 'page,key' }).then(() => {}, () => {});
   const defaultOf = (l, k) => (T && TEXT[l][k] != null && typeof TEXT[l][k] === 'string' ? esc(TEXT[l][k]) : DEF[l][k] != null ? esc(DEF[l][k]) : null);
 
