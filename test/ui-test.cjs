@@ -349,6 +349,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded');
       if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('order not kept');
       if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('concept order not kept');
+      const nlBtn = async (re) => p.evaluate((src) => { const b = [...document.querySelectorAll('#lang-toggle button')].find((x) => new RegExp(src).test(x.textContent)); b && b.click(); }, re);
+      await nlBtn('NL'); await p.waitForSelector('text=Het team');
+      if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team edits not shown in Dutch');
+      if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('order not shown in Dutch');
+      await nlBtn('EN'); await p.waitForSelector('text=The team');
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('[data-nav=about]'); });
     await step('About page: manager edits and saves text', async () => {
       await p.goto(BASE + 'Wintertuin-Intro.html'); await p.waitForSelector('#ab-edit'); await p.click('#ab-edit');

@@ -1,5 +1,5 @@
 // About: the concept, the team and a short guide to this app. First item of the top menu.
-// Texts and the team cards live in about_content (page 'app-nl' / 'app-en'), so a manager's edits are saved for
+// Texts and the team cards live in about_content (page 'app', shared by both languages), so a manager's edits are saved for
 // everyone. Managers click Edit: texts become editable, people can be added, removed and given a photo.
 import { isManager, app, esc, toast, toastError, $, $$ } from '../core.js';
 import { t, lang } from '../i18n.js';
@@ -94,12 +94,17 @@ function personHtml(p, editing, T) {
 export async function renderAbout() {
   const L = lang() === 'nl' ? 'nl' : 'en';
   const T = TEXT[L];
-  const page = `app-${L}`;
+  // One shared version for both languages: what a manager saves (texts, team, photos, order) shows in Dutch and
+  // English alike. Older saves per language ('app-nl' / 'app-en') still count; per item the newest save wins.
+  // Items nobody has changed yet show the default text in the chosen language.
+  const page = 'app';
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   let saved = {};
   try {
-    const { data } = await sb.from('about_content').select('key, html').eq('page', page);
-    saved = Object.fromEntries((data || []).map((r) => [r.key, r.html]));
+    const { data } = await sb.from('about_content').select('page, key, html, updated_at').in('page', ['app', 'app-nl', 'app-en']);
+    const best = {};
+    (data || []).forEach((r) => { if (!best[r.key] || String(r.updated_at || '') > String(best[r.key].updated_at || '')) best[r.key] = r; });
+    saved = Object.fromEntries(Object.values(best).map((r) => [r.key, r.html]));
   } catch { /* default text */ }
   const txt = (k) => (saved[k] != null ? clean(saved[k]) : esc(T[k]));
   let people = T.people;
