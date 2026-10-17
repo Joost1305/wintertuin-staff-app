@@ -29,7 +29,7 @@ permissions:
 
 jobs:
   backup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04   # fixed version, so a new Ubuntu cannot break the database tools
     timeout-minutes: 20
     env:
       DB: ${{ secrets.SUPABASE_DB_URL }}
