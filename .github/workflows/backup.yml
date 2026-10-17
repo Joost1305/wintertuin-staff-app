@@ -9,6 +9,9 @@
 #
 # Needed once, under github.com > this repository > Settings > Secrets and variables > Actions:
 #   SUPABASE_DB_URL      Supabase > Project Settings > Database > Connect > Session pooler (URI, with the password)
+#   and one way to send the mail, either
+#   RESEND_API_KEY       resend.com > API Keys (free; without an own domain it only mails the address you signed up with)
+#   or
 #   GMAIL_USER           the Gmail address that sends the mail, e.g. wintertuinrestaurant@gmail.com
 #   GMAIL_APP_PASSWORD   Google account > Security > App passwords (16 letters; needs 2-step verification)
 #   BACKUP_TO            where the backup goes (several addresses: separate with a comma)
@@ -30,6 +33,7 @@ jobs:
     timeout-minutes: 20
     env:
       DB: ${{ secrets.SUPABASE_DB_URL }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       GMAIL_USER: ${{ secrets.GMAIL_USER }}
       GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
       BACKUP_TO: ${{ secrets.BACKUP_TO }}
@@ -39,7 +43,8 @@ jobs:
       - name: Check the settings
         run: |
           missing=""
-          for v in DB GMAIL_USER GMAIL_APP_PASSWORD BACKUP_TO BACKUP_PASSWORD; do [ -z "${!v}" ] && missing="$missing $v"; done
+          for v in DB BACKUP_TO BACKUP_PASSWORD; do [ -z "${!v}" ] && missing="$missing $v"; done
+          if [ -z "$RESEND_API_KEY" ] && { [ -z "$GMAIL_USER" ] || [ -z "$GMAIL_APP_PASSWORD" ]; }; then missing="$missing RESEND_API_KEY(or GMAIL_USER+GMAIL_APP_PASSWORD)"; fi
           if [ -n "$missing" ]; then echo "::error::Missing secrets:$missing (DB = SUPABASE_DB_URL). See the top of backup.yml."; exit 1; fi
 
       - name: Install the database tools
@@ -99,25 +104,38 @@ jobs:
       - name: E-mail the backup
         run: |
           python3 - <<'PY'
-          import os, smtplib, ssl
+          import os, smtplib, ssl, base64, json, urllib.request
           from email.message import EmailMessage
           zip_path = os.environ['ZIP']
           to = [a.strip() for a in os.environ['BACKUP_TO'].split(',') if a.strip()]
-          m = EmailMessage()
-          m['Subject'] = f"Wintertuin back-up {os.environ['STAMP'].replace('_', ' ')}"
-          m['From'] = f"Wintertuin back-up <{os.environ['GMAIL_USER']}>"
-          m['To'] = ', '.join(to)
+          subject = f"Wintertuin back-up {os.environ['STAMP'].replace('_', ' ')}"
           size = os.path.getsize(zip_path) / 1e6
-          m.set_content(
+          body = (
               "Hoi,\n\nIn de bijlage de back-up van vannacht van de Wintertuin-apps (Team en Finance): "
               "alle gegevens, de accounts, elke tabel als spreadsheet en de foto's en pdf's.\n\n"
               f"Grootte: {size:.1f} MB. {os.environ.get('FILES_NOTE', '')}\n\n"
               "Openen gaat met het back-upwachtwoord. Bewaar deze mail; Gmail houdt hem gewoon bij.\n"
               "Komt er een nacht geen mail, dan stuurt GitHub een melding dat de back-up mislukt is.\n")
-          with open(zip_path, 'rb') as f:
-              m.add_attachment(f.read(), maintype='application', subtype='zip', filename=os.path.basename(zip_path))
-          with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
-              s.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
-              s.send_message(m)
+          data = open(zip_path, 'rb').read()
+          name = os.path.basename(zip_path)
+          if os.environ.get('RESEND_API_KEY'):
+              req = urllib.request.Request('https://api.resend.com/emails', method='POST', headers={
+                  'Authorization': f"Bearer {os.environ['RESEND_API_KEY']}", 'Content-Type': 'application/json', 'User-Agent': 'wintertuin-backup'},
+                  data=json.dumps({'from': 'Wintertuin back-up <onboarding@resend.dev>', 'to': to, 'subject': subject, 'text': body,
+                                   'attachments': [{'filename': name, 'content': base64.b64encode(data).decode()}]}).encode())
+              try:
+                  urllib.request.urlopen(req, timeout=120).read()
+              except urllib.error.HTTPError as e:
+                  raise SystemExit(f"::error::Resend refused the mail: {e.code} {e.read().decode()[:300]}")
+          else:
+              m = EmailMessage()
+              m['Subject'] = subject
+              m['From'] = f"Wintertuin back-up <{os.environ['GMAIL_USER']}>"
+              m['To'] = ', '.join(to)
+              m.set_content(body)
+              m.add_attachment(data, maintype='application', subtype='zip', filename=name)
+              with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
+                  s.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
+                  s.send_message(m)
           print(f"Sent to {len(to)} address(es), {size:.1f} MB")
           PY
