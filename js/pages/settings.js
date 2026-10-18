@@ -1,4 +1,4 @@
-// Settings (managers only): team and accounts, fixed shifts, links, backup and restore.
+// Settings (managers only): team and accounts, fixed shifts, links, backups.
 // Accounts and passwords go through the admin-users edge function, which re-checks that you are a manager.
 import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView } from '../core.js';
 import { t } from '../i18n.js';
@@ -296,51 +296,13 @@ async function links(el) {
   });
 }
 
-// ------------------------------------------------------------------ backup and restore
+// ------------------------------------------------------------------ backups
+// The full backup of both apps is made every night by GitHub and e-mailed (see .github/workflows/backup.yml);
+// this page only says so and points to the smaller exports.
 async function backup(el) {
-  el.innerHTML = `<div class="card"><h2>${t('set_backup')}</h2><p class="small muted" style="margin-top:-6px">${t('backup_sub')}</p>
-      <button type="button" class="btn-primary" id="dl">&#11015; ${t('backup_download')}</button></div>
-    <div class="card"><h2>${t('restore_title')}</h2><p class="small muted" style="margin-top:-6px">${t('restore_sub')}</p>
-      <div class="field"><input type="file" id="file" accept="application/json"></div>
-      <button type="button" id="restore">${t('restore_btn')}</button><div id="result" class="small" style="margin-top:10px"></div></div>
+  el.innerHTML = `<div class="card"><h2>${t('set_backup')}</h2><p class="small muted" style="margin-top:-6px">${t('backup_nightly')}</p></div>
     <div class="card"><h2>${t('other_exports')}</h2><p class="small muted" style="margin-top:-6px">${t('other_exports_sub')}</p>
       <div class="page-actions"><a class="btn btn-sm" href="#/sops">${t('nav_sops')}</a><a class="btn btn-sm" href="#/roster">${t('nav_roster')}</a></div></div>`;
-  $('#dl', el).onclick = async () => {
-    try {
-      const [sops, menu, resources, tpl, shifts, hcEntries, hcConfig] = await Promise.all([
-        sb.from('sops').select('*'), sb.from('menu_items').select('*'), sb.from('resources').select('*'),
-        sb.from('shift_templates').select('*'), sb.from('shifts').select('*, profiles:staff_id(full_name)'),
-        sb.from('haccp_entries').select('*').order('entry_date'), sb.from('haccp_config').select('*'),
-      ]);
-      const errs = [sops, menu, resources, tpl, shifts, hcEntries, hcConfig].filter((r) => r.error).map((r) => r.error.message);
-      if (errs.length) throw new Error(errs.join(', '));
-      const bundle = { exported_at: new Date().toISOString(), sops: sops.data, menu_items: menu.data, resources: resources.data, shift_templates: tpl.data, shifts: shifts.data, haccp_config: hcConfig.data, haccp_entries: hcEntries.data };
-      download(JSON.stringify(bundle, null, 2), `wintertuin-all-settings-${todayIso()}.json`, 'application/json;charset=utf-8');
-    } catch (e) { toastError(e); }
-  };
-  $('#restore', el).onclick = async () => {
-    const file = $('#file', el).files[0];
-    if (!file) { toastError(new Error(t('restore_pick'))); return; }
-    let bundle;
-    try { bundle = JSON.parse(await file.text()); } catch { toastError(new Error(t('restore_bad_file'))); return; }
-    const counts = [[t('nav_sops'), bundle.sops], [t('nav_menu'), bundle.menu_items], [t('nav_links'), bundle.resources], [t('set_templates'), bundle.shift_templates], [t('restore_shifts'), bundle.shifts]]
-      .map(([k, v]) => `${k}: ${(v || []).length}`).join('\n');
-    const when = bundle.exported_at ? fmt.dateTime(bundle.exported_at) : '?';
-    if (!(await confirmDialog(t('restore_confirm', { d: when, c: counts }), t('restore_btn'), false))) return;
-    const out = $('#result', el);
-    out.textContent = t('restoring');
-    const errors = [];
-    const up = async (table, rows) => { if (!rows || !rows.length) return; const { error } = await sb.from(table).upsert(rows, { onConflict: 'id' }); if (error) errors.push(`${table}: ${error.message}`); };
-    await up('sops', bundle.sops);
-    await up('menu_items', bundle.menu_items);
-    await up('resources', bundle.resources);
-    await up('shift_templates', bundle.shift_templates);
-    await up('shifts', (bundle.shifts || []).map(({ profiles, ...rest }) => rest)); // the joined name is not a real column
-    // HACCP: settings (fridges, cleaning items, suppliers) come back; registrations stay in the database and are only kept in the file
-    if (bundle.haccp_config && bundle.haccp_config.length) { const { error } = await sb.from('haccp_config').upsert(bundle.haccp_config.map(({ key, value }) => ({ key, value })), { onConflict: 'key' }); if (error) errors.push(`haccp_config: ${error.message}`); }
-    out.innerHTML = errors.length ? `<span class="txt-red">${t('restore_partial')}<br>${errors.map(esc).join('<br>')}</span>` : `<span class="txt-green">${t('restore_done')}</span>`;
-    $('#file', el).value = '';
-  };
 }
 
 // ------------------------------------------------------------------ own password (one login for both Wintertuin apps)

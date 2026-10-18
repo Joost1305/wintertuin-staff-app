@@ -177,7 +177,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('settings: add fixed shift', async () => {
       await p.goto(BASE + '#/settings/templates'); await p.click('#add'); await p.fill('.modal [name=name]', 'Evening'); await p.fill('.modal [name=start_time]', '17:00'); await p.fill('.modal [name=end_time]', '23:00');
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Evening'); });
-    await step('backup download', async () => { await p.goto(BASE + '#/settings/backup'); const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#dl')]); if (!dl.suggestedFilename().endsWith('.json')) throw new Error('no json'); });
+    await step('backups page explains the nightly backup', async () => { await p.goto(BASE + '#/settings/backup'); await p.waitForSelector('#sec .card'); if (!/both apps/.test(await p.textContent('#sec'))) throw new Error('no nightly backup text'); if (await p.$('#dl, #restore')) throw new Error('old download/restore still there'); });
     await step('employee view: manager sees the staff screens, then goes back', async () => {
       await p.goto(BASE + '#/settings'); await p.waitForSelector('#emp-on'); await p.click('#emp-on');
       await p.waitForSelector('#emp-bar'); await p.waitForTimeout(300);
