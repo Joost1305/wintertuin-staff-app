@@ -54,7 +54,7 @@ function keypad({ title, sub, foot, onPin, onLink }) {
   el.className = 'pinlock';
   el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true');
   el.innerHTML = `<div class="k-pad">
-      <div class="pl-brand"><img src="img/icon.svg" onerror="this.src='img/team-icon.svg'" alt="" width="40" height="40"><span>Wintertuin</span></div>
+      <div class="pl-brand"><img src="img/logo.png" alt="Wintertuin" width="96" height="70"></div>
       <h2>${title}</h2><p class="muted pl-sub">${sub}</p>
       <div class="k-dots" aria-live="polite">${'<i></i>'.repeat(4)}</div>
       <div class="k-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-k="${n}">${n}</button>`).join('')}
