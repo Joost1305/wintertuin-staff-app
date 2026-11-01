@@ -15,6 +15,8 @@ async function session(browser, role, viewport) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   await page.addInitScript((r) => { window.__MOCK_ROLE = r; try { window.__NO_PINLOCK = !localStorage.getItem('test_pin'); } catch (e) { window.__NO_PINLOCK = true; } window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
+  // outside images (example photos, fonts in the newsletter) are not reachable in the test: a 1-pixel stand-in
+  await page.route(/images\.pexels\.com|fonts\.googleapis\.com|joost1305\.github\.io/, (r) => r.fulfill({ contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAAAAACw=', 'base64') }));
   await page.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
   return { ctx, page, errors };
 }
@@ -387,18 +389,45 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/Bekijk de tijdlijn/.test(await p.textContent('.history-card'))) throw new Error('intro not in Dutch');
       await p.click('#lang-sw [data-l=en]'); await p.waitForSelector('#lang-sw [data-l=en].on');
       if (!/View the timeline/.test(await p.textContent('.history-card'))) throw new Error('intro not back in English'); });
-    await step('menu: load the sample menu, choose a dish of the month, PDFs on the menu page', async () => {
+    await step('menu: our menu goes in once by itself, demo dishes and the demo lunch card go out', async () => {
       await p.setViewportSize({ width: 1280, height: 900 });
-      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#sample-load'); await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("dishes")');
-      const r = await p.evaluate(() => ({ n: window.__mockdb.menu_items.filter((m) => m.active !== false).length, pdf: window.__mockdb.menu_pdfs.map((x) => x.label) }));
-      if (r.n < 30 || !r.pdf.includes('Allergenenkaart')) throw new Error(JSON.stringify(r));
-      await p.waitForSelector('#dom option:has-text("Tartine met gerookte forel")', { state: 'attached' });
+      await p.goto(BASE + '#/today'); await p.waitForSelector('.home-hero');
+      await p.evaluate(() => { const db = window.__mockdb; db.team_settings = db.team_settings.filter((x) => x.key !== 'menu_v2');
+        db.menu_items.push({ id: 'demo1', name: 'Uitsmijter Cantonspark (DEMO)', group_type: 'food', active: true, allergens: [] });
+        db.menu_pdfs.push({ id: 'pd1', label: 'Lunchkaart (DEMO)', path: 'site:demo/wintertuin-lunchkaart-demo.pdf', sort_order: 10 }); });
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('.toast:has-text("Menu updated")');
+      const r = await p.evaluate(() => { const db = window.__mockdb; return { n: db.menu_items.filter((m) => m.active !== false).length, demo: db.menu_items.find((m) => m.id === 'demo1').active,
+        pdf: db.menu_pdfs.length, photos: db.menu_items.filter((m) => m.active !== false && m.photo_url).length }; });
+      if (r.n < 33 || r.demo !== false || r.pdf !== 0 || r.photos < 33) throw new Error(JSON.stringify(r));
+      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#dom option:has-text("Tartine met gerookte forel")', { state: 'attached' });
       const id = await p.$eval('#dom', (s) => [...s.options].find((o) => /Tartine/.test(o.textContent)).value); await p.selectOption('#dom', id);
       await p.fill('#dom-note', 'Gerookt in de buurt, op ons eigen brood.'); await p.click('#dom-save'); await p.waitForTimeout(400);
+      await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes added")');
       await p.goto(BASE + '#/menu'); await p.waitForSelector('.dom-card:has-text("Tartine")');
-      if ((await p.$$('[data-pdf-view]')).length < 3) throw new Error('menu PDFs missing');
-      await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: true });
-      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#sample-load'); await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes")'); });
+      if (!(await p.$('a[href="#/menucard/lunch"]')) || !(await p.$('a[href="#/menucard/allergens"]'))) throw new Error('menu card buttons missing');
+      await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
+    await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {
+      await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('#mc-frame');
+      await p.waitForFunction(() => /Tartine met gerookte forel/.test(document.querySelector('#mc-frame').srcdoc || ''));
+      await p.fill('[data-c="subtitle"]', 'Vrijdag tot en met zondag, 12 tot 15 uur');
+      await p.uncheck('.mc-items input[data-show] >> nth=0');
+      await p.click('[data-addline="1"]'); await p.fill('.mc-line [name=name]', 'Soep van de dag'); await p.fill('.mc-line [name=price]', '7,5'); await p.check('.mc-line [name=al][value=celery]');
+      await p.click('.mc-line button[type=submit]'); await p.waitForSelector('.mc-items li:has-text("Soep van de dag")');
+      await p.waitForFunction(() => /Soep van de dag/.test(document.querySelector('#mc-frame').srcdoc) && /12 tot 15 uur/.test(document.querySelector('#mc-frame').srcdoc));
+      await p.click('#mc-save'); await p.waitForSelector('.toast:has-text("Menu cards saved")');
+      const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'menu_cards').value.cards[0]);
+      if (saved.subtitle !== 'Vrijdag tot en met zondag, 12 tot 15 uur' || !saved.sections[1].extra.some((x) => x.name === 'Soep van de dag')) throw new Error(JSON.stringify(saved).slice(0, 300));
+      const before = await p.evaluate(() => window.__printed || 0); await p.click('#mc-print'); await p.waitForTimeout(300);
+      if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('not printed');
+      if (!(await p.$('#printArea .mc-page'))) throw new Error('no printed card');
+      await p.screenshot({ path: `${OUT}/27-menucard.png`, fullPage: false });
+      await p.goto(BASE + '#/menucard/allergens'); await p.waitForFunction(() => /Allergenenkaart/.test(document.querySelector('#mc-frame').srcdoc || '')); });
+    await step('menu cards: a Word document comes in as a card in the same style', async () => {
+      const html = '<h1>Kerstlunch</h1><p>24 december</p><h2>Voor</h2><p><strong>Tartine met gerookte forel</strong> 14</p><p>Met dille.</p><p><strong>Paddenstoelenbouillon</strong></p><h2>Hoofd</h2><p>Hertenstoof met rode kool  24,50</p><p>Met jeneverbes</p>';
+      const card = await p.evaluate(async (h) => { const m = await import('/js/pages/menucard.js'); return m.parseWordHtml(h, window.__mockdb.menu_items); }, html);
+      if (card.title !== 'Kerstlunch' || card.subtitle !== '24 december' || card.sections.length !== 2) throw new Error(JSON.stringify(card));
+      const f = card.sections[0].extra[0]; if (f.name !== 'Tartine met gerookte forel' || f.price !== 14 || f.description !== 'Met dille.' || !f.allergens.includes('fish')) throw new Error(JSON.stringify(f));
+      const h2 = card.sections[1].extra[0]; if (h2.name !== 'Hertenstoof met rode kool' || h2.price !== 24.5 || h2.description !== 'Met jeneverbes') throw new Error(JSON.stringify(h2)); });
     await step('About: the manifesto sits right after the concept', async () => {
       await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-manifesto h2:has-text("How we cook")');
       const order = await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((s) => s.dataset.sec)); if (order.indexOf('manifesto') !== order.indexOf('concept') + 1) throw new Error(order.join());

@@ -4,6 +4,8 @@ import { state, isManager, app, esc, fmt, toast, toastError, $, $$, openModal, c
 import { t, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { PHOTO_BUCKET } from '../config.js';
+import { loadCards } from './menucard.js';
+import { upgradeMenuOnce } from '../menu-upgrade.js';
 
 // Turn any YouTube or Vimeo link (watch, share, shorts, embed) into the embed address that may be shown inside the app.
 export function embedUrl(raw) {
@@ -31,13 +33,17 @@ export async function saveDishOfMonth(v) {
   if (error) throw error;
 }
 let dishOfMonth = null;
+let menuCards = [];
 
 export async function renderMenu() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
+  // first visit of a manager after the update: our own menu goes in, the demo dishes and demo lunch card out
+  if (isManager()) { const up = await upgradeMenuOnce(); if (up && (up.added || up.removed)) toast(lang() === 'nl' ? `Menu bijgewerkt: ${up.added} gerechten erbij, ${up.removed} demo's weg` : `Menu updated: ${up.added} dishes added, ${up.removed} demo dishes removed`); }
   const [rows] = await Promise.all([
     sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name'), // order set under Settings > Menu order
     loadPdfs(),
     loadDishOfMonth().then((d) => { dishOfMonth = d; }),
+    loadCards().then((c) => { menuCards = c; }),
   ]);
   items = check(rows) || [];
   draw();
@@ -47,6 +53,8 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions">
+      ${items.length ? menuCards.map((c) => `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}"><i class="ic ic-printer" aria-hidden="true"></i> ${esc(c.name || c.title)}</a>`).join('') : ''}
+      ${isManager() ? `<a class="btn btn-sm" href="#/menucard"><i class="ic ic-pencil" aria-hidden="true"></i> ${lang() === 'nl' ? 'Menukaarten maken' : 'Edit menu cards'}</a>` : ''}
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}
       ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}

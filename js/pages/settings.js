@@ -8,6 +8,7 @@ import { renderHaccpSettings } from './haccp.js';
 import { NAV_ITEMS, orderPaths, saveNavOrder } from '../nav.js';
 import { setDevicePin } from '../pinlock.js';
 import { SAMPLE_MENU, SAMPLE_PDFS } from '../sample-menu.js';
+import { loadOwnMenu } from '../menu-upgrade.js'; // SAMPLE_PDFS: older versions registered these; Remove still clears them
 import { loadDishOfMonth, saveDishOfMonth } from './menu.js';
 import { lang } from '../i18n.js';
 const L = (o) => o[lang()] || o.en;
@@ -119,31 +120,19 @@ async function menuorder(el) {
       <div class="field-row" style="margin-top:12px"><div class="field"><select id="dom">${`<option value="">${L({ en: '(none)', nl: '(geen)' })}</option>`}${rows.filter((r) => (r.group_type || 'food') === 'food').map((r) => `<option value="${r.id}" ${dom && dom.id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
       <div class="field"><input id="dom-note" value="${esc((dom && dom.note) || '')}" placeholder="${L({ en: 'Why this dish? One or two sentences for the guest.', nl: 'Waarom dit gerecht? Een of twee zinnen voor de gast.' })}"></div></div>
       <button type="button" class="btn-primary" id="dom-save">${t('save')}</button></div>
-    <div class="card"><h2 style="margin:0">${L({ en: 'Sample menu', nl: 'Voorbeeldmenu' })}</h2>
-      <div class="small muted">${L({ en: `A winter lunch and dinner menu with allergens (${SAMPLE_MENU.length} dishes and drinks) plus a lunch, dinner and allergen PDF, to try out every part of the app. Dishes that already exist by name are skipped.`,
-        nl: `Een winterse lunch- en dinerkaart met allergenen (${SAMPLE_MENU.length} gerechten en dranken) plus een lunch-, diner- en allergenen-pdf, om elk deel van de app uit te proberen. Gerechten die al bestaan (zelfde naam) worden overgeslagen.` })}</div>
-      <div class="page-actions" style="margin-top:12px;justify-content:flex-start"><button type="button" class="btn-primary" id="sample-load">${L({ en: 'Load the sample menu', nl: 'Voorbeeldmenu laden' })}</button>
-        <button type="button" class="btn" id="sample-remove">${L({ en: 'Remove the sample menu', nl: 'Voorbeeldmenu weghalen' })}</button></div></div>`;
+    <div class="card"><h2 style="margin:0">${L({ en: 'Our menu', nl: 'Onze menukaart' })}</h2>
+      <div class="small muted">${L({ en: `Our winter menu: ${SAMPLE_MENU.length} dishes and drinks with allergens and an example photo. It went in automatically; this button puts back anything that is missing (dishes with the same name are left alone) and takes out the old demo dishes.`,
+        nl: `Onze winterkaart: ${SAMPLE_MENU.length} gerechten en dranken met allergenen en een voorbeeldfoto. Hij is automatisch geladen; deze knop zet terug wat ontbreekt (gerechten met dezelfde naam blijven zoals ze zijn) en haalt de oude demo's weg.` })}</div>
+      <div class="page-actions" style="margin-top:12px;justify-content:flex-start"><button type="button" class="btn-primary" id="sample-load">${L({ en: 'Load our menu again', nl: 'Onze menukaart opnieuw laden' })}</button>
+        <button type="button" class="btn" id="sample-remove">${L({ en: 'Remove these dishes', nl: 'Deze gerechten weghalen' })}</button></div></div>`;
   $('#dom-save', el).onclick = async () => {
     try { await saveDishOfMonth($('#dom', el).value ? { id: $('#dom', el).value, note: $('#dom-note', el).value.trim(), month: todayIso().slice(0, 7) } : null); toast(t('saved')); }
     catch (e) { toastError(e); }
   };
   $('#sample-load', el).onclick = async (e) => {
     e.currentTarget.disabled = true;
-    try {
-      const all = check(await sb.from('menu_items').select('id, name, active, sort_order')) || [];
-      const have = new Set(all.filter((r) => r.active !== false).map((r) => r.name.trim().toLowerCase()));
-      let so = all.reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
-      const fresh = SAMPLE_MENU.filter((m) => !have.has(m.name.toLowerCase())).map((m) => ({ ...m, sort_order: (so += 10), active: true }));
-      if (fresh.length) check(await sb.from('menu_items').insert(fresh));
-      const { data: pdfRows } = await sb.from('menu_pdfs').select('path, sort_order');
-      const havePdf = new Set((pdfRows || []).map((r) => r.path));
-      let ps = (pdfRows || []).reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
-      const newPdfs = SAMPLE_PDFS.filter((x) => !havePdf.has(x.path)).map((x) => ({ ...x, sort_order: (ps += 10) }));
-      if (newPdfs.length) check(await sb.from('menu_pdfs').insert(newPdfs));
-      toast(L({ en: `${fresh.length} dishes and ${newPdfs.length} PDFs added`, nl: `${fresh.length} gerechten en ${newPdfs.length} pdf's toegevoegd` }));
-      again();
-    } catch (err) { toastError(err); e.currentTarget.disabled = false; }
+    try { const r = await loadOwnMenu(); toast(L({ en: `${r.added} dishes added, ${r.removed} demo dishes removed. The menu cards are under Menu.`, nl: `${r.added} gerechten toegevoegd, ${r.removed} demo's weggehaald. De menukaarten staan bij Menu.` })); again(); }
+    catch (err) { toastError(err); e.currentTarget.disabled = false; }
   };
   $('#sample-remove', el).onclick = async () => {
     if (!(await confirmDialog(L({ en: 'Remove the dishes and PDFs of the sample menu? Dishes you added yourself stay.', nl: 'De gerechten en pdf\'s van het voorbeeldmenu weghalen? Wat je zelf hebt toegevoegd blijft staan.' }), L({ en: 'Remove', nl: 'Weghalen' })))) return;

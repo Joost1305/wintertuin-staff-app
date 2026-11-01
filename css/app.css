@@ -1078,3 +1078,29 @@ table.roster th.closed br + .small { display: block; }
 .nl-device { background: var(--surface-2); border-radius: 18px; padding: 12px; }
 .nl-device iframe { width: 100%; height: calc(100vh - 140px); min-height: 560px; border: 0; border-radius: 12px; background: #F3F1E4; }
 @media (max-width: 980px) { .nl-grid { grid-template-columns: 1fr; } .nl-preview { position: static; } .nl-device iframe { height: 720px; } }
+
+/* ---------------------------------------------------------------- Menu cards */
+.mc-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.mc-tabs .chip { text-decoration: none; }
+.mc-grid { display: grid; grid-template-columns: minmax(320px, 430px) 1fr; gap: 20px; align-items: start; }
+.mc-grid.view { grid-template-columns: 1fr; }
+.mc-form { display: flex; flex-direction: column; gap: 10px; }
+.mc-form input:not([type=checkbox]), .mc-form textarea, .mc-form select { width: 100%; }
+.mc-checks { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
+.mc-sec-ed > summary { justify-content: space-between; }
+.mc-sec-tools { display: flex; gap: 4px; }
+.mc-items { list-style: none; margin: 4px 0; padding: 0; }
+.mc-items li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); font-size: .92rem; }
+.mc-items li.off { opacity: .5; }
+.mc-items .tag.warn { background: var(--accent-soft); color: var(--accent-ink); }
+.mc-i-tools { display: flex; gap: 8px; flex: none; }
+.mc-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mc-add select { flex: 1; min-width: 160px; }
+.mc-danger { margin-top: 6px; }
+.mc-preview { position: sticky; top: 76px; }
+.mc-frame-wrap { background: #E9E7DA; border-radius: 16px; padding: 8px; }
+.mc-frame-wrap iframe { width: 100%; height: 900px; border: 0; display: block; }
+#mc-warn { margin-top: 6px; color: var(--bad); }
+.mc-line { width: min(520px, 100%); text-align: left; }
+.mc-line .allergen-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 12px; margin: 8px 0; font-size: .9rem; }
+@media (max-width: 980px) { .mc-grid { grid-template-columns: 1fr; } .mc-preview { position: static; } }

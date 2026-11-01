@@ -1,0 +1,362 @@
+// Menu cards: the lunch card, the dinner card and the allergen chart, made from the dishes in the app and printed
+// (or saved as PDF) in the Wintertuin style. Managers edit titles, sections and which dishes show, add free lines,
+// or import a Word document. Sections that follow a category stay up to date with the Menu page by themselves.
+// Cards are kept in team_settings 'menu_cards' (readable by everyone, written by managers).
+import { state, isManager, app, esc, toast, toastError, $, $$, confirmDialog, printHtml } from '../core.js';
+import { lang } from '../i18n.js';
+import { sb } from '../data.js';
+import { ALLERGENS } from './menu.js';
+
+const L = (o) => o[lang()] || o.en;
+const AL_NL = { gluten: 'Gluten', crustaceans: 'Schaaldieren', eggs: 'Ei', fish: 'Vis', peanuts: 'Pinda', soy: 'Soja', milk: 'Melk', nuts: 'Noten', celery: 'Selderij',
+  mustard: 'Mosterd', sesame: 'Sesam', sulphites: 'Sulfiet', lupin: 'Lupine', molluscs: 'Weekdieren' };
+const uid = () => Math.random().toString(36).slice(2, 10);
+const nlText = (d) => String(d || '').split('\nEN:')[0].trim();
+const money = (p) => (p == null || p === '' ? '' : String(Number(p).toFixed(2)).replace('.', ',').replace(',00', ''));
+
+export function defaultCards() {
+  return [
+    { id: 'lunch', kind: 'menu', name: 'Lunchkaart', title: 'Lunch', subtitle: 'Vrijdag tot en met zondag', priceLine: '', intro: '',
+      note: 'Tachtig procent plant, twintig procent met zorg gekozen. Alles zelf gemaakt, zo lokaal als het kan.', showPrices: true, showCodes: true,
+      sections: [
+        { id: uid(), title: 'Uit de bakkerij', cat: 'Bakkerij', hidden: [], extra: [] },
+        { id: uid(), title: 'Lunch', cat: 'Lunch', hidden: [], extra: [] },
+        { id: uid(), title: 'Borrel, vanaf 15:00', cat: 'Borrel', hidden: [], extra: [] },
+        { id: uid(), title: 'Zoet', cat: 'Zoet', hidden: [], extra: [], newPage: true, pageTitle: 'Zoet en drinken' },
+        { id: uid(), title: 'Koffie', cat: 'Koffie', hidden: [], extra: [] },
+        { id: uid(), title: 'Thee en fris', cat: 'Thee en fris', hidden: [], extra: [] },
+        { id: uid(), title: 'Wijn en bier', cat: 'Wijn en bier', hidden: [], extra: [] },
+      ] },
+    { id: 'dinner', kind: 'menu', name: 'Dinerkaart', title: 'Diner', subtitle: 'Winter, table d’hôte', priceLine: 'Twee gangen  39',
+      intro: 'Kies een voorgerecht en een hoofdgerecht, of een hoofdgerecht en een nagerecht. Met brood en boter van onze bakkerij.',
+      note: 'Derde gang erbij? Kaas van de boer of een nagerecht voor 9.', showPrices: false, showCodes: true,
+      sections: [
+        { id: uid(), title: 'Voor', cat: 'Diner: voorgerecht', hidden: [], extra: [] },
+        { id: uid(), title: 'Hoofd', cat: 'Diner: hoofdgerecht', hidden: [], extra: [] },
+        { id: uid(), title: 'Na', cat: 'Diner: nagerecht', hidden: [], extra: [] },
+      ] },
+    { id: 'allergens', kind: 'allergens', name: 'Allergenenkaart', title: 'Allergenenkaart', subtitle: 'Een stip betekent: zit in het gerecht. Vraag bij twijfel altijd even na.',
+      note: 'We werken in een open keuken met gluten, noten en sesam. Sporen kunnen we nooit helemaal uitsluiten.', sections: [] },
+  ];
+}
+
+export async function loadCards() {
+  try {
+    const { data } = await sb.from('team_settings').select('value').eq('key', 'menu_cards').maybeSingle();
+    if (data && data.value && Array.isArray(data.value.cards) && data.value.cards.length) return data.value.cards;
+  } catch { /* defaults */ }
+  return defaultCards();
+}
+async function saveCards(cards) {
+  const { error } = await sb.from('team_settings').upsert({ key: 'menu_cards', value: { cards }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) throw error;
+}
+
+// ------------------------------------------------------------------ what a section shows
+function sectionItems(sec, menu) {
+  const fromCat = sec.cat ? menu.filter((m) => (m.category || '') === sec.cat) : [];
+  const order = sec.order || [];
+  fromCat.sort((a, b) => { const ia = order.indexOf(a.id); const ib = order.indexOf(b.id); return (ia < 0 ? 1e6 + (a.sort_order || 0) : ia) - (ib < 0 ? 1e6 + (b.sort_order || 0) : ib); });
+  const live = fromCat.map((m) => ({ ref: m.id, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [], hidden: (sec.hidden || []).includes(m.id) }));
+  const extra = (sec.extra || []).map((x) => {
+    if (x.ref) { const m = menu.find((y) => y.id === x.ref); return m ? { ...x, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [] } : null; }
+    return { ...x, allergens: x.allergens || [] };
+  }).filter(Boolean);
+  return [...live, ...extra];
+}
+
+// ------------------------------------------------------------------ the printed card (also the preview)
+export function cardSheet(card, menu) {
+  const css = `
+  @page { size: A4; margin: 0; }
+  @font-face { font-family: WTSerif; src: url(fonts/young-serif.woff2) format('woff2'); }
+  @font-face { font-family: WTSans; src: url(fonts/inter-400.woff2) format('woff2'); font-weight: 400; }
+  @font-face { font-family: WTSans; src: url(fonts/inter-600.woff2) format('woff2'); font-weight: 600; }
+  @font-face { font-family: WTSans; src: url(fonts/inter-400-italic.woff2) format('woff2'); font-style: italic; }
+  .mc-sheet, .mc-sheet * { box-sizing: border-box; }
+  .mc-sheet { color: #1C2B24; font: 400 9.6pt/1.4 WTSans, -apple-system, 'Segoe UI', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .mc-page { width: 210mm; height: 297mm; background: #FFFDF0; padding: 18mm 20mm 16mm; display: flex; flex-direction: column; break-after: page; page-break-after: always; overflow: hidden; position: relative; }
+  .mc-page:last-child { break-after: auto; page-break-after: auto; }
+  .mc-page.land { width: 297mm; height: 210mm; padding: 14mm 18mm; }
+  .mc-head { text-align: center; margin-bottom: 9mm; }
+  .mc-head img { width: 32mm; height: auto; display: block; margin: 0 auto 5mm; }
+  .mc-sheet h1 { font: 400 30pt/1.1 WTSerif, Georgia, serif !important; color: #22503F; margin: 0 !important; border: 0 !important; }
+  .mc-sub { color: #5A6A62; margin-top: 2mm; font-size: 10pt; }
+  .mc-price { font: 400 16pt/1.2 WTSerif, Georgia, serif; color: #22503F; margin-top: 5mm; }
+  .mc-intro { color: #5A6A62; margin: 2mm auto 0; max-width: 150mm; }
+  .mc-sec { margin-bottom: 6mm; }
+  .mc-sheet h2 { font: 400 14pt/1.2 WTSerif, Georgia, serif !important; color: #22503F; margin: 0 0 3.5mm !important; padding: 0 0 1.6mm !important; border: 0 !important;
+    background: linear-gradient(#71CE8D, #71CE8D) left bottom / 12mm 1.2pt no-repeat; }
+  .mc-dish { display: flex; gap: 6mm; align-items: baseline; margin-bottom: 3.2mm; break-inside: avoid; }
+  .mc-dish .t { flex: 1; }
+  .mc-dish .n { font-weight: 600; font-size: 10.4pt; }
+  .mc-dish sup { font-size: 6.4pt; color: #5A6A62; margin-left: 1.4mm; letter-spacing: .02em; }
+  .mc-dish .d { color: #5A6A62; font-size: 8.8pt; margin-top: .6mm; }
+  .mc-dish .p { font: 400 11pt WTSerif, Georgia, serif; white-space: nowrap; }
+  .mc-note { text-align: center; font-style: italic; color: #22503F; margin-top: 2mm; }
+  .mc-foot { margin-top: auto; border-top: .6pt solid #D9DCC8; padding-top: 3mm; text-align: center; color: #5A6A62; font-size: 7.2pt; }
+  .mc-table { width: 100%; border-collapse: collapse !important; font-size: 8pt; }
+  .mc-table th, .mc-table td { border: 0 !important; border-bottom: .4pt solid #E5E3D0 !important; padding: 1.1mm 1mm !important; }
+  .mc-table th.al { height: 26mm; vertical-align: bottom; text-align: left; white-space: nowrap; }
+  .mc-table th.al span { display: inline-block; transform: rotate(-60deg); transform-origin: left bottom; width: 4mm; font-weight: 600; }
+  .mc-table td.c { text-align: center; color: #22503F; font-size: 9pt; border-left: .4pt solid #E5E3D0 !important; }
+  .mc-table tr:nth-child(even) td { background: #F6F4E6; }
+  .mc-table .cat { color: #5A6A62; font-size: 6.8pt; text-align: right; }
+  .mc-alhead { display: flex; gap: 6mm; align-items: center; margin-bottom: 4mm; }
+  .mc-alhead img { width: 18mm; }
+  .mc-alhead h1 { font-size: 22pt !important; }`;
+  const legend = `<div class="mc-foot">Allergenen: ${ALLERGENS.map((a, i) => `${i + 1} ${AL_NL[a]}`).join(' &nbsp; ')}<br>Vragen over allergenen of dieetwensen? Vraag het ons, we kijken graag wat kan.</div>`;
+  if (card.kind === 'allergens') {
+    const rows = menu.filter((m) => m.active !== false);
+    const perPage = 30;
+    const pages = [];
+    for (let i = 0; i < Math.max(rows.length, 1); i += perPage) {
+      pages.push(`<section class="mc-page land"><div class="mc-alhead"><img src="img/logo.png" alt=""><div><h1>${esc(card.title)}</h1><div class="mc-sub">${esc(card.subtitle || '')}</div></div></div>
+        <table class="mc-table"><thead><tr><th></th><th></th>${ALLERGENS.map((a) => `<th class="al"><span>${AL_NL[a]}</span></th>`).join('')}</tr></thead><tbody>
+        ${rows.slice(i, i + perPage).map((m) => `<tr><td>${esc(m.name)}</td><td class="cat">${esc(m.category || '')}</td>${ALLERGENS.map((a) => `<td class="c">${(m.allergens || []).includes(a) ? '&#9679;' : ''}</td>`).join('')}</tr>`).join('')}
+        </tbody></table><div class="mc-foot">${esc(card.note || '')} Wintertuin, Cantonspark Baarn.</div></section>`);
+    }
+    return `<style>${css}</style><div class="mc-sheet">${pages.join('')}</div>`;
+  }
+  // pages: a section with "new page" starts one
+  const pages = [[]];
+  card.sections.forEach((s) => { if (s.newPage && pages[pages.length - 1].length) pages.push([]); pages[pages.length - 1].push(s); });
+  const codes = (al) => (card.showCodes && al.length ? `<sup>${al.map((a) => ALLERGENS.indexOf(a) + 1).filter((n) => n > 0).sort((a, b) => a - b).join(' ')}</sup>` : '');
+  const html = pages.map((secs, pi) => {
+    const first = pi === 0;
+    const head = first
+      ? `<div class="mc-head"><img src="img/logo.png" alt="Wintertuin"><h1>${esc(card.title)}</h1>${card.subtitle ? `<div class="mc-sub">${esc(card.subtitle)}</div>` : ''}
+          ${card.priceLine ? `<div class="mc-price">${esc(card.priceLine)}</div>` : ''}${card.intro ? `<div class="mc-intro">${esc(card.intro)}</div>` : ''}</div>`
+      : `<div class="mc-head"><img src="img/logo.png" alt=""><h1>${esc(secs[0].pageTitle || card.title)}</h1></div>`;
+    const body = secs.map((s) => {
+      const items = sectionItems(s, menu).filter((x) => !x.hidden);
+      if (!items.length && !s.title) return '';
+      return `<div class="mc-sec"><h2>${esc(s.title || '')}</h2>${items.map((x) => `<div class="mc-dish"><div class="t"><span class="n">${esc(x.name)}</span>${codes(x.allergens || [])}
+        ${x.description ? `<div class="d">${esc(x.description)}</div>` : ''}</div>${card.showPrices && x.price != null && x.price !== '' ? `<div class="p">${esc(money(x.price))}</div>` : ''}</div>`).join('')}</div>`;
+    }).join('');
+    const last = pi === pages.length - 1;
+    return `<section class="mc-page">${head}${body}${last && card.note ? `<div class="mc-note">${esc(card.note)}</div>` : ''}${card.showCodes ? legend : '<div class="mc-foot">Wintertuin, Cantonspark Baarn</div>'}</section>`;
+  }).join('');
+  return `<style>${css}</style><div class="mc-sheet">${html}</div>`;
+}
+
+// ------------------------------------------------------------------ page
+let cards = [];
+let menu = [];
+let cur = null;
+let dirty = false;
+
+export async function renderMenuCard(args = []) {
+  app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
+  const [c, m] = await Promise.all([loadCards(), sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name').then((r) => r.data || [], () => [])]);
+  cards = c; menu = m; dirty = false;
+  cur = cards.find((x) => x.id === args[0]) || cards[0];
+  draw();
+}
+
+function draw() {
+  const mgr = isManager();
+  const cats = [...new Set(menu.map((m) => m.category).filter(Boolean))];
+  const c = cur;
+  const inp = (k, ph = '') => `<input data-c="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}">`;
+  app().innerHTML = `
+    <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${L({ en: 'Menu', nl: 'Menu' })}</a><h1>${L({ en: 'Menu cards', nl: 'Menukaarten' })}</h1>
+      <div class="muted small">${mgr ? L({ en: 'Made from the dishes in the app. Change texts, sections and which dishes show; print or save as PDF.', nl: 'Gemaakt van de gerechten in de app. Pas teksten, blokken en gerechten aan; print of bewaar als pdf.' })
+        : L({ en: 'Always up to date with the Menu page. Print or save as PDF.', nl: 'Altijd gelijk met de Menu-pagina. Print of bewaar als pdf.' })}</div></div>
+      <div class="page-actions">
+        ${mgr ? `<label class="btn btn-sm" for="mc-word"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Import Word', nl: 'Word importeren' })}</label><input type="file" id="mc-word" accept=".docx" hidden>
+          <button type="button" class="btn-sm" id="mc-new">+ ${L({ en: 'Card', nl: 'Kaart' })}</button>
+          <button type="button" class="btn-sm" id="mc-save" ${dirty ? '' : 'disabled'}>${L({ en: 'Save', nl: 'Opslaan' })}</button>` : ''}
+        <button type="button" class="btn-primary btn-sm" id="mc-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ en: 'Print or PDF', nl: 'Print of pdf' })}</button></div></div>
+    <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''}" href="#/menucard/${x.id}" data-tab="${x.id}">${esc(x.name || x.title)}</a>`).join('')}</div>
+    <div class="mc-grid ${mgr ? '' : 'view'}">
+      ${mgr ? `<div class="mc-form">
+        <div class="field-row"><div class="field"><label>${L({ en: 'Name (button)', nl: 'Naam (knop)' })}</label>${inp('name')}</div><div class="field"><label>${L({ en: 'Title on the card', nl: 'Titel op de kaart' })}</label>${inp('title')}</div></div>
+        <div class="field"><label>${L({ en: 'Subtitle', nl: 'Ondertitel' })}</label>${inp('subtitle')}</div>
+        ${c.kind === 'allergens' ? `<div class="field"><label>${L({ en: 'Line at the bottom', nl: 'Regel onderaan' })}</label>${inp('note')}</div>
+          <p class="small muted">${L({ en: 'The allergen chart always lists every dish and drink on the Menu page, with the allergens set there.', nl: 'De allergenenkaart toont altijd alle gerechten en dranken van de Menu-pagina, met de allergenen die daar staan.' })}</p>` : `
+        <div class="field-row"><div class="field"><label>${L({ en: 'Price line (optional)', nl: 'Prijsregel (optioneel)' })}</label>${inp('priceLine', 'Twee gangen 39')}</div>
+          <div class="field mc-checks"><label class="check"><input type="checkbox" data-cb="showPrices" ${c.showPrices ? 'checked' : ''}> ${L({ en: 'Prices per dish', nl: 'Prijs per gerecht' })}</label>
+          <label class="check"><input type="checkbox" data-cb="showCodes" ${c.showCodes ? 'checked' : ''}> ${L({ en: 'Allergen numbers', nl: 'Allergeennummers' })}</label></div></div>
+        <div class="field"><label>${L({ en: 'Introduction (optional)', nl: 'Inleiding (optioneel)' })}</label><textarea data-c="intro" rows="2">${esc(c.intro || '')}</textarea></div>
+        <div class="field"><label>${L({ en: 'Closing line (optional)', nl: 'Slotregel (optioneel)' })}</label>${inp('note')}</div>
+        <div class="subhead">${L({ en: 'Sections', nl: 'Blokken' })}</div>
+        ${c.sections.map((s, si) => `<details class="nl-sec mc-sec-ed" ${si < 2 ? 'open' : ''}><summary><strong>${esc(s.title || L({ en: '(no title)', nl: '(geen titel)' }))}</strong>
+            <span class="mc-sec-tools"><button type="button" class="btn-sm" data-sup="${si}" ${si === 0 ? 'disabled' : ''} aria-label="${L({ en: 'Up', nl: 'Omhoog' })}">&#9650;</button><button type="button" class="btn-sm" data-sdown="${si}" ${si === c.sections.length - 1 ? 'disabled' : ''} aria-label="${L({ en: 'Down', nl: 'Omlaag' })}">&#9660;</button></span></summary>
+          <div class="nl-body">
+            <div class="field-row"><input data-s="${si}" data-f="title" value="${esc(s.title || '')}" placeholder="${L({ en: 'Section title', nl: 'Titel van het blok' })}">
+              <select data-s="${si}" data-f="cat"><option value="">${L({ en: 'No category: own lines only', nl: 'Geen categorie: alleen eigen regels' })}</option>${cats.map((k) => `<option ${s.cat === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}${s.cat && !cats.includes(s.cat) ? `<option selected>${esc(s.cat)}</option>` : ''}</select></div>
+            <label class="check small"><input type="checkbox" data-s="${si}" data-f="newPage" ${s.newPage ? 'checked' : ''}> ${L({ en: 'Start a new page here', nl: 'Hier een nieuwe pagina beginnen' })}</label>
+            ${s.newPage ? `<input data-s="${si}" data-f="pageTitle" value="${esc(s.pageTitle || '')}" placeholder="${L({ en: 'Title of that page', nl: 'Titel van die pagina' })}">` : ''}
+            <ul class="mc-items">${sectionItems(s, menu).map((x, xi) => `<li class="${x.hidden ? 'off' : ''}">
+              ${x.ref && !x.extraIndex && (s.cat && menu.find((m) => m.id === x.ref && m.category === s.cat))
+                ? `<label class="check"><input type="checkbox" data-show="${si}|${x.ref}" ${x.hidden ? '' : 'checked'}> ${esc(x.name)}</label><span class="mc-i-tools"><button type="button" class="link-btn small" data-iup="${si}|${x.ref}">&#9650;</button></span>`
+                : `<span>${esc(x.name)} <span class="tag">${x.ref ? L({ en: 'from menu', nl: 'uit menu' }) : L({ en: 'own line', nl: 'eigen regel' })}</span>${!x.ref && !(x.allergens || []).length ? ` <span class="tag warn">${L({ en: 'allergens?', nl: 'allergenen?' })}</span>` : ''}</span>
+                  <span class="mc-i-tools">${x.ref ? '' : `<button type="button" class="link-btn small" data-xedit="${si}|${(s.extra || []).indexOf((s.extra || []).find((y) => y.id === x.id))}">${L({ en: 'Edit', nl: 'Wijzig' })}</button>`}
+                  <button type="button" class="link-btn small" data-xdel="${si}|${x.id}">${L({ en: 'Remove', nl: 'Weg' })}</button></span>`}</li>`).join('')}</ul>
+            <div class="mc-add"><select data-addref="${si}"><option value="">+ ${L({ en: 'dish from the menu', nl: 'gerecht uit het menu' })}</option>${menu.map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
+              <button type="button" class="btn-sm" data-addline="${si}">+ ${L({ en: 'own line', nl: 'eigen regel' })}</button>
+              <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>
+          </div></details>`).join('')}
+        <button type="button" class="btn-sm" id="mc-addsec">+ ${L({ en: 'Section', nl: 'Blok' })}</button>`}
+        <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Back to the standard card', nl: 'Terug naar de standaardkaart' })}</button>`}</div>
+      </div>` : ''}
+      <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
+    </div>`;
+  preview();
+  bind();
+}
+
+function preview() {
+  const f = $('#mc-frame');
+  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}"><style>html,body{margin:0;background:#E9E7DA}.mc-page{margin:0 auto 10mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}body{padding:8mm 0}</style></head><body>${cardSheet(cur, menu)}</body></html>`;
+  f.onload = () => {
+    try {
+      const d = f.contentDocument; const pages = [...d.querySelectorAll('.mc-page')];
+      const over = pages.some((p) => p.scrollHeight > p.clientHeight + 2);
+      $('#mc-warn').textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
+      // scale the A4 pages to the width of the preview
+      const w = f.clientWidth; const pw = pages[0] ? pages[0].offsetWidth : 794; const z = Math.min(1, (w - 16) / pw);
+      d.body.style.zoom = z; f.style.height = `${Math.min(d.body.scrollHeight * z + 20, 4000)}px`;
+    } catch { /* preview only */ }
+  };
+}
+
+function changed() { dirty = true; const b = $('#mc-save'); if (b) b.disabled = false; }
+
+function bind() {
+  const c = cur;
+  let timer;
+  const soon = () => { clearTimeout(timer); timer = setTimeout(preview, 300); };
+  $$('[data-tab]').forEach((a) => (a.onclick = async (e) => {
+    if (!dirty) return;
+    e.preventDefault();
+    if (await confirmDialog(L({ en: 'Save your changes first?', nl: 'Eerst je wijzigingen opslaan?' }), L({ en: 'Save', nl: 'Opslaan' }), false)) { await save(); }
+    dirty = false; location.hash = a.getAttribute('href');
+  }));
+  $$('[data-c]').forEach((el) => (el.oninput = () => { c[el.dataset.c] = el.value; changed(); soon(); }));
+  $$('[data-cb]').forEach((el) => (el.onchange = () => { c[el.dataset.cb] = el.checked; changed(); preview(); }));
+  $$('[data-s]').forEach((el) => {
+    const s = c.sections[Number(el.dataset.s)]; const k = el.dataset.f;
+    if (el.type === 'checkbox') el.onchange = () => { s[k] = el.checked; changed(); draw(); };
+    else if (el.tagName === 'SELECT') el.onchange = () => { s[k] = el.value || null; s.hidden = []; changed(); draw(); };
+    else el.oninput = () => { s[k] = el.value; changed(); soon(); };
+  });
+  $$('[data-show]').forEach((el) => (el.onchange = () => {
+    const [si, id] = el.dataset.show.split('|'); const s = c.sections[Number(si)];
+    s.hidden = (s.hidden || []).filter((x) => x !== id); if (!el.checked) s.hidden.push(id);
+    el.closest('li').classList.toggle('off', !el.checked); changed(); preview();
+  }));
+  $$('[data-iup]').forEach((b) => (b.onclick = () => {
+    const [si, id] = b.dataset.iup.split('|'); const s = c.sections[Number(si)];
+    const ids = sectionItems(s, menu).filter((x) => x.ref && menu.find((m) => m.id === x.ref && m.category === s.cat)).map((x) => x.ref);
+    const i = ids.indexOf(id); if (i > 0) { [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; s.order = ids; changed(); draw(); }
+  }));
+  $$('[data-sup]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); const i = Number(b.dataset.sup); [c.sections[i - 1], c.sections[i]] = [c.sections[i], c.sections[i - 1]]; changed(); draw(); }));
+  $$('[data-sdown]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); const i = Number(b.dataset.sdown); [c.sections[i + 1], c.sections[i]] = [c.sections[i], c.sections[i + 1]]; changed(); draw(); }));
+  $$('[data-sdel]').forEach((b) => (b.onclick = () => { c.sections.splice(Number(b.dataset.sdel), 1); changed(); draw(); }));
+  $$('[data-addref]').forEach((el) => (el.onchange = () => { if (!el.value) return; const s = c.sections[Number(el.dataset.addref)]; (s.extra = s.extra || []).push({ id: uid(), ref: el.value }); changed(); draw(); }));
+  $$('[data-addline]').forEach((b) => (b.onclick = () => lineEditor(c.sections[Number(b.dataset.addline)], null)));
+  $$('[data-xedit]').forEach((b) => (b.onclick = () => { const [si, xi] = b.dataset.xedit.split('|').map(Number); lineEditor(c.sections[si], c.sections[si].extra[xi]); }));
+  $$('[data-xdel]').forEach((b) => (b.onclick = () => { const [si, id] = b.dataset.xdel.split('|'); const s = c.sections[Number(si)]; s.extra = (s.extra || []).filter((x) => x.id !== id); changed(); draw(); }));
+  const add = $('#mc-addsec'); if (add) add.onclick = () => { c.sections.push({ id: uid(), title: '', cat: null, hidden: [], extra: [] }); changed(); draw(); };
+  const sv = $('#mc-save'); if (sv) sv.onclick = save;
+  $('#mc-print').onclick = () => printHtml(cardSheet(c, menu));
+  const nw = $('#mc-new'); if (nw) nw.onclick = () => { const n = { id: uid(), kind: 'menu', name: L({ en: 'New card', nl: 'Nieuwe kaart' }), title: 'Menu', subtitle: '', showPrices: true, showCodes: true, sections: [{ id: uid(), title: '', cat: null, hidden: [], extra: [] }] }; cards.push(n); cur = n; changed(); draw(); };
+  const del = $('#mc-del'); if (del) del.onclick = async () => { if (!(await confirmDialog(L({ en: 'Delete this card?', nl: 'Deze kaart verwijderen?' }), L({ en: 'Delete', nl: 'Verwijderen' })))) return; cards = cards.filter((x) => x !== c); cur = cards[0]; await save(); draw(); };
+  const rs = $('#mc-reset'); if (rs) rs.onclick = async () => { if (!(await confirmDialog(L({ en: 'Replace this card with the standard version?', nl: 'Deze kaart vervangen door de standaardversie?' }), L({ en: 'Replace', nl: 'Vervangen' }), false))) return; const d = defaultCards().find((x) => x.id === c.id); cards[cards.indexOf(c)] = d; cur = d; changed(); draw(); };
+  const word = $('#mc-word'); if (word) word.onchange = () => { if (word.files[0]) importWord(word.files[0]); };
+}
+
+async function save() {
+  try { await saveCards(cards); dirty = false; const b = $('#mc-save'); if (b) b.disabled = true; toast(L({ en: 'Menu cards saved', nl: 'Menukaarten opgeslagen' })); }
+  catch (e) { toastError(e); }
+}
+
+// A free line (not from the menu): name, description, price and allergens
+function lineEditor(sec, line) {
+  const v = line || { id: uid(), name: '', description: '', price: null, allergens: [] };
+  const dlg = document.createElement('div');
+  dlg.className = 'k-overlay';
+  dlg.innerHTML = `<form class="k-msg mc-line" autocomplete="off"><h2>${line ? L({ en: 'Edit line', nl: 'Regel wijzigen' }) : L({ en: 'Own line', nl: 'Eigen regel' })}</h2>
+    <div class="field"><label>${L({ en: 'Name', nl: 'Naam' })}</label><input name="name" value="${esc(v.name)}" required></div>
+    <div class="field"><label>${L({ en: 'Description', nl: 'Omschrijving' })}</label><textarea name="description" rows="2">${esc(v.description || '')}</textarea></div>
+    <div class="field"><label>${L({ en: 'Price', nl: 'Prijs' })}</label><input name="price" inputmode="decimal" value="${v.price != null ? String(v.price).replace('.', ',') : ''}"></div>
+    <div class="allergen-grid">${ALLERGENS.map((a) => `<label class="check"><input type="checkbox" name="al" value="${a}" ${(v.allergens || []).includes(a) ? 'checked' : ''}> ${AL_NL[a]}</label>`).join('')}</div>
+    <div class="modal-actions"><button type="button" class="btn" data-x>${L({ en: 'Cancel', nl: 'Annuleren' })}</button><button type="submit" class="btn-primary">${L({ en: 'Done', nl: 'Klaar' })}</button></div></form>`;
+  document.body.appendChild(dlg);
+  dlg.querySelector('[data-x]').onclick = () => dlg.remove();
+  dlg.querySelector('form').onsubmit = (e) => {
+    e.preventDefault(); const f = e.target;
+    const p = parseFloat(String(f.price.value).replace(',', '.'));
+    Object.assign(v, { name: f.name.value.trim(), description: f.description.value.trim(), price: Number.isFinite(p) ? p : null, allergens: [...f.querySelectorAll('[name=al]:checked')].map((x) => x.value) });
+    if (!line) (sec.extra = sec.extra || []).push(v);
+    dlg.remove(); changed(); draw();
+  };
+}
+
+// ------------------------------------------------------------------ Word import
+// Heading 1 (or the first line) becomes the title, the line after it the subtitle; Heading 2/3 start a section;
+// a bold line (or a line ending in a price) is a dish, the line under it its description. Dishes with the same
+// name as a dish in the app take their allergens from it.
+function loadMammoth() {
+  if (window.mammoth) return Promise.resolve(window.mammoth);
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'vendor/mammoth.browser.min.js'; s.onload = () => res(window.mammoth); s.onerror = () => rej(new Error('Word reader did not load')); document.head.appendChild(s); });
+}
+const PRICE = /(?:€\s*)?(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:€|euro)?\s*$/i;
+export function parseWordHtml(html, menuItems = []) {
+  const d = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const blocks = [...d.body.firstChild.children];
+  const card = { id: uid(), kind: 'menu', name: '', title: '', subtitle: '', priceLine: '', intro: '', note: '', showPrices: false, showCodes: true, sections: [] };
+  let sec = null; let last = null;
+  const byName = (n) => menuItems.find((m) => m.name.trim().toLowerCase() === n.trim().toLowerCase());
+  const newSec = (title) => { sec = { id: uid(), title, cat: null, hidden: [], extra: [] }; card.sections.push(sec); last = null; };
+  for (const el of blocks) {
+    const text = el.textContent.replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'h1' || (!card.title && !card.sections.length && tag !== 'ul' && tag !== 'ol')) { if (!card.title) { card.title = text; continue; } }
+    if (tag === 'h2' || tag === 'h3' || tag === 'h4') { newSec(text); continue; }
+    if (!sec && !card.subtitle && card.title && text.length < 90 && !el.querySelector('strong')) { card.subtitle = text; continue; }
+    if (!sec) newSec('');
+    const lines = tag === 'ul' || tag === 'ol' ? [...el.querySelectorAll('li')].map((li) => li) : [el];
+    for (const ln of lines) {
+      const t = ln.textContent.replace(/\s+/g, ' ').trim();
+      const strong = ln.querySelector('strong, b');
+      const bold = strong && t.startsWith(strong.textContent.trim().slice(0, 3)) ? strong.textContent.trim() : '';
+      const priceM = t.match(PRICE);
+      const isDish = !!bold || (priceM && t.length < 90 && t.replace(PRICE, '').trim().length > 1);
+      if (isDish) {
+        let name = bold || t.replace(PRICE, '').trim();
+        let rest = bold ? t.slice(t.indexOf(bold) + bold.length).trim() : '';
+        let price = null;
+        const pm = (bold ? rest : t).match(PRICE);
+        if (pm) { price = parseFloat(pm[1].replace(',', '.')); if (bold) rest = rest.replace(PRICE, '').trim(); else name = t.replace(PRICE, '').trim(); }
+        name = name.replace(/[\s.–\-:]+$/, '').trim();
+        rest = rest.replace(/^[\s–\-:]+/, '').trim();
+        const m = byName(name);
+        last = { id: uid(), name, description: rest, price, allergens: m ? m.allergens || [] : [] };
+        sec.extra.push(last);
+        if (price != null) card.showPrices = true;
+      } else if (last && !last.description) last.description = t;
+      else if (last) last.description += ` ${t}`;
+      else if (!card.intro && !sec.extra.length) card.intro = t;
+    }
+  }
+  card.name = card.title || 'Word';
+  card.sections = card.sections.filter((s) => s.title || s.extra.length);
+  return card;
+}
+
+async function importWord(file) {
+  try {
+    const mammoth = await loadMammoth();
+    const { value } = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+    const card = parseWordHtml(value, menu);
+    if (!card.sections.some((s) => s.extra.length)) throw new Error(L({ en: 'No dishes found. Use a heading per section and a bold line per dish.', nl: 'Geen gerechten gevonden. Gebruik een kop per blok en een vetgedrukte regel per gerecht.' }));
+    const n = card.sections.reduce((a, s) => a + s.extra.length, 0);
+    const missing = card.sections.reduce((a, s) => a + s.extra.filter((x) => !x.allergens.length).length, 0);
+    cards.push(card); cur = card; changed(); draw();
+    toast(L({ en: `${n} dishes imported${missing ? `, ${missing} without allergens: check them` : ''}`, nl: `${n} gerechten geïmporteerd${missing ? `, ${missing} zonder allergenen: controleer ze` : ''}` }));
+  } catch (e) { toastError(e); }
+}

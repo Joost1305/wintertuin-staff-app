@@ -19,6 +19,7 @@ import { renderHome } from './pages/home.js';
 import { renderKiosk } from './pages/kiosk.js';
 import { renderGuests } from './pages/guests.js';
 import { renderNewsletter } from './pages/newsletter.js';
+import { renderMenuCard } from './pages/menucard.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
 
@@ -41,6 +42,7 @@ const routes = [
   { icon: 'settings', path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
   { icon: 'user', path: 'guests', render: renderGuests, nav: 'nav_guests', show: isManager },
   { path: 'newsletter', render: renderNewsletter, nav: null, show: isManager },
+  { path: 'menucard', render: renderMenuCard, nav: null, show: () => true },
   { path: 'kiosk', render: renderKiosk, nav: null, show: isManager, bare: true },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
@@ -224,7 +226,7 @@ window.addEventListener('wt:badge', () => refreshBadge());
 sb.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; }
 });
-const known = /^#\/(login|home|today|kiosk|guests|newsletter|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
+const known = /^#\/(login|home|today|kiosk|guests|newsletter|menucard|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
 // unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
 if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();
