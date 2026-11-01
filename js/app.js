@@ -72,7 +72,9 @@ async function refreshBadge() {
 }
 
 let moreEl = null;
-document.addEventListener('click', (e) => { if (moreEl && !moreEl.contains(e.target) && !window.matchMedia('(max-width: 820px)').matches) moreEl.open = false; });
+const touchNav = () => document.documentElement.classList.contains('touch-nav');
+document.addEventListener('click', (e) => { if (moreEl && !moreEl.contains(e.target) && !touchNav()) moreEl.open = false; });
+window.addEventListener('wt:touchnav', () => { if (state.me) renderShell(); });
 
 function renderShell() {
   const top = $('#topbar');
@@ -97,7 +99,7 @@ function renderShell() {
   const more = nav.querySelector('.nav-more');
   // On a phone the list is part of the More sheet, so it stays unfolded there
   moreEl = more;
-  if (window.matchMedia('(max-width: 820px)').matches) more.open = true;
+  if (touchNav()) more.open = true;
   // Switch to the other app: on a phone, tablet or as an app in the Dock (anything not a normal browser tab) in the same window (iOS freezes on, or jumps to a stale copy of,
   // a separate named tab and opens the start page of an old tab); on a computer in its own tab, reused each time
   const touch = window.matchMedia('(pointer: coarse)').matches || window.navigator.standalone || !window.matchMedia('(display-mode: browser)').matches;
@@ -112,12 +114,13 @@ function renderShell() {
 }
 
 // Phone: four fixed tabs and More (which opens the full menu as a sheet)
-const TABS = ['today', 'roster', 'sops', 'menu'];
+// Phone and tablet tabs: Today plus the first three of the menu order set under Settings
 function renderTabbar(current, sorted) {
   let bar = document.getElementById('tabbar');
   if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Tabs'); document.body.appendChild(bar); }
   bar.hidden = false;
-  const tabs = TABS.map((p) => routes.find((r) => r.path === p && r.show())).filter(Boolean);
+  const today = routes.find((r) => r.path === 'today');
+  const tabs = [today, ...sorted.filter((r) => !['today', 'settings', 'about'].includes(r.path)).slice(0, 3)];
   const inTabs = tabs.some((r) => r.path === current);
   bar.innerHTML = tabs.map((r) => `<a href="#/${r.path}" class="${current === r.path ? 'on' : ''}"><i class="ic ic-${r.icon}" aria-hidden="true"></i>${t(r.nav)}</a>`).join('') +
     `<button type="button" id="tab-more" class="${inTabs ? '' : 'on'}" aria-expanded="false"><i class="ic ic-more" aria-hidden="true"></i>${t('nav_more')}${badge ? `<span class="dot">${badge > 9 ? '9+' : badge}</span>` : ''}</button>`;
@@ -130,7 +133,6 @@ function renderTabbar(current, sorted) {
     $('#tab-more').setAttribute('aria-expanded', 'true');
   };
   nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
-  void sorted;
 }
 
 function renderNoAccess() {

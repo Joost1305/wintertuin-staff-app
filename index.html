@@ -21,13 +21,17 @@
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png?v=3">
   <link rel="manifest" href="manifest.webmanifest?v=4">
   <meta name="apple-mobile-web-app-title" content="WT Team">
-  <link rel="stylesheet" href="css/app.css?v=2026-11-01-team-2">
-  <link rel="stylesheet" href="css/theme.css?v=2026-11-01-3">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-01-team-3">
+  <link rel="stylesheet" href="css/theme.css?v=2026-11-01-4">
   <link rel="preload" href="fonts/young-serif.woff2" as="font" type="font/woff2" crossorigin>
   <script>/* season follows the clock change: winter from the last Sunday of October, summer from the last Sunday of March */
   (function () { var d = new Date(), y = d.getFullYear(); function last(m) { var x = new Date(y, m + 1, 0); x.setDate(x.getDate() - x.getDay()); return x; }
     var s = d >= last(9) || d < last(2) ? 'winter' : 'summer'; try { s = localStorage.getItem('wt_season') || s; } catch (e) {}
     document.documentElement.dataset.season = s; })();</script>
+  <script>/* phones and tablets get the tab bar at the bottom instead of the top menu */
+  (function () { var q = window.matchMedia('(max-width: 820px), (pointer: coarse) and (max-width: 1366px)');
+    var set = function () { document.documentElement.classList.toggle('touch-nav', q.matches); }; set();
+    try { q.addEventListener('change', function () { set(); window.dispatchEvent(new Event('wt:touchnav')); }); } catch (e) {} })();</script>
 </head>
 <body>
   <header id="topbar" class="topbar" hidden>
@@ -52,6 +56,6 @@
   <!-- Keep the password-reset link details before the auth library reads and clears them -->
   <script>window.__authHash = location.hash;</script>
   <script src="vendor/supabase.js"></script>
-  <script type="module" src="js/app.js?v=2026-11-01-team-2"></script>
+  <script type="module" src="js/app.js?v=2026-11-01-team-3"></script>
 </body>
 </html>

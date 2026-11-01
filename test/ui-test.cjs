@@ -155,7 +155,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const txt = await p.textContent('#sec'); if (!/Works, but worth a look/.test(txt) || !/Daily closing missing/.test(txt) || !/Wedding Jansen/.test(txt)) throw new Error(txt.slice(0, 300));
       await p.screenshot({ path: `${OUT}/19-system-check.png`, fullPage: true });
       await p.click('#sc-run'); await p.waitForSelector('text=Everything works'); });
-    for (const sec of ['team', 'templates', 'links', 'backup']) await step(`settings: ${sec}`, async () => { await p.goto(BASE + '#/settings/' + sec); await p.waitForSelector('#sec .card'); });
+    for (const sec of ['team', 'templates', 'links', 'system']) await step(`settings: ${sec}`, async () => { await p.goto(BASE + '#/settings/' + sec); await p.waitForSelector('#sec .card'); });
     await step('settings: create account shows login details', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'New Person'); await p.fill('.modal [name=email]', 'new@example.test'); await p.click('.modal button[type=submit]');
@@ -177,7 +177,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('settings: add fixed shift', async () => {
       await p.goto(BASE + '#/settings/templates'); await p.click('#add'); await p.fill('.modal [name=name]', 'Evening'); await p.fill('.modal [name=start_time]', '17:00'); await p.fill('.modal [name=end_time]', '23:00');
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Evening'); });
-    await step('backups page explains the nightly backup', async () => { await p.goto(BASE + '#/settings/backup'); await p.waitForSelector('#sec .card'); if (!/both apps/.test(await p.textContent('#sec'))) throw new Error('no nightly backup text'); if (await p.$('#dl, #restore')) throw new Error('old download/restore still there'); });
+    await step('backups are explained under System check (old link still works)', async () => { await p.goto(BASE + '#/settings/backup'); await p.waitForSelector('#sec .card:has-text("both apps")'); if (!/both apps/.test(await p.textContent('#sec'))) throw new Error('no nightly backup text'); if (await p.$('#dl, #restore')) throw new Error('old download/restore still there'); });
     await step('employee view: manager sees the staff screens, then goes back', async () => {
       await p.goto(BASE + '#/settings'); await p.waitForSelector('#emp-on'); await p.click('#emp-on');
       await p.waitForSelector('#emp-bar'); await p.waitForTimeout(300);

@@ -6,6 +6,9 @@ import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 import { renderSystemCheck } from './system-check.js';
 import { renderHaccpSettings } from './haccp.js';
 import { NAV_ITEMS, orderPaths, saveNavOrder } from '../nav.js';
+import { setDevicePin } from '../pinlock.js';
+import { lang } from '../i18n.js';
+const L = (o) => o[lang()] || o.en;
 
 const SECTIONS = [
   { id: 'team', label: 'set_team' },
@@ -14,7 +17,6 @@ const SECTIONS = [
   { id: 'haccp', label: 'set_haccp' },
   { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
-  { id: 'backup', label: 'set_backup' },
   { id: 'system', label: 'set_system' },
   { id: 'password', label: 'set_password' },
 ];
@@ -22,6 +24,7 @@ const SECTIONS = [
 export async function renderSettings(args = []) {
   if (!isManager()) { location.hash = '#/sops'; return; }
   const narrow = window.matchMedia('(max-width: 820px)').matches;
+  if (args[0] === 'backup') args = ['system']; // Backups now live under System check
   const current = SECTIONS.find((x) => x.id === args[0]) || (narrow ? null : SECTIONS[0]);
   app().innerHTML = `<div class="page-head"><h1>${t('nav_settings')}</h1>
       <div class="page-actions"><button type="button" class="btn-sm" id="emp-on" title="${t('emp_view_hint')}">&#128065; ${t('emp_view')}</button></div></div>
@@ -31,7 +34,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, navorder, links, backup, password, system: (el) => renderSystemCheck(el) })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
@@ -299,8 +302,8 @@ async function links(el) {
 // ------------------------------------------------------------------ backups
 // The full backup of both apps is made every night by GitHub and e-mailed (see .github/workflows/backup.yml);
 // this page only says so and points to the smaller exports.
-async function backup(el) {
-  el.innerHTML = `<div class="card"><h2>${t('set_backup')}</h2><p class="small muted" style="margin-top:-6px">${t('backup_nightly')}</p></div>
+function backupCards() {
+  return `<div class="card"><h2>${t('set_backup')}</h2><p class="small muted" style="margin-top:-6px">${t('backup_nightly')}</p></div>
     <div class="card"><h2>${t('other_exports')}</h2><p class="small muted" style="margin-top:-6px">${t('other_exports_sub')}</p>
       <div class="page-actions"><a class="btn btn-sm" href="#/sops">${t('nav_sops')}</a><a class="btn btn-sm" href="#/roster">${t('nav_roster')}</a></div></div>`;
 }
@@ -310,12 +313,26 @@ async function password(el) {
   el.innerHTML = `<div class="card" style="max-width:480px"><h2>${t('set_password')}</h2><p class="small muted" style="margin-top:-6px">${t('set_password_sub')}</p>
     <form id="pw"><div class="field"><label>${t('pw_new')}</label><input type="password" name="pw" autocomplete="new-password" minlength="8" required></div>
     <div class="field"><label>${t('pw_repeat')}</label><input type="password" name="pw2" autocomplete="new-password" minlength="8" required></div>
-    <button class="btn-primary" type="submit">${t('save')}</button></form></div>`;
+    <button class="btn-primary" type="submit">${t('save')}</button></form></div>
+    <div class="card" style="max-width:480px"><h2>${L({ en: 'My PIN', nl: 'Mijn pincode' })}</h2>
+      <p class="small muted" style="margin-top:-6px">${L({ en: 'Four digits that open both apps on this device, and clock you in on the tablet at the pass.', nl: 'Vier cijfers die beide apps openen op dit toestel, en je inklokken op de tablet bij de pass.' })}</p>
+      <form id="pin-form" class="pin-row" autocomplete="off"><input id="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••" aria-label="PIN">
+        <button type="submit" class="btn-primary">${L({ en: 'Save PIN', nl: 'Pincode opslaan' })}</button></form></div>`;
   $('#pw', el).onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
     if (f.pw.value.length < 8) return toastError(new Error(t('pw_short')));
     if (f.pw.value !== f.pw2.value) return toastError(new Error(t('pw_mismatch')));
     try { await setPassword(f.pw.value); f.reset(); toast(t('pw_saved')); } catch (err) { toastError(err); }
+  };
+  $('#pin-form', el).onsubmit = async (e) => {
+    e.preventDefault();
+    const v = $('#pin', el).value.trim();
+    if (!/^[0-9]{4}$/.test(v)) return toastError(new Error(L({ en: 'The PIN is 4 digits.', nl: 'De pincode is 4 cijfers.' })));
+    try {
+      await setDevicePin({ id: state.me.id, full_name: state.me.full_name }, v);
+      try { check(await sb.rpc('set_my_kiosk_pin', { p_pin: v })); } catch { /* clock-in tablet not switched on yet */ }
+      $('#pin', el).value = ''; toast(L({ en: 'PIN saved', nl: 'Pincode opgeslagen' }));
+    } catch (err) { toastError(err); }
   };
 }

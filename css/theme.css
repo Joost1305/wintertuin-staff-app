@@ -221,3 +221,30 @@ body.locked #app, body.locked .tabbar { visibility: hidden; }
 .pl-brand img { width: 96px; height: auto; }
 .pl-brand { margin-bottom: 6px; }
 @media (max-width: 820px) { .login-logo { width: 150px; } }
+
+/* ---------------------------------------------------------------- tablets: the same tab bar as phones (html.touch-nav is set in index.html) */
+html.touch-nav .tabbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  background: var(--surface); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+html.touch-nav .tabbar a, html.touch-nav .tabbar button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; border: 0; background: none;
+  color: var(--ink-3); font: 600 .74rem/1.1 var(--font, inherit); text-decoration: none; border-radius: 12px; min-height: 52px; position: relative; }
+html.touch-nav .tabbar .ic { width: 24px; height: 24px; }
+html.touch-nav .tabbar .on { color: var(--primary); }
+html.touch-nav .tabbar .dot { position: absolute; top: 4px; left: calc(50% + 8px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--accent);
+  color: #fff; font-size: .68rem; line-height: 18px; text-align: center; padding: 0 4px; }
+html.touch-nav .app { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+html.touch-nav .menu-toggle { display: none !important; }
+html.touch-nav .nav { display: none; }
+html.touch-nav .nav.open { display: flex; flex-direction: column; position: fixed; left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); top: auto; z-index: 41;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 8px; box-shadow: 0 -12px 40px -12px rgba(0,0,0,.3);
+  max-height: 70vh; overflow: auto; max-width: 520px; margin: 0 auto; }
+html.touch-nav .nav.open a { display: flex !important; align-items: center; gap: 12px; padding: 13px 14px; font-size: 1rem; border-radius: 12px; text-align: left; color: var(--ink); }
+html.touch-nav .nav.open a.active { color: var(--primary-ink); }
+html.touch-nav .nav.open a .nav-ic { display: inline-block; width: 20px; height: 20px; color: var(--primary); }
+html.touch-nav .nav.open a.active .nav-ic { color: var(--primary-ink); }
+html.touch-nav .nav-more { display: contents; }
+html.touch-nav .nav-more > summary { display: none; }
+html.touch-nav .nav-more-list { display: contents; }
+html.touch-nav .topbar:has(.nav.open) { z-index: 45; }
+.pin-row { display: flex; gap: 10px; align-items: center; }
+.pin-row input { width: 130px; font-size: 1.4rem; letter-spacing: .4em; text-align: center; }
+html.touch-nav .topbar-right { margin-left: auto; }
