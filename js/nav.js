@@ -5,7 +5,7 @@ import { sb } from './data.js';
 
 export const NAV_ITEMS = [
   ['about', 'nav_about'], ['sops', 'nav_sops'], ['menu', 'nav_menu'], ['links', 'nav_links'], ['roster', 'nav_roster'], ['events', 'nav_events'],
-  ['haccp', 'nav_haccp'], ['checkin', 'nav_checkin'], ['swap', 'nav_swap'], ['settings', 'nav_settings'],
+  ['haccp', 'nav_haccp'], ['checkin', 'nav_checkin'], ['swap', 'nav_swap'], ['guests', 'nav_guests'], ['settings', 'nav_settings'],
 ];
 
 export function orderPaths(paths, order) {

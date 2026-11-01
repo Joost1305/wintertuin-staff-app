@@ -1,7 +1,7 @@
 // Menu: dishes and drinks with description, photo, instruction video, price and the 14 EU allergens,
 // split into Food and Beverage. Prints an allergen card for front of house.
-import { isManager, app, esc, fmt, toast, toastError, $, $$, openModal, confirmDialog, formHtml, readForm, printHtml } from '../core.js';
-import { t } from '../i18n.js';
+import { state, isManager, app, esc, fmt, toast, toastError, $, $$, openModal, confirmDialog, formHtml, readForm, printHtml } from '../core.js';
+import { t, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { PHOTO_BUCKET } from '../config.js';
 
@@ -21,11 +21,23 @@ const PDF_DIR = 'menu-pdf';
 // The 14 allergens that EU law (Regulation 1169/2011) requires you to inform guests about
 export const ALLERGENS = ['gluten', 'crustaceans', 'eggs', 'fish', 'peanuts', 'soy', 'milk', 'nuts', 'celery', 'mustard', 'sesame', 'sulphites', 'lupin', 'molluscs'];
 
+// Dish of the month: one dish, chosen by a manager under Settings, kept in team_settings (readable by everyone)
+export async function loadDishOfMonth() {
+  try { const { data } = await sb.from('team_settings').select('value').eq('key', 'dish_of_month').maybeSingle(); return data && data.value && data.value.id ? data.value : null; }
+  catch { return null; }
+}
+export async function saveDishOfMonth(v) {
+  const { error } = await sb.from('team_settings').upsert({ key: 'dish_of_month', value: v || {}, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) throw error;
+}
+let dishOfMonth = null;
+
 export async function renderMenu() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   const [rows] = await Promise.all([
     sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name'), // order set under Settings > Menu order
     loadPdfs(),
+    loadDishOfMonth().then((d) => { dishOfMonth = d; }),
   ]);
   items = check(rows) || [];
   draw();
@@ -41,6 +53,10 @@ function draw() {
       <button type="button" class="btn-sm" id="allergen-card"><i class="ic ic-printer" aria-hidden="true"></i> ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
+    ${(() => { const d = dishOfMonth && items.find((m) => m.id === dishOfMonth.id); if (!d) return '';
+      return `<a class="card dom-card" href="#/menu" data-dom="${d.id}">${d.photo_url ? `<img src="${esc(d.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
+        <span><span class="dom-label">${lang() === 'nl' ? 'Gerecht van de maand' : 'Dish of the month'}</span><strong>${esc(d.name)}</strong>
+        ${dishOfMonth.note ? `<span class="dom-note">${esc(dishOfMonth.note)}</span>` : ''}</span></a>`; })()}
     ${['food', 'beverage'].map((g) => {
       const list = items.filter((m) => (m.group_type || 'food') === g);
       if (!list.length) return '';
@@ -52,6 +68,7 @@ function draw() {
   // Edit sits in the folded header: it must not fold or unfold the dish
   $$('[data-edit]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openEditor(items.find((m) => m.id === b.dataset.edit)); }));
   $$('details[data-dish]').forEach((d) => d.addEventListener('toggle', () => { if (d.open) openIds.add(d.dataset.dish); else openIds.delete(d.dataset.dish); rememberOpen(); }));
+  const dc = $('[data-dom]'); if (dc) dc.onclick = (e) => { e.preventDefault(); const d = $(`details[data-dish="${dc.dataset.dom}"]`); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
   const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-dish]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
 }
 

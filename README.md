@@ -41,6 +41,17 @@ GitHub Actions: daily keepalive ping
 - **Look**: `css/theme.css` (same file in Finance) holds the season colours (winter from the last Sunday of October,
   summer from the last Sunday of March), Young Serif headings (`fonts/`) and the Lucide icons.
 
+## Guests, newsletter and the sample menu
+
+- **Guests** (`#/guests`, managers): everyone from every event plus guests added by hand, with notes, labels and event history.
+  The newsletter list holds only guests who said yes: the box on the event (also on the client BEO) or ticked by a manager.
+  Export as CSV for Brevo or Mailchimp. Needs migration `011_guests.sql` (until then the list is read-only, straight from the events).
+- **Newsletter** (`#/newsletter`): a monthly mail built from the dish of the month, menu highlights and a few short texts;
+  downloads as email-safe HTML. The draft is shared by managers.
+- **Sample menu**: Settings > Order of the dishes loads a winter lunch and dinner menu (`js/sample-menu.js`) with allergens,
+  and registers the lunch, dinner and allergen PDFs in `demo/`. A dish of the month is chosen there too.
+- **Database updates**: Actions > Database update runs files from `supabase/migrations` (uses the backup secret).
+
 ## Roles
 
 | | Staff | Manager |

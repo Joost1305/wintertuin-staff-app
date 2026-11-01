@@ -17,9 +17,16 @@ const TEXT = {
     c3h: 'Lunch', c3: 'Meer dan broodjes, wel eenvoudig genoeg om naast de bakkerij te draaien.',
     c4h: 'Diner', c4: 'In de winter twee gangen voor een vaste prijs, in de zomer drie, met lange tafels en bijzondere avonden.',
     c5h: 'De Wintertuin Verteld', c5: 'Thema-avonden met een eigen menu: over bijen, bomen, foerageren, koffie, brood en meer.',
+    man_h: 'Zo koken wij', man_lead: 'Onze keuken in zes zinnen. Hier houden we ons aan vast als we een menu schrijven, iets bestellen of twijfelen over een gerecht.',
+    m1h: '80/20, plant forward', m1: 'Tachtig procent van wat we serveren komt van het land: groente, granen, peulvruchten, fruit en paddenstoelen. De andere twintig is vlees, vis, zuivel en ei, met zorg gekozen en helemaal gebruikt. Groente is het gerecht, niet de garnering.',
+    m2h: 'Lokaal eerst', m2: 'We kopen zo dicht bij Baarn als het kan: telers uit de regio, wild uit de bossen om ons heen en honing van onze eigen bijen. Wat moet reizen, zoals koffie, kopen we bij mensen die we kennen.',
+    m3h: 'Het seizoen schrijft de kaart', m3: 'We koken wat nu rijp is en maken in wat er volop is: inleggen, fermenteren, drogen, zodat de winter ook naar de zomer smaakt. De kaart verandert als de tuin verandert.',
+    m4h: 'Leveranciers kennen we bij naam', m4: 'Achter elk product zit een gezicht. We gaan langs, vragen wat er deze week goed is en bouwen het menu daaromheen. Een eerlijke prijs en een lange relatie wegen zwaarder dan de laagste offerte.',
+    m5h: 'Alles zelf, niets uit een zak', m5: 'Brood, bouillon, zuurgoed, kombucha en sauzen maken we zelf. Geen pakjes, geen toevoegingen die we niet kunnen uitspreken. Eenvoudig koken, maar dan echt.',
+    m6h: 'Een tafel voor iedereen', m6: 'Goed eten hoort niet duur of ingewikkeld te zijn. De kas is van de buurt: voor een croissant op zondag, een lange lunch of een avond aan tafel met vreemden die vrienden worden.',
     team_h: 'Het team', team_intro: 'Een bakker, een koffiebrander, een chef en een gastvrouw. Samen dekken we de hele dag in de kas, van het eerste brood tot de laatste gang.',
     people: [
-      { name: 'Joost', role: 'Creatieve duizendpoot', bio: 'Chef met een Michelin-achtergrond, sinds 2007 in het horeca-onderwijs. Imker, wildplukker en kruidenkenner; bedenkt het menu en de thema-avonden.' },
+      { name: 'Joost', role: 'Creatieve duizendpoot', bio: 'Chef-kok, al bijna twintig jaar in het horeca-onderwijs. Imker, wildplukker en kruidenkenner; bedenkt het menu en de thema-avonden.' },
       { name: 'Carel', role: 'Broodfluisteraar', bio: 'Bakker, runde zeven jaar een succesvol restaurant. Zorgt voor het brood en de patisserie en houdt de keuken draaiende.' },
       { name: 'Kees', role: 'Bonenjager', bio: 'Oud-restauranteigenaar en specialty-koffiebrander. Reist naar de oorsprongslanden en organiseert koffie-avonden.' },
       { name: 'Jane', role: 'Hart van de zaak', bio: 'Het gezicht van de zaak voor de gast: ontvangst, zaal en koffie.' },
@@ -37,6 +44,7 @@ const TEXT = {
       roster: 'Wie werkt wanneer, met de events van die week erbij.', checkin: 'In- en uitklokken voor je dienst.',
       swap: 'Een dienst ruilen of overnemen.', events: 'Feesten en groepen: kalender en BEO met alles voor die dag.',
       haccp: 'Afvinklijsten voor temperaturen, ontvangst en schoonmaak, klaar voor controle.', links: 'Handige links, zoals de receptendatabase.',
+      guests: 'Voor managers: iedereen van onze events, met de nieuwsbrieflijst en de nieuwsbrief.',
       settings: 'Voor managers: team, menu, lijsten en de volgorde van dit menu.',
     },
     finance: 'Wintertuin Finance: omzet, kassa en cijfers. Zelfde login, knop bovenaan.',
@@ -50,9 +58,16 @@ const TEXT = {
     c3h: 'Lunch', c3: 'More than sandwiches, yet simple enough to run next to the bakery.',
     c4h: 'Dinner', c4: 'Two courses for a set price in winter, three in summer, with long tables and special evenings.',
     c5h: 'De Wintertuin Verteld', c5: 'Theme evenings with their own menu: about bees, trees, foraging, coffee, bread and more.',
+    man_h: 'How we cook', man_lead: 'Our kitchen in six sentences. This is what we hold on to when we write a menu, order from a supplier or doubt a dish.',
+    m1h: '80/20, plant forward', m1: 'Eighty percent of what we serve comes from the land: vegetables, grains, pulses, fruit and mushrooms. The other twenty is meat, fish, dairy and eggs, chosen with care and used whole. Vegetables are the dish, not the garnish.',
+    m2h: 'Local first', m2: 'We buy as close to Baarn as we can: growers from the region, game from the woods around us and honey from our own hives. What has to travel, like coffee, we buy from people we know.',
+    m3h: 'The season writes the menu', m3: 'We cook what is ripe now and preserve what is plentiful: pickling, fermenting, drying, so winter tastes of summer too. The menu changes when the garden does.',
+    m4h: 'We know our suppliers by name', m4: 'Every product has a face behind it. We visit, ask what is good this week and build the menu around it. A fair price and a long relationship matter more than the lowest quote.',
+    m5h: 'Made here, nothing from a packet', m5: 'Bread, stock, pickles, kombucha and sauces are made in house. No packets, no additives we cannot pronounce. Simple cooking, done properly.',
+    m6h: 'A table for everyone', m6: 'Good food should not be expensive or complicated. The greenhouse belongs to the neighbourhood: for a croissant on Sunday, a long lunch or an evening at a table with strangers who become friends.',
     team_h: 'The team', team_intro: 'A baker, a coffee roaster, a chef and a host. Together we cover the whole day in the greenhouse, from the first loaf to the last course.',
     people: [
-      { name: 'Joost', role: 'Creative jack of all trades', bio: 'Chef with a Michelin background, in hospitality education since 2007. Beekeeper, forager and herb expert; creates the menu and the theme evenings.' },
+      { name: 'Joost', role: 'Creative jack of all trades', bio: 'Chef, in hospitality education for almost twenty years. Beekeeper, forager and herb expert; creates the menu and the theme evenings.' },
       { name: 'Carel', role: 'Bread whisperer', bio: 'Baker who ran a successful restaurant for seven years. Takes care of bread and pastry and keeps the kitchen running.' },
       { name: 'Kees', role: 'Bean hunter', bio: 'Former restaurant owner and specialty coffee roaster. Travels to the origin countries and hosts coffee evenings.' },
       { name: 'Jane', role: 'Heart of the house', bio: 'The face of the restaurant for our guests: welcome, floor and coffee.' },
@@ -70,6 +85,7 @@ const TEXT = {
       roster: 'Who works when, with that week\'s events.', checkin: 'Clock in and out for your shift.',
       swap: 'Swap or take over a shift.', events: 'Parties and groups: calendar and BEO with everything for the day.',
       haccp: 'Checklists for temperatures, deliveries and cleaning, ready for an inspection.', links: 'Useful links, like the recipe database.',
+      guests: 'For managers: everyone from our events, with the newsletter list and the newsletter.',
       settings: 'For managers: team, menu, lists and the order of this menu.',
     },
     finance: 'Wintertuin Finance: revenue, till and numbers. Same login, button at the top.',
@@ -216,13 +232,16 @@ export async function renderAbout() {
   const people = () => team.map((p) => ({ ...p, role: textOf(`p:${p.id}:role`), bio: textOf(`p:${p.id}:bio`) }));
 
   const guideKeys = [...$$('#nav a[href^="#/"]')].map((a) => a.getAttribute('href').slice(2)).filter((p) => T.guide[p]);
-  const navLabel = (p) => ($(`#nav a[href="#/${p}"]`)?.childNodes[0]?.textContent || p);
+  const navLabel = (p) => { const a = $(`#nav a[href="#/${p}"]`); if (!a) return p; const c = a.cloneNode(true); c.querySelectorAll('.badge-count').forEach((x) => x.remove()); return c.textContent.trim() || p; };
   const editable = (k, tag, cls = '') => `<${tag} data-edit="${k}"${cls ? ` class="${cls}"` : ''}>${textOf(k)}</${tag}>`;
 
   const arrows = (k) => `<div class="ab-move"><button type="button" class="btn btn-sm" data-up="${k}" aria-label="${T.up}">&#9650;</button><button type="button" class="btn btn-sm" data-down="${k}" aria-label="${T.down}">&#9660;</button></div>`;
   const SEC = {
     concept: (ed) => `<section class="ab-sec" data-sec="concept">${ed ? arrows('concept') : ''}${editable('concept_h', 'h2')}
         <div class="ab-pillars">${pillars.map((i) => `<div class="ab-pillar" data-pi="${i}">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}${ed ? `<div class="ab-ptools"><span class="ab-lr"><button type="button" class="btn btn-sm" data-left aria-label="${T.left}">&#9664;</button><button type="button" class="btn btn-sm" data-right aria-label="${T.right}">&#9654;</button></span></div>` : ''}</div>`).join('')}</div>
+      </section>`,
+    manifesto: (ed) => `<section class="ab-sec ab-manifesto" data-sec="manifesto">${ed ? arrows('manifesto') : ''}${editable('man_h', 'h2')}${editable('man_lead', 'p', 'muted ab-man-lead')}
+        <ul class="ab-man">${[1, 2, 3, 4, 5, 6].map((i) => `<li>${editable(`m${i}h`, 'h3')}${editable(`m${i}`, 'p')}</li>`).join('')}</ul>
       </section>`,
     team: (ed) => `<section class="ab-sec" data-sec="team">${ed ? arrows('team') : ''}${editable('team_h', 'h2')}${editable('team_intro', 'p', 'muted')}
         <div class="ab-people" id="ab-people">${people().map((p) => personHtml(p, ed, T)).join('')}</div>
@@ -239,11 +258,14 @@ export async function renderAbout() {
         </div>
       </section>`,
   };
-  const DEFAULT_ORDER = ['concept', 'team', 'app', 'more'];
+  const DEFAULT_ORDER = ['concept', 'manifesto', 'team', 'app', 'more'];
   let pillars = [1, 2, 3, 4, 5];
   try { if (shared.pillars) { const o = JSON.parse(shared.pillars.html).filter((i) => pillars.includes(i)); pillars = [...o, ...pillars.filter((i) => !o.includes(i))]; } } catch { /* default order */ }
   let order = DEFAULT_ORDER;
-  try { if (shared.order) { const o = JSON.parse(shared.order.html).filter((k) => SEC[k]); order = [...o, ...DEFAULT_ORDER.filter((k) => !o.includes(k))]; } } catch { /* default order */ }
+  try { if (shared.order) { const o = JSON.parse(shared.order.html).filter((k) => SEC[k]);
+    // a section added later (the manifesto) goes right after the concept, not at the bottom
+    if (!o.includes('manifesto')) o.splice(o.includes('concept') ? o.indexOf('concept') + 1 : 0, 0, 'manifesto');
+    order = [...o, ...DEFAULT_ORDER.filter((k) => !o.includes(k))]; } } catch { /* default order */ }
 
   const draw = (editing) => {
     app().innerHTML = `<div class="about-app ${editing ? 'editing' : ''}">

@@ -7,6 +7,8 @@ import { renderSystemCheck } from './system-check.js';
 import { renderHaccpSettings } from './haccp.js';
 import { NAV_ITEMS, orderPaths, saveNavOrder } from '../nav.js';
 import { setDevicePin } from '../pinlock.js';
+import { SAMPLE_MENU, SAMPLE_PDFS } from '../sample-menu.js';
+import { loadDishOfMonth, saveDishOfMonth } from './menu.js';
 import { lang } from '../i18n.js';
 const L = (o) => o[lang()] || o.en;
 
@@ -103,6 +105,7 @@ function navorder(el) {
 // ------------------------------------------------------------------ menu order
 // Number the dishes per group: 1 shows first on the Menu page. Saved as sort_order 10, 20, 30, ...
 async function menuorder(el) {
+  const dom = await loadDishOfMonth();
   const rows = check(await sb.from('menu_items').select('id, name, category, group_type, sort_order').eq('active', true)
     .order('group_type').order('sort_order').order('name')) || [];
   const groups = ['food', 'beverage'].map((g) => [g, rows.filter((r) => (r.group_type || 'food') === g)]).filter(([, l]) => l.length);
@@ -110,7 +113,47 @@ async function menuorder(el) {
     ${!groups.length ? `<div class="empty">${t('menu_none')}</div>` : groups.map(([g, list]) => `<div class="sop-cat" style="margin-top:16px">${t('group_' + g)}</div>
       <div class="order-list">${list.map((r, i) => `<label class="order-row"><input type="number" min="1" step="1" inputmode="numeric" value="${i + 1}" data-oid="${r.id}" data-g="${g}" aria-label="${t('position')}: ${esc(r.name)}">
         <span><strong>${esc(r.name)}</strong>${r.category ? ` <span class="tag">${esc(r.category)}</span>` : ''}</span></label>`).join('')}</div>`).join('')}
-    ${groups.length ? `<button type="button" class="btn-primary" id="save-order" style="margin-top:14px">${t('save')}</button>` : ''}</div>`;
+    ${groups.length ? `<button type="button" class="btn-primary" id="save-order" style="margin-top:14px">${t('save')}</button>` : ''}</div>
+    <div class="card"><h2 style="margin:0">${L({ en: 'Dish of the month', nl: 'Gerecht van de maand' })}</h2>
+      <div class="small muted">${L({ en: 'Shown at the top of the Menu page and in the newsletter.', nl: 'Staat bovenaan de Menu-pagina en in de nieuwsbrief.' })}</div>
+      <div class="field-row" style="margin-top:12px"><div class="field"><select id="dom">${`<option value="">${L({ en: '(none)', nl: '(geen)' })}</option>`}${rows.filter((r) => (r.group_type || 'food') === 'food').map((r) => `<option value="${r.id}" ${dom && dom.id === r.id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+      <div class="field"><input id="dom-note" value="${esc((dom && dom.note) || '')}" placeholder="${L({ en: 'Why this dish? One or two sentences for the guest.', nl: 'Waarom dit gerecht? Een of twee zinnen voor de gast.' })}"></div></div>
+      <button type="button" class="btn-primary" id="dom-save">${t('save')}</button></div>
+    <div class="card"><h2 style="margin:0">${L({ en: 'Sample menu', nl: 'Voorbeeldmenu' })}</h2>
+      <div class="small muted">${L({ en: `A winter lunch and dinner menu with allergens (${SAMPLE_MENU.length} dishes and drinks) plus a lunch, dinner and allergen PDF, to try out every part of the app. Dishes that already exist by name are skipped.`,
+        nl: `Een winterse lunch- en dinerkaart met allergenen (${SAMPLE_MENU.length} gerechten en dranken) plus een lunch-, diner- en allergenen-pdf, om elk deel van de app uit te proberen. Gerechten die al bestaan (zelfde naam) worden overgeslagen.` })}</div>
+      <div class="page-actions" style="margin-top:12px;justify-content:flex-start"><button type="button" class="btn-primary" id="sample-load">${L({ en: 'Load the sample menu', nl: 'Voorbeeldmenu laden' })}</button>
+        <button type="button" class="btn" id="sample-remove">${L({ en: 'Remove the sample menu', nl: 'Voorbeeldmenu weghalen' })}</button></div></div>`;
+  $('#dom-save', el).onclick = async () => {
+    try { await saveDishOfMonth($('#dom', el).value ? { id: $('#dom', el).value, note: $('#dom-note', el).value.trim(), month: todayIso().slice(0, 7) } : null); toast(t('saved')); }
+    catch (e) { toastError(e); }
+  };
+  $('#sample-load', el).onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try {
+      const all = check(await sb.from('menu_items').select('id, name, active, sort_order')) || [];
+      const have = new Set(all.filter((r) => r.active !== false).map((r) => r.name.trim().toLowerCase()));
+      let so = all.reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
+      const fresh = SAMPLE_MENU.filter((m) => !have.has(m.name.toLowerCase())).map((m) => ({ ...m, sort_order: (so += 10), active: true }));
+      if (fresh.length) check(await sb.from('menu_items').insert(fresh));
+      const { data: pdfRows } = await sb.from('menu_pdfs').select('path, sort_order');
+      const havePdf = new Set((pdfRows || []).map((r) => r.path));
+      let ps = (pdfRows || []).reduce((m, r) => Math.max(m, r.sort_order || 0), 0);
+      const newPdfs = SAMPLE_PDFS.filter((x) => !havePdf.has(x.path)).map((x) => ({ ...x, sort_order: (ps += 10) }));
+      if (newPdfs.length) check(await sb.from('menu_pdfs').insert(newPdfs));
+      toast(L({ en: `${fresh.length} dishes and ${newPdfs.length} PDFs added`, nl: `${fresh.length} gerechten en ${newPdfs.length} pdf's toegevoegd` }));
+      again();
+    } catch (err) { toastError(err); e.currentTarget.disabled = false; }
+  };
+  $('#sample-remove', el).onclick = async () => {
+    if (!(await confirmDialog(L({ en: 'Remove the dishes and PDFs of the sample menu? Dishes you added yourself stay.', nl: 'De gerechten en pdf\'s van het voorbeeldmenu weghalen? Wat je zelf hebt toegevoegd blijft staan.' }), L({ en: 'Remove', nl: 'Weghalen' })))) return;
+    try {
+      const names = SAMPLE_MENU.map((m) => m.name);
+      check(await sb.from('menu_items').update({ active: false }).in('name', names));
+      check(await sb.from('menu_pdfs').delete().in('path', SAMPLE_PDFS.map((x) => x.path)));
+      toast(L({ en: 'Sample menu removed', nl: 'Voorbeeldmenu weggehaald' })); again();
+    } catch (err) { toastError(err); }
+  };
   const btn = $('#save-order', el); if (!btn) return;
   btn.onclick = async () => {
     try {

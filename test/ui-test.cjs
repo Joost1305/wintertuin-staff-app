@@ -340,14 +340,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.$eval('.ab-person:first-child [data-f="name"]', (e) => e.textContent) !== 'Kees') throw new Error('tile did not move left');
       await p.click('.ab-pillar:first-child [data-right]');
       if (await p.$eval('.ab-pillar:nth-child(2)', (e) => e.dataset.pi) !== '1') throw new Error('concept tile did not move');
-      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('move failed');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,manifesto,app,team,more') throw new Error('move failed');
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
       const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'team'));
       const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name !== 'Kees') throw new Error(row.html);
       await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
       await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded');
-      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,app,team,more') throw new Error('order not kept');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,manifesto,app,team,more') throw new Error('order not kept');
       if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('concept order not kept');
       const nlBtn = async (re) => p.evaluate((src) => { const b = [...document.querySelectorAll('#lang-toggle button')].find((x) => new RegExp(src).test(x.textContent)); b && b.click(); }, re);
       await nlBtn('NL'); await p.waitForSelector('text=Het team');
@@ -387,6 +387,44 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/Bekijk de tijdlijn/.test(await p.textContent('.history-card'))) throw new Error('intro not in Dutch');
       await p.click('#lang-sw [data-l=en]'); await p.waitForSelector('#lang-sw [data-l=en].on');
       if (!/View the timeline/.test(await p.textContent('.history-card'))) throw new Error('intro not back in English'); });
+    await step('menu: load the sample menu, choose a dish of the month, PDFs on the menu page', async () => {
+      await p.setViewportSize({ width: 1280, height: 900 });
+      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#sample-load'); await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("dishes")');
+      const r = await p.evaluate(() => ({ n: window.__mockdb.menu_items.filter((m) => m.active !== false).length, pdf: window.__mockdb.menu_pdfs.map((x) => x.label) }));
+      if (r.n < 30 || !r.pdf.includes('Allergenenkaart')) throw new Error(JSON.stringify(r));
+      await p.waitForSelector('#dom option:has-text("Tartine met gerookte forel")', { state: 'attached' });
+      const id = await p.$eval('#dom', (s) => [...s.options].find((o) => /Tartine/.test(o.textContent)).value); await p.selectOption('#dom', id);
+      await p.fill('#dom-note', 'Gerookt in de buurt, op ons eigen brood.'); await p.click('#dom-save'); await p.waitForTimeout(400);
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('.dom-card:has-text("Tartine")');
+      if ((await p.$$('[data-pdf-view]')).length < 3) throw new Error('menu PDFs missing');
+      await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: true });
+      await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#sample-load'); await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes")'); });
+    await step('About: the manifesto sits right after the concept', async () => {
+      await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-manifesto h2:has-text("How we cook")');
+      const order = await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((s) => s.dataset.sec)); if (order.indexOf('manifesto') !== order.indexOf('concept') + 1) throw new Error(order.join());
+      await p.screenshot({ path: `${OUT}/24-about-manifesto.png`, fullPage: true }); });
+    await step('events: the client can say yes to the newsletter on the event', async () => {
+      await p.goto(BASE + '#/events/new'); await p.waitForSelector('#ev-form'); if (!(await p.$('[name=newsletter_ok]'))) throw new Error('no consent box');
+      await p.fill('[name=title]', 'Lunch Bakker'); await p.fill('[name=client_name]', 'Ria Bakker'); await p.fill('[name=client_email]', 'Ria@Example.test'); await p.check('[name=newsletter_ok]');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('h1:has-text("Lunch Bakker")');
+      if (!(await p.evaluate(() => window.__mockdb.events.some((e) => e.newsletter_ok && e.client_email === 'Ria@Example.test')))) throw new Error('consent not saved'); });
+    await step('guests: event clients are listed, newsletter list only holds a yes', async () => {
+      await p.evaluate(() => window.__mockdb.events.push({ id: 'evx', title: 'Diner Jansen', event_date: '2026-10-02', status: 'done', client_name: 'Piet Jansen', client_email: 'piet@example.test', newsletter_ok: false }));
+      await p.goto(BASE + '#/guests'); await p.waitForSelector('.g-table');
+      const txt = await p.textContent('.g-table'); if (!/ria@example\.test/.test(txt) || !/piet@example\.test/.test(txt)) throw new Error('guests missing');
+      await p.screenshot({ path: `${OUT}/25-guests.png`, fullPage: true });
+      const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#g-csv')]);
+      const csv = require('fs').readFileSync(await dl.path(), 'utf8'); if (!/ria@example\.test/.test(csv) || /piet@/.test(csv)) throw new Error('csv: ' + csv);
+      await p.click('.g-name:has-text("Piet Jansen")'); await p.waitForSelector('#g-form'); await p.fill('[name=notes]', 'Vegetarisch, komt graag op donderdag'); await p.check('#g-form [name=newsletter]');
+      await p.click('#g-form button[type=submit]'); await p.waitForSelector('.toast:has-text("Saved")');
+      if (!(await p.evaluate(() => window.__mockdb.guests.some((g) => g.email === 'piet@example.test' && g.newsletter && g.newsletter_source === 'manual')))) throw new Error('guest not saved'); });
+    await step('newsletter: built from the dish of the month and the menu, downloads as HTML', async () => {
+      await p.goto(BASE + '#/newsletter'); await p.waitForSelector('#nl-frame');
+      await p.waitForFunction(() => /Gerecht van de maand/.test(document.querySelector('#nl-frame').srcdoc || ''));
+      const html = await p.$eval('#nl-frame', (f) => f.srcdoc); if (!/Tartine met gerookte forel/.test(html) || !/Afmelden/.test(html)) throw new Error('newsletter content');
+      await p.screenshot({ path: `${OUT}/26-newsletter.png`, fullPage: false });
+      const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#nl-dl')]); if (!dl.suggestedFilename().endsWith('.html')) throw new Error('no html');
+      await p.click('#nl-save'); await p.waitForSelector('.toast:has-text("Draft saved")'); });
     await A.ctx.close();
     if (A.errors.length) { failed = true; console.log('ERRORS (manager):', A.errors); }
 

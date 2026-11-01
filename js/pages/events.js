@@ -18,7 +18,7 @@ const STYLES = ['style_seated', 'style_family', 'style_buffet', 'style_walking',
 const SIMPLE = [
   ['title', 'ev_title'], ['event_type', 'ev_type'], ['event_date', 'ev_date'], ['start_time', 'ev_start'], ['end_time', 'ev_end'],
   ['status', 'ev_status'], ['option_until', 'ev_option_until'], ['sold_by', 'ev_sold_by'],
-  ['client_name', 'ev_client_name'], ['client_company', 'ev_client_company'], ['client_phone', 'ev_phone'], ['client_email', 'ev_email'],
+  ['client_name', 'ev_client_name'], ['client_company', 'ev_client_company'], ['client_phone', 'ev_phone'], ['client_email', 'ev_email'], ['newsletter_ok', 'ev_newsletter_ok'],
   ['day_contact_name', 'ev_day_contact'], ['day_contact_phone', 'ev_day_contact_phone'], ['invoice_details', 'ev_invoice'], ['reference', 'ev_reference'],
   ['guests_expected', 'ev_guests_expected'], ['guests_guaranteed', 'ev_guests_guaranteed'], ['guarantee_deadline', 'ev_guarantee_deadline'],
   ['guests_final', 'ev_guests_final'], ['children', 'ev_children'],
@@ -33,7 +33,14 @@ const SIMPLE = [
 const LABEL = Object.fromEntries(SIMPLE.concat([['menu', 'ev_menu'], ['dietary', 'ev_dietary'], ['timeline', 'ev_timeline']]));
 const NUM = new Set(['guests_expected', 'guests_guaranteed', 'guests_final', 'children', 'staff_needed']);
 const MONEY = new Set(['price_per_person', 'room_hire', 'min_spend', 'deposit']);
-const BOOL = new Set(['exclusive', 'deposit_paid', 'prices_incl_vat']);
+const BOOL = new Set(['exclusive', 'deposit_paid', 'prices_incl_vat', 'newsletter_ok']);
+// The newsletter box needs database update 011; until then the field is left out so saving keeps working
+let hasNewsletterCol = null;
+async function newsletterColumn() {
+  if (hasNewsletterCol !== null) return hasNewsletterCol;
+  try { const { error } = await sb.from('events').select('newsletter_ok').limit(1); hasNewsletterCol = !error; } catch { hasNewsletterCol = false; }
+  return hasNewsletterCol;
+}
 const DATE = new Set(['event_date', 'option_until', 'guarantee_deadline', 'deposit_due', 'client_confirmed_at']);
 
 let menuItems = [];
@@ -46,6 +53,7 @@ function saveDraft(k, d) { try { localStorage.setItem(DRAFT + k, JSON.stringify(
 function clearDraft(k) { try { localStorage.removeItem(DRAFT + k); } catch { /* private mode */ } }
 
 export async function renderEvents(args = []) {
+  await newsletterColumn();
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active').order('group_type').order('category').order('sort_order')) || [];
   const [id, sub] = args;
@@ -193,7 +201,7 @@ async function renderView(ev) {
     </div>
     <div class="grid grid-2 ev-grid">
       ${block(t('ev_sec_event'), ['event_type', 'area', 'exclusive', 'service_style', 'option_until', 'sold_by'].map(row).join(''))}
-      ${block(t('ev_sec_client'), ['client_name', 'client_company', 'client_phone', 'client_email', 'day_contact_name', 'day_contact_phone', 'reference', 'invoice_details'].map(row).join(''))}
+      ${block(t('ev_sec_client'), ['client_name', 'client_company', 'client_phone', 'client_email', 'newsletter_ok', 'day_contact_name', 'day_contact_phone', 'reference', 'invoice_details'].map(row).join(''))}
       ${block(t('ev_timeline'), (ev.timeline || []).length ? `<table class="ev-table">${ev.timeline.map((x) => `<tr><td class="ev-time">${esc(x.time || '')}</td><td>${esc(x.what || '')}</td></tr>`).join('')}</table>` : '')}
       ${block(t('ev_menu'), (ev.menu || []).length ? `<table class="ev-table">${ev.menu.map((m) => `<tr><td class="ev-course">${esc(labelOf(m.course))}</td><td><strong>${esc(m.name || '')}</strong>
           ${(m.allergens || []).length ? `<div class="allergen-chips">${m.allergens.map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('')}</div>` : ''}</td></tr>`).join('')}</table>
@@ -256,6 +264,7 @@ function renderEditor(ev, date = null) {
   const base = ev ? { ...ev } : { status: 'option', event_date: todayIso(), prices_incl_vat: true, exclusive: false, deposit_paid: false, menu: [], dietary: [], timeline: [], sold_by: state.me.id };
   const v = draft ? { ...base, ...draft } : base;
   if (date) v.event_date = date; // started from a day in the calendar
+  const nlCol = hasNewsletterCol === true || !!(ev && 'newsletter_ok' in ev);
   const people = state.profiles.filter((p) => p.active !== false || p.id === v.sold_by);
   const inp = (k, type = 'text', extra = '') => {
     const val = v[k] == null ? '' : (type === 'time' ? fmt.time(v[k]) : v[k]);
@@ -283,7 +292,7 @@ function renderEditor(ev, date = null) {
         `<div class="field"><label for="f-sold_by">${t('ev_sold_by')}</label><select id="f-sold_by" name="sold_by"><option value=""></option>${people.map((p) => `<option value="${p.id}" ${p.id === v.sold_by ? 'selected' : ''}>${esc(p.full_name)}</option>`).join('')}</select></div>`,
       ), t('ev_confirm_hint'))}
       ${sec(t('ev_sec_client'), grid(inp('client_name'), inp('client_company'), inp('client_phone', 'tel'), inp('client_email', 'email'),
-        inp('day_contact_name'), inp('day_contact_phone', 'tel'), inp('reference')) + area('invoice_details', 2))}
+        inp('day_contact_name'), inp('day_contact_phone', 'tel'), inp('reference')) + (nlCol ? chk('newsletter_ok') : '') + area('invoice_details', 2))}
       ${sec(t('ev_guests'), grid(inp('guests_expected', 'number'), inp('guests_guaranteed', 'number'), inp('guarantee_deadline', 'date'), inp('guests_final', 'number'), inp('children', 'number')))}
       ${sec(t('ev_dietary'), `<div id="rows-dietary"></div><button type="button" class="btn-sm" data-addrow="dietary">+ ${t('ev_add_diet')}</button>`, t('ev_dietary_hint'))}
       ${sec(t('ev_sec_setup'), grid(inp('area', 'text', `placeholder="${esc(t('ev_area_ph'))}"`), inp('service_style', 'text', 'list="ev-styles"')) + chk('exclusive') + area('setup', 3, t('ev_setup_ph')))}
@@ -454,6 +463,7 @@ function printClient(ev, l) {
       [tt('ev_payment_terms'), ev.payment_terms ? `<span class="pre">${esc(ev.payment_terms)}</span>` : ''], [tt('ev_cancellation_terms'), ev.cancellation_terms ? `<span class="pre">${esc(ev.cancellation_terms)}</span>` : '']])}
     <div class="small" style="margin-top:4px">${vatNote} ${tt('ev_final_count_note')}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
+    <p class="small consent">${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
 }
@@ -543,6 +553,7 @@ function printBlank(l) {
     <div class="lbl">${tt('ev_payment_terms')}</div>${lines(1)}<div class="lbl">${tt('ev_cancellation_terms')}</div>${lines(1)}
     <h2>${tt('ev_blank_notes')}</h2>${lines(2)}
     <div class="keep"><h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
+    <p class="small consent">&#9744; ${tt('ev_newsletter_consent')}</p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
     <div class="office"><div class="small"><strong>${tt('ev_office')}</strong></div><div class="fg3">${f('ev_status')}${f('ev_sold_by')}${f('ev_entered')}</div></div></div>
   </div>`);

@@ -17,6 +17,8 @@ import { renderHaccp } from './pages/haccp.js';
 import { renderAbout } from './pages/about-team.js';
 import { renderHome } from './pages/home.js';
 import { renderKiosk } from './pages/kiosk.js';
+import { renderGuests } from './pages/guests.js';
+import { renderNewsletter } from './pages/newsletter.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
 
@@ -37,6 +39,8 @@ const routes = [
   { icon: 'clock', path: 'checkin', render: renderCheckin, nav: 'nav_checkin', show: () => true },
   { icon: 'swap', path: 'swap', render: renderSwap, nav: 'nav_swap', show: () => true, badge: true },
   { icon: 'settings', path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
+  { icon: 'user', path: 'guests', render: renderGuests, nav: 'nav_guests', show: isManager },
+  { path: 'newsletter', render: renderNewsletter, nav: null, show: isManager },
   { path: 'kiosk', render: renderKiosk, nav: null, show: isManager, bare: true },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
@@ -74,7 +78,7 @@ async function refreshBadge() {
 let moreEl = null;
 const touchNav = () => document.documentElement.classList.contains('touch-nav');
 document.addEventListener('click', (e) => { if (moreEl && !moreEl.contains(e.target) && !touchNav()) moreEl.open = false; });
-window.addEventListener('wt:touchnav', () => { if (state.me) renderShell(); });
+window.addEventListener('wt:touchnav', () => { if (state.me && !document.body.classList.contains('kiosk-mode')) renderShell(); });
 
 function renderShell() {
   const top = $('#topbar');
@@ -220,7 +224,7 @@ window.addEventListener('wt:badge', () => refreshBadge());
 sb.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; }
 });
-const known = /^#\/(login|home|today|kiosk|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
+const known = /^#\/(login|home|today|kiosk|guests|newsletter|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
 // unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
 if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();

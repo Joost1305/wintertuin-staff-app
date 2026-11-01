@@ -1,0 +1,44 @@
+# Database update: runs one or more files from supabase/migrations against the Wintertuin database.
+# Start it by hand: github.com > this repository > Actions > Database update > Run workflow, and fill in the file names.
+# Each file runs in one transaction: if anything fails, nothing from that file is changed.
+# Uses the same secret as the nightly backup (SUPABASE_DB_URL). Nothing from the data is printed in the log.
+name: Database update
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: 'Migration files, separated by spaces (from supabase/migrations)'
+        required: true
+        default: '010_kiosk.sql 011_guests.sql'
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DB: ${{ secrets.SUPABASE_DB_URL }}
+      FILES: ${{ inputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the settings
+        run: |
+          if [ -z "$DB" ]; then echo "::error::Missing secret SUPABASE_DB_URL (see backup.yml)"; exit 1; fi
+          for f in $FILES; do
+            case "$f" in *[!A-Za-z0-9_.-]*) echo "::error::Not a file name: $f"; exit 1;; esac
+            [ -f "supabase/migrations/$f" ] || { echo "::error::Not found: supabase/migrations/$f"; exit 1; }
+          done
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client > /dev/null
+      - name: Run the files
+        run: |
+          set -euo pipefail
+          for f in $FILES; do
+            echo "Running $f"
+            psql "$DB" -v ON_ERROR_STOP=1 --single-transaction -q -f "supabase/migrations/$f" 2> err.log || {
+              echo "::error::$f failed: $(tail -n 3 err.log | sed -E 's#postgres(ql)?://[^ ]*#[database]#g' | tr '\n' ' ')"; exit 1; }
+            echo "Done: $f"
+          done
