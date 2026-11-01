@@ -21,8 +21,8 @@ export function defaultCards() {
       sections: [
         { id: uid(), title: 'Uit de bakkerij', cat: 'Bakkerij', hidden: [], extra: [] },
         { id: uid(), title: 'Lunch', cat: 'Lunch', hidden: [], extra: [] },
-        { id: uid(), title: 'Borrel, vanaf 15:00', cat: 'Borrel', hidden: [], extra: [] },
-        { id: uid(), title: 'Zoet', cat: 'Zoet', hidden: [], extra: [], newPage: true, pageTitle: 'Zoet en drinken' },
+        { id: uid(), title: 'Borrel, vanaf 15:00', cat: 'Borrel', hidden: [], extra: [], newPage: true, pageTitle: 'Borrel, zoet en drinken' },
+        { id: uid(), title: 'Zoet', cat: 'Zoet', hidden: [], extra: [] },
         { id: uid(), title: 'Koffie', cat: 'Koffie', hidden: [], extra: [] },
         { id: uid(), title: 'Thee en fris', cat: 'Thee en fris', hidden: [], extra: [] },
         { id: uid(), title: 'Wijn en bier', cat: 'Wijn en bier', hidden: [], extra: [] },
@@ -68,18 +68,33 @@ function sectionItems(sec, menu) {
 // ------------------------------------------------------------------ the printed card (also the preview)
 export function cardSheet(card, menu) {
   const css = `
-  @page { size: A4; margin: 0; }
+  @page { size: A4 portrait; margin: 12mm 14mm; }
   @font-face { font-family: WTSerif; src: url(fonts/young-serif.woff2) format('woff2'); }
   @font-face { font-family: WTSans; src: url(fonts/inter-400.woff2) format('woff2'); font-weight: 400; }
   @font-face { font-family: WTSans; src: url(fonts/inter-600.woff2) format('woff2'); font-weight: 600; }
   @font-face { font-family: WTSans; src: url(fonts/inter-400-italic.woff2) format('woff2'); font-style: italic; }
   .mc-sheet, .mc-sheet * { box-sizing: border-box; }
   .mc-sheet { color: #1C2B24; font: 400 9.6pt/1.4 WTSans, -apple-system, 'Segoe UI', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .mc-page { width: 210mm; height: 297mm; background: #FFFDF0; padding: 18mm 20mm 16mm; display: flex; flex-direction: column; break-after: page; page-break-after: always; overflow: hidden; position: relative; }
+  .mc-page { width: 210mm; min-height: 297mm; background: #FFFDF0; padding: 18mm 20mm 16mm; display: flex; flex-direction: column; break-after: page; page-break-after: always; position: relative; }
   .mc-page:last-child { break-after: auto; page-break-after: auto; }
-  .mc-page.land { width: 297mm; height: 210mm; padding: 14mm 18mm; }
-  .mc-head { text-align: center; margin-bottom: 9mm; }
-  .mc-head img { width: 32mm; height: auto; display: block; margin: 0 auto 5mm; }
+  .mc-page.al { padding: 14mm 12mm; }
+  /* On paper the printer's own margins apply: the sheet takes the printable width, long pages flow on */
+  @media print {
+    .mc-page, .mc-page.al { width: auto !important; height: auto !important; min-height: 0 !important; padding: 0 !important; background: transparent !important; overflow: visible !important; display: block !important; box-shadow: none !important; margin: 0 !important; }
+    .mc-foot { margin-top: 5mm; }
+    .mc-head { margin-bottom: 5mm; }
+    .mc-head img { width: 20mm; margin-bottom: 2mm; }
+    .mc-sheet h1 { font-size: 26pt !important; }
+    .mc-sec { margin-bottom: 4mm; }
+    .mc-dish { margin-bottom: 2.2mm; }
+    .mc-dish .d { font-size: 8.2pt; margin-top: .2mm; line-height: 1.3; }
+    .mc-table th, .mc-table td { padding: .45mm 1mm !important; line-height: 1.12 !important; }
+    .mc-table { font-size: 7.2pt; }
+    .mc-table th.al { height: 18mm; }
+    .mc-alhead { margin-bottom: 2mm; }
+  }
+  .mc-head { text-align: center; margin-bottom: 7mm; }
+  .mc-head img { width: 26mm; height: auto; display: block; margin: 0 auto 3mm; }
   .mc-sheet h1 { font: 400 30pt/1.1 WTSerif, Georgia, serif !important; color: #22503F; margin: 0 !important; border: 0 !important; }
   .mc-sub { color: #5A6A62; margin-top: 2mm; font-size: 10pt; }
   .mc-price { font: 400 16pt/1.2 WTSerif, Georgia, serif; color: #22503F; margin-top: 5mm; }
@@ -87,17 +102,18 @@ export function cardSheet(card, menu) {
   .mc-sec { margin-bottom: 6mm; }
   .mc-sheet h2 { font: 400 14pt/1.2 WTSerif, Georgia, serif !important; color: #22503F; margin: 0 0 3.5mm !important; padding: 0 0 1.6mm !important; border: 0 !important;
     background: linear-gradient(#71CE8D, #71CE8D) left bottom / 12mm 1.2pt no-repeat; }
-  .mc-dish { display: flex; gap: 6mm; align-items: baseline; margin-bottom: 3.2mm; break-inside: avoid; }
+  .mc-dish { display: flex; gap: 6mm; align-items: baseline; margin-bottom: 2.6mm; break-inside: avoid; }
   .mc-dish .t { flex: 1; }
   .mc-dish .n { font-weight: 600; font-size: 10.4pt; }
   .mc-dish sup { font-size: 6.4pt; color: #5A6A62; margin-left: 1.4mm; letter-spacing: .02em; }
   .mc-dish .d { color: #5A6A62; font-size: 8.8pt; margin-top: .6mm; }
   .mc-dish .p { font: 400 11pt WTSerif, Georgia, serif; white-space: nowrap; }
   .mc-note { text-align: center; font-style: italic; color: #22503F; margin-top: 2mm; }
-  .mc-foot { margin-top: auto; border-top: .6pt solid #D9DCC8; padding-top: 3mm; text-align: center; color: #5A6A62; font-size: 7.2pt; }
-  .mc-table { width: 100%; border-collapse: collapse !important; font-size: 8pt; }
-  .mc-table th, .mc-table td { border: 0 !important; border-bottom: .4pt solid #E5E3D0 !important; padding: 1.1mm 1mm !important; }
-  .mc-table th.al { height: 26mm; vertical-align: bottom; text-align: left; white-space: nowrap; }
+  .mc-foot { margin-top: auto; border-top: .6pt solid #D9DCC8; padding-top: 2.5mm; text-align: center; color: #5A6A62; font-size: 6.8pt; line-height: 1.35; break-inside: avoid; }
+  .mc-table { width: 100%; border-collapse: collapse !important; font-size: 7.6pt; table-layout: fixed; }
+  .mc-table col.nm { width: 34%; } .mc-table col.ct { width: 15%; }
+  .mc-table th, .mc-table td { border: 0 !important; border-bottom: .4pt solid #E5E3D0 !important; padding: 1.1mm 1mm !important; line-height: 1.2; }
+  .mc-table th.al { height: 22mm; vertical-align: bottom; text-align: left; white-space: nowrap; }
   .mc-table th.al span { display: inline-block; transform: rotate(-60deg); transform-origin: left bottom; width: 4mm; font-weight: 600; }
   .mc-table td.c { text-align: center; color: #22503F; font-size: 9pt; border-left: .4pt solid #E5E3D0 !important; }
   .mc-table tr:nth-child(even) td { background: #F6F4E6; }
@@ -108,11 +124,11 @@ export function cardSheet(card, menu) {
   const legend = `<div class="mc-foot">Allergenen: ${ALLERGENS.map((a, i) => `${i + 1} ${AL_NL[a]}`).join(' &nbsp; ')}<br>Vragen over allergenen of dieetwensen? Vraag het ons, we kijken graag wat kan.</div>`;
   if (card.kind === 'allergens') {
     const rows = menu.filter((m) => m.active !== false);
-    const perPage = 30;
+    const perPage = 44; // A4 portrait
     const pages = [];
     for (let i = 0; i < Math.max(rows.length, 1); i += perPage) {
-      pages.push(`<section class="mc-page land"><div class="mc-alhead"><img src="img/logo.png" alt=""><div><h1>${esc(card.title)}</h1><div class="mc-sub">${esc(card.subtitle || '')}</div></div></div>
-        <table class="mc-table"><thead><tr><th></th><th></th>${ALLERGENS.map((a) => `<th class="al"><span>${AL_NL[a]}</span></th>`).join('')}</tr></thead><tbody>
+      pages.push(`<section class="mc-page al"><div class="mc-alhead"><img src="img/logo.png" alt=""><div><h1>${esc(card.title)}</h1><div class="mc-sub">${esc(card.subtitle || '')}</div></div></div>
+        <table class="mc-table"><colgroup><col class="nm"><col class="ct">${ALLERGENS.map(() => '<col>').join('')}</colgroup><thead><tr><th></th><th></th>${ALLERGENS.map((a) => `<th class="al"><span>${AL_NL[a]}</span></th>`).join('')}</tr></thead><tbody>
         ${rows.slice(i, i + perPage).map((m) => `<tr><td>${esc(m.name)}</td><td class="cat">${esc(m.category || '')}</td>${ALLERGENS.map((a) => `<td class="c">${(m.allergens || []).includes(a) ? '&#9679;' : ''}</td>`).join('')}</tr>`).join('')}
         </tbody></table><div class="mc-foot">${esc(card.note || '')} Wintertuin, Cantonspark Baarn.</div></section>`);
     }
@@ -199,7 +215,7 @@ function draw() {
               <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>
           </div></details>`).join('')}
         <button type="button" class="btn-sm" id="mc-addsec">+ ${L({ en: 'Section', nl: 'Blok' })}</button>`}
-        <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Back to the standard card', nl: 'Terug naar de standaardkaart' })}</button>`}</div>
+        <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Undo all changes: back to the original layout', nl: 'Alle wijzigingen terugdraaien: terug naar de oorspronkelijke indeling' })}</button>`}</div>
       </div>` : ''}
       <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
     </div>`;
@@ -213,7 +229,7 @@ function preview() {
   f.onload = () => {
     try {
       const d = f.contentDocument; const pages = [...d.querySelectorAll('.mc-page')];
-      const over = pages.some((p) => p.scrollHeight > p.clientHeight + 2);
+      const over = pages.some((p) => p.scrollHeight > 1125); // taller than A4
       $('#mc-warn').textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
       // scale the A4 pages to the width of the preview
       const w = f.clientWidth; const pw = pages[0] ? pages[0].offsetWidth : 794; const z = Math.min(1, (w - 16) / pw);
@@ -264,7 +280,7 @@ function bind() {
   $('#mc-print').onclick = () => printHtml(cardSheet(c, menu));
   const nw = $('#mc-new'); if (nw) nw.onclick = () => { const n = { id: uid(), kind: 'menu', name: L({ en: 'New card', nl: 'Nieuwe kaart' }), title: 'Menu', subtitle: '', showPrices: true, showCodes: true, sections: [{ id: uid(), title: '', cat: null, hidden: [], extra: [] }] }; cards.push(n); cur = n; changed(); draw(); };
   const del = $('#mc-del'); if (del) del.onclick = async () => { if (!(await confirmDialog(L({ en: 'Delete this card?', nl: 'Deze kaart verwijderen?' }), L({ en: 'Delete', nl: 'Verwijderen' })))) return; cards = cards.filter((x) => x !== c); cur = cards[0]; await save(); draw(); };
-  const rs = $('#mc-reset'); if (rs) rs.onclick = async () => { if (!(await confirmDialog(L({ en: 'Replace this card with the standard version?', nl: 'Deze kaart vervangen door de standaardversie?' }), L({ en: 'Replace', nl: 'Vervangen' }), false))) return; const d = defaultCards().find((x) => x.id === c.id); cards[cards.indexOf(c)] = d; cur = d; changed(); draw(); };
+  const rs = $('#mc-reset'); if (rs) rs.onclick = async () => { if (!(await confirmDialog(L({ en: 'Undo all your changes to this card? Titles, sections and hidden dishes go back to how the app made them. Dishes on the Menu page stay as they are.', nl: 'Al je wijzigingen aan deze kaart terugdraaien? Titels, blokken en verborgen gerechten gaan terug naar hoe de app ze maakte. De gerechten op de Menu-pagina blijven zoals ze zijn.' }), L({ en: 'Undo changes', nl: 'Terugdraaien' }), false))) return; const d = defaultCards().find((x) => x.id === c.id); cards[cards.indexOf(c)] = d; cur = d; changed(); draw(); };
   const word = $('#mc-word'); if (word) word.onchange = () => { if (word.files[0]) importWord(word.files[0]); };
 }
 
