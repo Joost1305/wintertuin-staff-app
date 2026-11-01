@@ -14,21 +14,21 @@ async function session(browser, role, viewport) {
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.addInitScript((r) => { window.__MOCK_ROLE = r; window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
+  await page.addInitScript((r) => { window.__MOCK_ROLE = r; try { window.__NO_PINLOCK = !localStorage.getItem('test_pin'); } catch (e) { window.__NO_PINLOCK = true; } window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
   await page.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
   return { ctx, page, errors };
 }
 const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await fn(); console.log('ok'); };
-const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login-form'); await p.fill('[name=email]', 'a@b.c'); await p.fill('[name=password]', 'test'); await p.click('button[type=submit]'); await p.waitForSelector('.about-app'); await p.goto(BASE + '#/sops'); await p.waitForSelector('.sop-card'); };
+const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login-form'); await p.fill('[name=email]', 'a@b.c'); await p.fill('[name=password]', 'test'); await p.click('button[type=submit]'); await p.waitForSelector('.home-hero'); await p.goto(BASE + '#/sops'); await p.waitForSelector('.sop-card'); };
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({executablePath:process.env.PW_EXE});
   let failed = false;
   try {
     const A = await session(browser, 'manager', { width: 1280, height: 900 });
     const p = A.page;
     await step('login page in English', async () => { await p.goto(BASE); await p.waitForSelector('#login-form'); if (!/Sign in/.test(await p.textContent('h1'))) throw new Error('not English'); await p.screenshot({ path: `${OUT}/01-login.png` }); });
-    await step('login lands on About (first in the menu)', async () => { await login(p); await p.screenshot({ path: `${OUT}/02-sops.png`, fullPage: true }); });
+    await step('login lands on Today', async () => { await login(p); await p.screenshot({ path: `${OUT}/02-sops.png`, fullPage: true }); });
     await step('SOPs in English, Dutch fallback, translation hint', async () => {
       const body = await p.textContent('#app');
       if (!/Morning check kitchen/.test(body) || !/Coffee machine on/.test(body)) throw new Error('English not shown');
@@ -312,20 +312,20 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('settings: top menu order by number and arrows, applied to the menu', async () => {
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.fill('[data-nav=haccp]', '1'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      let first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
-      await p.goto(BASE + '#/home'); await p.waitForSelector('.about-app'); if (!/#\/about$/.test(p.url())) throw new Error('start page is ' + p.url());
+      let first = await p.$eval('#nav a:not([href="#/today"])', (a) => a.getAttribute('href')); if (first !== '#/haccp') throw new Error('first is ' + first);
+      await p.goto(BASE + '#/home'); await p.waitForSelector('.home-hero'); if (!/#\/today$/.test(p.url())) throw new Error('start page is ' + p.url());
       await p.goto(BASE + '#/settings/navorder'); await p.waitForSelector('#save-nav');
       await p.click('[data-ndown="0"]'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
+      first = await p.$eval('#nav a:not([href="#/today"])', (a) => a.getAttribute('href')); if (first === '#/haccp') throw new Error('arrow did not move it');
       await p.click('#reset-nav'); await p.click('#save-nav'); await p.waitForTimeout(400);
-      if ((await p.$eval('#nav a:not([href="#/about"])', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
+      if ((await p.$eval('#nav a:not([href="#/about"]):not([href="#/today"])', (a) => a.getAttribute('href'))) !== '#/sops') throw new Error('reset'); });
     await step('switch to Dutch, saved in profile', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.click('#lang-toggle [data-lang=nl]'); await p.waitForSelector('text=Rooster');
       const l = await p.evaluate(() => window.__mockdb.profiles[0].language); if (l !== 'nl') throw new Error(l);
       await p.screenshot({ path: `${OUT}/08-roster-nl.png`, fullPage: true }); });
     await step('About in the app: first in the menu, team edit, direct links', async () => {
       await p.goto(BASE + '#/menu'); await p.waitForSelector('#nav', { state: 'attached' });
-      const first = await p.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/about') throw new Error('first nav item ' + first);
+      const first = await p.$eval('#nav a:not([href="#/today"])', (a) => a.getAttribute('href')); if (first !== '#/about') throw new Error('first nav item ' + first);
       await p.click('#nav a[href="#/about"]'); await p.waitForSelector('.about-app .ab-person');
       if ((await p.$$('.ab-person')).length !== 4) throw new Error('team cards');
       const hrefs = await p.$$eval('.ab-link', (as) => as.map((a) => a.getAttribute('href')));
@@ -406,7 +406,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await q.$('.day-toggle, .row-handle, .row-move')) throw new Error('staff can change days or order');
       await q.click('.day-tab:not(.on)'); await q.waitForSelector('.day-tab.on');
       await q.screenshot({ path: `${OUT}/09b-roster-phone.png`, fullPage: true });
-      await q.goto(BASE + '#/settings'); await q.waitForSelector('.about-app');
+      await q.goto(BASE + '#/settings'); await q.waitForSelector('.home-hero');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
     await step('staff: offer own shift for swap', async () => {
@@ -423,6 +423,32 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('staff: About page has no Edit button', async () => { await q.goto(BASE + 'Wintertuin-Intro.html'); await q.waitForTimeout(800); if (await q.$('#ab-edit')) throw new Error('edit for staff'); });
     await B.ctx.close();
     if (B.errors.length) { failed = true; console.log('ERRORS (staff):', B.errors); }
+
+    // ---------------- quick sign-in with a PIN, and the clock-in tablet
+    const C = await session(browser, 'manager', { width: 390, height: 844 });
+    const c = C.page;
+    const typePin = async (pin) => { for (const d of pin) await c.click(`.pinlock [data-k="${d}"], .k-overlay [data-k="${d}"]`); };
+    await step('PIN: after the password the app offers a PIN, typed twice', async () => {
+      await c.goto(BASE); await c.waitForSelector('#login-form'); await c.evaluate(() => localStorage.setItem('test_pin', '1')); await c.reload(); await c.waitForSelector('#login-form');
+      await c.fill('[name=email]', 'a@b.c'); await c.fill('[name=password]', 'test'); await c.click('button[type=submit]');
+      await c.waitForSelector('.pinlock'); await c.screenshot({ path: `${OUT}/20-pin-setup.png` });
+      await typePin('1234'); await c.waitForSelector('.pinlock h2:has-text("once more")'); await typePin('1234');
+      await c.waitForSelector('.home-hero'); if (await c.$('.pinlock')) throw new Error('setup did not close');
+      if (!(await c.evaluate(() => window.__mockdb.__pinSet))) throw new Error('PIN not sent to the tablet'); });
+    await step('PIN: after 30 minutes the app asks only for the PIN; a wrong one shakes', async () => {
+      await c.evaluate(() => localStorage.setItem('wt_active', String(Date.now() - 31 * 60000))); await c.reload();
+      await c.waitForSelector('.pinlock'); await c.screenshot({ path: `${OUT}/21-pin-unlock.png` });
+      await typePin('9999'); await c.waitForSelector('.pl-sub:has-text("Wrong PIN")');
+      await typePin('1234'); await c.waitForSelector('.home-hero'); if (await c.$('.pinlock')) throw new Error('still locked'); });
+    await step('tablet: tap a name, PIN 1234 clocks in, wrong PIN does not; leaving asks the manager PIN', async () => {
+      await c.setViewportSize({ width: 1024, height: 768 });
+      await c.goto(BASE + '#/kiosk'); await c.waitForSelector('.k-person'); if (await c.isVisible('#topbar')) throw new Error('menu visible on the tablet');
+      await c.click('.k-person >> nth=1'); await c.waitForSelector('.k-overlay .k-pad'); await typePin('0000'); await c.waitForSelector('.k-overlay .muted:has-text("Wrong PIN")');
+      await typePin('1234'); await c.waitForSelector('.k-done'); await c.screenshot({ path: `${OUT}/22-kiosk-done.png` });
+      await c.waitForSelector('.k-person.in', { timeout: 6000 });
+      await c.click('#k-exit'); await c.waitForSelector('.k-overlay .k-pad'); await typePin('1234'); await c.waitForSelector('.home-hero'); });
+    await C.ctx.close();
+    if (C.errors.length) { failed = true; console.log('ERRORS (pin):', C.errors); }
   } catch (e) { failed = true; console.log('\nFAILED:', e.message); }
   await browser.close();
   console.log(failed ? 'RESULT: FAIL' : 'RESULT: ALL PASSED');

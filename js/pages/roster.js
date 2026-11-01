@@ -3,6 +3,7 @@
 // Exports to calendar (.ics), prints "who works today", and compares planned hours with clocked hours.
 import { state, isManager, app, esc, fmt, toast, toastError, isoOf, $, $$, openModal, confirmDialog, download, printHtml } from '../core.js';
 import { t } from '../i18n.js';
+import { sectionClass } from './roster-colors.js';
 import { sb, check } from '../data.js';
 
 let weekStart = null; // a Monday
@@ -65,8 +66,8 @@ function draw(days, checkins) {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('roster_title')}</h1><div class="muted small">${t('roster_sub')}</div></div>
       <div class="page-actions">
-        <button type="button" class="btn-sm" id="print-today">&#128424; ${t('roster_print_today')}</button>
-        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#11015; ${t('export')} &#9662;</summary>
+        <button type="button" class="btn-sm" id="print-today"><i class="ic ic-printer" aria-hidden="true"></i> ${t('roster_print_today')}</button>
+        <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-download" aria-hidden="true"></i> ${t('export')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:260px;padding:10px">
             <button type="button" class="btn-sm" data-ics="my-week">${t('ics_my_week')}</button>
             <button type="button" class="btn-sm" data-ics="my-month">${t('ics_my_month')}</button>
@@ -76,9 +77,9 @@ function draw(days, checkins) {
           </div></details></div></div>
     <div class="card">
       <div class="roster-bar">
-        <div style="display:flex;gap:6px;align-items:center"><button type="button" class="btn-sm" id="prev" aria-label="${t('prev_week')}">&#8249;</button>
+        <div style="display:flex;gap:6px;align-items:center"><button type="button" class="btn-sm" id="prev" aria-label="${t('prev_week')}"><i class="ic ic-prev" aria-hidden="true"></i></button>
           <button type="button" class="btn-sm" id="this">${t('this_week')}</button>
-          <button type="button" class="btn-sm" id="next" aria-label="${t('next_week')}">&#8250;</button></div>
+          <button type="button" class="btn-sm" id="next" aria-label="${t('next_week')}"><i class="ic ic-next" aria-hidden="true"></i></button></div>
         <span class="week">${esc(range)}</span></div>
       <div class="tiny muted" style="margin:-4px 0 10px">${t('opening_from_finance')}</div>
       ${mgr ? `<div class="note" style="margin:0 0 12px">
@@ -90,14 +91,16 @@ function draw(days, checkins) {
           return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
           ${noteOf(c) ? `<span class="day-note">${esc(noteOf(c))}</span>` : ''}${evLabels(isoOf(d)) ? `<span class="ro-evs">${evLabels(isoOf(d))}</span>` : ''}
           ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>
-            <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${isoOf(d)}" title="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
+            <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${isoOf(d)}" title="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>`
             : closed && !noteOf(c) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
-        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<strong>${esc(p.full_name)}</strong>
+        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<span class="ro-who"><span class="av sm">${esc(String(p.full_name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase())}</span><strong>${esc(p.full_name)}</strong></span>
             ${mgr ? `<span class="row-move"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-down="${i}" ${i === staff.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span>` : ''}</td>
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
             const closed = calendar[ds] && !calendar[ds].is_open;
             return `<td class="${closed ? 'closed' : ''}" ${mgr ? `data-cell="${p.id}|${ds}"` : ''}>${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</td>`; }).join('')}</tr>`).join('')}
-        </tbody></table></div>
+        </tbody>
+        <tfoot><tr><td class="small muted">${t('hours_planned_day')}</td>${days.map((d) => { const ds = isoOf(d); const h = shifts.filter((x) => x.shift_date === ds).reduce((a, x) => a + shiftHours(x), 0);
+          const closed = calendar[ds] && !calendar[ds].is_open; return `<td class="day-total ${closed ? 'closed' : ''}">${h ? `${fmt.num(h, 1)} ${t('h')}` : ''}</td>`; }).join('')}</tr></tfoot></table></div>
       ${mobileView(days, staff, mgr, today)}</div>
     ${hoursOverview(staff, checkins)}`;
 
@@ -203,7 +206,7 @@ function mobileView(days, staff, mgr, today) {
     <div class="day-tabs">${tabs}</div>
     <div class="m-day-head"><strong>${esc(fmt.dateLong(ds))}</strong>
       <span>${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${ds}">${t(closed ? 'closed' : 'open')}</button>
-        <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${ds}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>`
+        <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${ds}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>`
         : closed ? `<span class="day-closed">${t('closed')}</span>` : ''}</span></div>
     ${noteOf(c) ? `<div class="day-note m-note">${esc(noteOf(c))}</div>` : ''}
     ${evLabels(ds) ? `<div class="ro-evs m-evs">${evLabels(ds)}</div>` : ''}
@@ -215,7 +218,7 @@ function mobileView(days, staff, mgr, today) {
 function chip(s) {
   const mine = s.staff_id === state.me.id;
   const mgr = isManager();
-  return `<${mgr ? 'button type="button"' : 'div'} class="shift-chip ${mine ? 'mine' : ''}" ${mgr ? `draggable="true" data-shift="${s.id}"` : ''}>
+  return `<${mgr ? 'button type="button"' : 'div'} class="shift-chip ${sectionClass(s.section)} ${mine ? 'mine' : ''}" ${mgr ? `draggable="true" data-shift="${s.id}"` : ''}>
     ${fmt.time(s.start_time)}–${fmt.time(s.end_time)}${s.section ? `<span class="sec">${esc(s.section)}</span>` : ''}</${mgr ? 'button' : 'div'}>`;
 }
 

@@ -20,7 +20,7 @@ function saveDraft(id, d) { try { localStorage.setItem(DRAFT + id, JSON.stringif
 function clearDraft(id) { try { localStorage.removeItem(DRAFT + id); } catch { /* private mode */ } }
 
 // What this person sees: English when filled in and they use English, otherwise Dutch
-function view(s) {
+export function view(s) {
   const en = lang() === 'en';
   const nlItems = listOf(s.items);
   const enItems = listOf(s.items_en);
@@ -34,6 +34,7 @@ function view(s) {
 }
 
 export async function renderSops() {
+  try { openIds = new Set(JSON.parse(localStorage.getItem(OPEN) || '[]')); } catch { /* keep */ } // Today may have unfolded one
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   const [rows, ch] = await Promise.all([
     check(await sb.from('sops').select('*').order('category').order('sort_order')),
@@ -58,13 +59,13 @@ function draw() {
     <div class="page-head"><div><h1>${t('sops_title')}</h1><div class="muted small">${t('sops_sub')}</div></div>
       <div class="page-actions">
         ${sops.length ? `<button type="button" class="btn-sm" id="sop-expand">${t('sops_expand_all')}</button>` : ''}
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('sops_print_all')}</button>
-        <button type="button" class="btn-sm" id="backup">&#11015; ${t('sops_backup')}</button>
+        <button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('sops_print_all')}</button>
+        <button type="button" class="btn-sm" id="backup"><i class="ic ic-download" aria-hidden="true"></i> ${t('sops_backup')}</button>
         ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('sops_add')}</button>` : ''}</div></div>
     ${missing ? `<div class="note" style="margin:0 0 12px">${t('sops_missing_en', { n: missing })}</div>` : ''}
     ${!sops.length ? `<div class="card empty">${t('sops_none')}</div>` : ''}
     ${Object.keys(cats).sort().map((cat) => `<div class="sop-cat">${esc(cat)}</div>
-      <div class="grid grid-2">${cats[cat].map(card).join('')}</div>`).join('')}`;
+      <div class="sop-list">${cats[cat].map(card).join('')}</div>`).join('')}`;
   $('#print').onclick = printSops;
   $('#backup').onclick = backupTxt;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
@@ -90,10 +91,16 @@ function progress(s) {
   const done = items.filter((_, i) => checks[`${s.id}_${i}`]).length;
   return items.length ? `${done}/${items.length}` : '';
 }
+function pct(s) {
+  const items = view(s).items;
+  return items.length ? Math.round((items.filter((_, i) => checks[`${s.id}_${i}`]).length / items.length) * 100) : 0;
+}
 function updateProgress(id) {
   const s = sops.find((x) => x.id === id);
   const el = document.querySelector(`[data-progress="${id}"]`);
   if (s && el) el.textContent = progress(s);
+  const bar = document.querySelector(`[data-bar="${id}"]`);
+  if (s && bar) bar.style.width = `${pct(s)}%`;
 }
 
 // Each SOP is folded by default: title, progress and buttons on one line; click to unfold the checklist.
@@ -101,8 +108,8 @@ function card(s) {
   const v = view(s);
   return `<details class="card sop-card" data-sop="${s.id}" ${openIds.has(s.id) ? 'open' : ''}>
     <summary class="sop-sum"><span class="sop-chev" aria-hidden="true">&#9656;</span><h3>${esc(v.title)}</h3>
-      <span class="sop-actions"><span class="sop-progress" data-progress="${s.id}">${progress(s)}</span>
-      <button type="button" class="btn-sm" data-print-one="${s.id}" title="${t('print')}" aria-label="${t('print')}: ${esc(v.title)}">&#128424;</button>
+      <span class="sop-actions">${v.items.length ? `<span class="sop-prog"><span class="pl-bar"><span data-bar="${s.id}" style="width:${pct(s)}%"></span></span>` : '<span class="sop-prog">'}<span class="sop-progress" data-progress="${s.id}">${progress(s)}</span></span>
+      <button type="button" class="btn-sm" data-print-one="${s.id}" title="${t('print')}" aria-label="${t('print')}: ${esc(v.title)}"><i class="ic ic-printer" aria-hidden="true"></i></button>
       ${isManager() ? `<button type="button" class="btn-sm" data-edit="${s.id}">${t('edit')}</button>` : ''}</span></summary>
     <div class="sop-body">
     ${v.content ? `<p class="sop-text">${esc(v.content)}</p>` : ''}

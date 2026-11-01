@@ -248,9 +248,9 @@ export async function renderHaccp(args = []) {
     else await renderOverview();
   } catch (e) { toastError(e); }
 }
-const weekNav = () => `<div class="hc-week"><button type="button" class="btn-sm" data-wk="-7" aria-label="${L({ nl: 'Vorige week', en: 'Previous week' })}">&#8249;</button>
+const weekNav = () => `<div class="hc-week"><button type="button" class="btn-sm" data-wk="-7" aria-label="${L({ nl: 'Vorige week', en: 'Previous week' })}"><i class="ic ic-prev" aria-hidden="true"></i></button>
   <button type="button" class="btn-sm" data-wk="0">${L({ nl: 'Deze week', en: 'This week' })}</button>
-  <button type="button" class="btn-sm" data-wk="7" aria-label="${L({ nl: 'Volgende week', en: 'Next week' })}">&#8250;</button>
+  <button type="button" class="btn-sm" data-wk="7" aria-label="${L({ nl: 'Volgende week', en: 'Next week' })}"><i class="ic ic-next" aria-hidden="true"></i></button>
   <strong>${esc(weekLabel(week))}</strong></div>`;
 function bindWeekNav(redraw) {
   $$('[data-wk]').forEach((b) => (b.onclick = () => { const n = Number(b.dataset.wk); week = n ? addDays(week, n) : mondayOf(todayIso()); redraw(); }));
@@ -324,12 +324,12 @@ async function renderOverview() {
   }
   app().innerHTML = `
     <div class="page-head"><div><h1>HACCP</h1><div class="muted small">${L({ nl: 'Registraties volgens de Hygiënecode voor de Horeca. Alles wordt automatisch bewaard; managers vinden het archief onder Instellingen, HACCP.', en: 'Records under the Hygiënecode voor de Horeca. Everything is saved automatically; managers find the archive under Settings, HACCP.' })}</div></div>
-      <div class="page-actions"><button type="button" class="btn-sm" id="hc-print-all">&#128424; ${L({ nl: 'Print deze week (alle lijsten)', en: 'Print this week (all lists)' })}</button></div></div>
+      <div class="page-actions"><button type="button" class="btn-sm" id="hc-print-all"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ nl: 'Print deze week (alle lijsten)', en: 'Print this week (all lists)' })}</button></div></div>
     ${weekNav()}
     <div class="hc-tiles">${keys.map((k) => {
       const def = LISTS[k]; const st = tileStatus(k, entries, { days, lastThermo });
       return `<a class="card hc-tile" href="#/haccp/${k}"><span class="hc-ico" aria-hidden="true">${def.icon}</span>
-        <span class="hc-tt"><strong>${esc(L(def.short))}</strong><span class="hc-freq">${esc(L(SHORT_FREQ[k]))}</span><span class="hc-st ${st.cls}">${esc(st.txt)}</span></span><span aria-hidden="true" class="hc-go">&#8250;</span></a>`;
+        <span class="hc-tt"><strong>${esc(L(def.short))}</strong><span class="hc-freq">${esc(L(SHORT_FREQ[k]))}</span><span class="hc-st ${st.cls}">${esc(st.txt)}</span></span><span aria-hidden="true" class="hc-go"><i class="ic ic-next" aria-hidden="true"></i></span></a>`;
     }).join('')}</div>`;
   bindWeekNav(renderOverview);
   $('#hc-print-all').onclick = () => printWeek(keys, week);
@@ -339,8 +339,8 @@ async function renderList(key) {
   const def = LISTS[key];
   const entries = key === 'suppliers' ? [] : await loadWeek([key], week);
   app().innerHTML = `
-    <div class="page-head"><div><a class="small" href="#/haccp">&#8249; HACCP</a><h1>${esc(L(def.short))}</h1><div class="muted small">${esc(L(def.freq))}</div></div>
-      <div class="page-actions"><button type="button" class="btn-sm" id="hc-print">&#128424; ${L({ nl: 'Print week', en: 'Print week' })}</button></div></div>
+    <div class="page-head"><div><a class="small" href="#/haccp"><i class="ic ic-prev" aria-hidden="true"></i> HACCP</a><h1>${esc(L(def.short))}</h1><div class="muted small">${esc(L(def.freq))}</div></div>
+      <div class="page-actions"><button type="button" class="btn-sm" id="hc-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ nl: 'Print week', en: 'Print week' })}</button></div></div>
     ${key === 'suppliers' ? '' : `<div class="card hc-form-card"><h2 style="margin-top:0">${L(key === 'cleaning' ? { nl: 'Vandaag afvinken', en: 'Tick off today' } : { nl: 'Nieuwe registratie', en: 'New record' })}</h2><div id="hc-form"></div></div>`}
     ${key === 'suppliers' ? '' : weekNav()}
     <div class="card"><div class="table-wrap">${weekTable(key, entries, week, false)}</div>
@@ -612,11 +612,11 @@ export async function renderHaccpSettings(el) {
       <div class="small muted">${L({ nl: 'Alle registraties worden automatisch bewaard, per lijst en per week. Kies een lijst en week om terug te kijken of te printen voor een controle.', en: 'All records are saved automatically, per list and per week. Pick a list and a week to look back or print for an inspection.' })}</div>
       <div class="hc-arch-bar">
         <select id="arch-list"><option value="all">${L({ nl: 'Alle lijsten', en: 'All lists' })}</option>${keys.map((k) => `<option value="${k}" ${k === archiveKey ? 'selected' : ''}>${esc(L(LISTS[k].short))}</option>`).join('')}</select>
-        <span class="hc-week" style="margin:0"><button type="button" class="btn-sm" data-awk="-7" aria-label="${L({ nl: 'Vorige week', en: 'Previous week' })}">&#8249;</button>
+        <span class="hc-week" style="margin:0"><button type="button" class="btn-sm" data-awk="-7" aria-label="${L({ nl: 'Vorige week', en: 'Previous week' })}"><i class="ic ic-prev" aria-hidden="true"></i></button>
           <button type="button" class="btn-sm" data-awk="0">${L({ nl: 'Deze week', en: 'This week' })}</button>
-          <button type="button" class="btn-sm" data-awk="7" aria-label="${L({ nl: 'Volgende week', en: 'Next week' })}">&#8250;</button>
+          <button type="button" class="btn-sm" data-awk="7" aria-label="${L({ nl: 'Volgende week', en: 'Next week' })}"><i class="ic ic-next" aria-hidden="true"></i></button>
           <strong>${esc(weekLabel(archiveWeek))}</strong></span>
-        <button type="button" class="btn-primary btn-sm" id="arch-print">&#128424; ${L({ nl: 'Printen', en: 'Print' })}</button></div>
+        <button type="button" class="btn-primary btn-sm" id="arch-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ nl: 'Printen', en: 'Print' })}</button></div>
       <div id="arch-body"><div class="empty"><span class="spinner"></span></div></div></div>
     <div class="card"><h2 style="margin:0">${L({ nl: 'Koelingen en vriezers', en: 'Fridges and freezers' })}</h2><div class="small muted">${L({ nl: 'Deze staan op de temperatuurlijst. Koeling: max. 7 °C. Vriezer: −18 °C of kouder.', en: 'These appear on the temperature list. Fridge: max. 7 °C. Freezer: −18 °C or colder.' })}</div><div id="ed-equipment"></div></div>
     <div class="card"><h2 style="margin:0">${L({ nl: 'Schoonmaakrooster', en: 'Cleaning schedule' })}</h2><div class="small muted">${L({ nl: 'Wat er schoongemaakt wordt, hoe en hoe vaak.', en: 'What is cleaned, how and how often.' })}</div><div id="ed-cleaning"></div></div>

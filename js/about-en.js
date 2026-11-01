@@ -56,6 +56,6 @@ export const EN = {
 
 // Fixed bits of the pages that are not editable (back link, buttons)
 export const UI = {
-  nl: { back_intro: '&larr; Introductie', timeline: 'Bekijk de tijdlijn &rarr;', print: '&#128424; Print / PDF' },
-  en: { back_intro: '&larr; Introduction', timeline: 'View the timeline &rarr;', print: '&#128424; Print / PDF' },
+  nl: { back_intro: '&larr; Introductie', timeline: 'Bekijk de tijdlijn &rarr;', print: '<i class="ic ic-printer" aria-hidden="true"></i> Print / PDF' },
+  en: { back_intro: '&larr; Introduction', timeline: 'View the timeline &rarr;', print: '<i class="ic ic-printer" aria-hidden="true"></i> Print / PDF' },
 };

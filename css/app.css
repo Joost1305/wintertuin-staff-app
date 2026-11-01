@@ -852,3 +852,173 @@ table.roster th .ro-ev .evdot { margin-top: 3px; }
 /* phone: nothing on the About page may push the page wider than the screen (iOS slides sideways otherwise) */
 .about-app { max-width: min(920px, 100%); overflow-x: clip; overflow-wrap: anywhere; }
 .about-app .ab-head > div { min-width: 0; flex: 1 1 260px; }
+
+/* ==========================================================================
+   November 2026 redesign: Today, menu tiles, SOP list, roster colours, clock-in tablet
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- Today */
+.home-hero { position: relative; overflow: hidden; border-radius: 24px; padding: 26px 26px 24px; margin-bottom: 18px;
+  background: var(--primary); color: var(--primary-ink); isolation: isolate; }
+/* the glasshouse: glazing bars and an arched roof line, drawn thin across the hero */
+.home-hero::before { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .16;
+  background-image:
+    radial-gradient(ellipse 70% 120% at 50% 118%, transparent 64%, #fff 64.3%, #fff 64.8%, transparent 65.1%),
+    linear-gradient(90deg, rgba(255,255,255,.9) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,.9) 1px, transparent 1px);
+  background-size: 100% 100%, 64px 100%, 100% 84px; background-position: center, 22px 0, 0 30px; }
+.home-hero .muted { color: rgba(255,255,255,.75); }
+.home-hero h1 { color: #fff; font-size: 2.1rem; margin-bottom: 2px; }
+.hh-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; margin-top: 22px; align-items: end; }
+.hh-label { font-size: .85rem; color: rgba(255,255,255,.78); font-weight: 600; margin-bottom: 4px; }
+.home-hero .when { font-size: 1.9rem; line-height: 1.1; color: #fff; margin-bottom: 8px; }
+.home-hero .when.quiet { font-size: 1.4rem; opacity: .85; }
+.home-hero .later { display: block; margin-top: 8px; font-size: .9rem; color: rgba(255,255,255,.82); }
+.home-hero a.later { color: #fff; }
+.hh-clock { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 14px; }
+.hh-clock .btn-xl { width: 100%; }
+.hh-clock .btn-primary { background: #fff; color: var(--primary); border-color: #fff; }
+.hh-clock .btn-primary:hover { background: var(--primary-soft); border-color: var(--primary-soft); }
+.home-alert { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 16px; border-radius: var(--radius);
+  background: var(--accent-soft); color: var(--accent-ink); font-weight: 650; text-decoration: none; }
+.home-alert span { flex: 1; }
+.home-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.home-card { margin: 0 !important; }
+.hc-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.hc-head h2 { margin: 0; }
+.prog-list, .who-list { list-style: none; margin: 0; padding: 0; }
+.prog-list a { display: grid; grid-template-columns: 1fr 90px 44px; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line);
+  text-decoration: none; color: var(--ink); }
+.prog-list li:first-child a { border-top: 0; }
+.pl-name { font-weight: 600; display: flex; flex-direction: column; min-width: 0; }
+.pl-cat { font-weight: 400; font-size: .8rem; color: var(--ink-3); }
+.pl-bar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.pl-bar span { display: block; height: 100%; background: var(--primary); border-radius: 4px; }
+.pl-num { text-align: right; font-size: .85rem; font-weight: 650; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pl-num.full { color: var(--good); }
+.who-list li { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); }
+.who-list li:first-child { border-top: 0; }
+.who-list .who { flex: 1; display: flex; flex-direction: column; font-weight: 600; min-width: 0; }
+.who-list .tm { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: .9rem; }
+.who-list li.me .who { color: var(--primary); }
+.home-evs { margin-top: 12px; display: grid; gap: 8px; }
+.home-ev { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent-ink); text-decoration: none; }
+.home-ev > span { display: flex; flex-direction: column; }
+.home-ev .ic { width: 22px; height: 22px; }
+.home-quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+.home-quick a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 8px; border-radius: var(--radius); background: var(--surface);
+  border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 600; font-size: .9rem; }
+.home-quick a:hover { border-color: var(--primary); }
+.home-quick .ic { width: 26px; height: 26px; color: var(--primary); }
+@media (max-width: 820px) {
+  .home-hero { padding: 20px 18px; border-radius: 20px; margin: -4px -2px 14px; }
+  .home-hero h1 { font-size: 1.6rem; }
+  .home-hero .when { font-size: 1.55rem; }
+  .hh-grid, .home-cols { grid-template-columns: 1fr; }
+  .home-quick { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---------------------------------------------------------------- SOPs: full-width list instead of narrow cards */
+.sop-list { display: grid; gap: 10px; }
+.sop-list > details.sop-card { margin: 0 !important; }
+details.sop-card .sop-sum { min-height: 60px; }
+.sop-sum h3 { font-size: 1.05rem; }
+.sop-prog { display: flex; align-items: center; gap: 10px; }
+.sop-prog .pl-bar { width: 90px; }
+@media (max-width: 600px) { .sop-prog .pl-bar { width: 48px; } }
+
+/* ---------------------------------------------------------------- Menu: tiles with the photo always visible */
+.menu-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.menu-card .dish-sum { display: grid; grid-template-columns: 1fr; padding: 0; gap: 0; position: relative; }
+.dish-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: var(--surface-2); }
+.dish-photo.none { background:
+  linear-gradient(90deg, var(--glaze) 1px, transparent 1px) 0 0 / 40px 100%, linear-gradient(var(--glaze) 1px, transparent 1px) 0 0 / 100% 40px, var(--surface-2); }
+.dish-meta { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 3px; }
+.dish-meta h3 { font-family: var(--serif); font-weight: 400; font-size: 1.2rem !important; color: var(--ink); }
+.dish-sub { color: var(--ink-2); font-size: .9rem; }
+.dish-al { font-size: .8rem; color: var(--accent-ink); font-weight: 600; }
+.dish-al.unset { color: var(--ink-3); font-weight: 400; }
+.dish-side { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; align-items: center; }
+.dish-side .sop-chev { display: none; }
+.dish-side .btn-sm { background: rgba(255,255,255,.92); }
+.menu-card .dish-big { display: none; }
+details[open] > .dish-sum { border-bottom: 1px solid var(--line); }
+@media (max-width: 600px) {
+  .menu-grid { grid-template-columns: 1fr; }
+  .menu-card .dish-sum { grid-template-columns: 96px 1fr; }
+  .menu-card .dish-photo { aspect-ratio: 1; height: 100%; }
+  .dish-side { position: static; grid-column: 2; padding: 0 14px 12px; }
+}
+
+/* ---------------------------------------------------------------- Roster: colour per section, closed days narrow */
+.shift-pill[class*="sec-"], .shift[class*="sec-"] { background: var(--sec-bg); color: var(--sec-ink); border-left: 4px solid var(--sec-line); }
+.shift-pill.mine[class*="sec-"], .shift.mine[class*="sec-"] { box-shadow: inset 0 0 0 2px var(--sec-line); }
+.day-total { font-size: .78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; text-align: center; padding-top: 6px; }
+
+/* ---------------------------------------------------------------- Clock-in page: PIN */
+.pin-row { display: flex; gap: 10px; align-items: center; }
+.pin-row input { width: 130px; font: 400 1.5rem var(--serif); letter-spacing: .4em; text-align: center; }
+
+/* ---------------------------------------------------------------- Clock-in tablet */
+body.kiosk-mode { background: var(--bg); }
+.app.kiosk { max-width: 1100px; padding-top: 28px; }
+.kiosk-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.k-clock { font: 400 4.2rem/1 var(--serif); color: var(--primary); }
+.k-date { color: var(--ink-2); font-size: 1.1rem; margin-top: 4px; }
+.k-side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.k-count { font-weight: 650; color: var(--good); }
+.k-exit { color: var(--ink-2); }
+.k-lead { font-size: 1.15rem; color: var(--ink-2); margin: 22px 0 14px; }
+.k-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.k-person { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 22px 12px 18px; border-radius: 20px; background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow); font: inherit; color: var(--ink); min-height: 170px; }
+.k-person .av { width: 64px; height: 64px; font-size: 1.3rem; }
+.k-name { font: 400 1.2rem var(--serif); text-align: center; }
+.k-st { font-size: .85rem; color: var(--ink-3); }
+.k-person.in { border-color: var(--good); box-shadow: inset 0 0 0 2px var(--good); }
+.k-person.in .k-st { color: var(--good); font-weight: 650; }
+.k-lock { width: 40px; height: 40px; color: var(--primary); }
+.k-msg p { color: var(--ink-2); }
+.k-msg .btn-xl { width: 100%; margin-top: 10px; }
+.k-done .k-tick { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 8px; background: var(--good); color: #fff; }
+.k-done.out .k-tick { background: var(--primary); }
+.k-done .k-tick .ic { width: 44px; height: 44px; }
+.shift-chip[class*="sec-"] { background: var(--sec-bg); color: var(--sec-ink); border-left: 4px solid var(--sec-line); }
+.shift-chip.mine { box-shadow: inset 0 0 0 2px var(--ink); }
+.shift-chip.mine[class*="sec-"] { background: var(--sec-bg); color: var(--sec-ink); }
+.ro-who { display: inline-flex; align-items: center; gap: 8px; }
+.av.sm { width: 28px; height: 28px; font-size: .7rem; background: var(--primary-soft); color: var(--primary); }
+/* closed days take little room: the open days get the space */
+table.roster th.closed, table.roster td.closed { width: 64px; max-width: 64px; }
+table.roster td.closed .add-shift { opacity: .35; }
+table.roster tfoot td { border-top: 2px solid var(--line); padding-top: 8px; }
+table.roster th:first-child, table.roster td:first-child { width: 170px; }
+/* Top menu on a computer: More holds the rest */
+.nav { align-items: center; flex-wrap: nowrap; }
+.nav-more { position: relative; }
+.nav-more > summary { list-style: none; cursor: pointer; padding: 8px 12px; border-radius: 999px; color: var(--ink-2); font-weight: 500; font-size: .95rem; display: flex; gap: 6px; align-items: center; }
+.nav-more > summary::-webkit-details-marker { display: none; }
+.nav-more > summary::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); margin-left: 2px; }
+.nav-more > summary:hover { background: var(--surface-2); }
+.nav-more > summary.active { background: var(--primary-soft); color: var(--primary); }
+.nav-more-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: 0 16px 40px -16px rgba(0,0,0,.3); padding: 6px; display: flex; flex-direction: column; }
+.nav-more-list a { padding: 10px 12px !important; border-radius: 10px !important; }
+@media (max-width: 820px) {
+  .nav-more { display: contents; }
+  .nav-more > summary { display: none; }
+  .nav-more-list { display: contents; }
+  .nav.open .nav-more-list a { display: block; }
+}
+.nav a .nav-ic { display: none; }
+@media (max-width: 820px) {
+  .topbar:has(.nav.open) { z-index: 45; }
+  .nav.open a { display: flex !important; align-items: center; gap: 12px; text-align: left; color: var(--ink); }
+  .nav.open a .nav-ic { display: inline-block; width: 20px; height: 20px; color: var(--primary); }
+  .nav.open a.active .nav-ic { color: var(--primary-ink); }
+}
+.dish-photo.none { aspect-ratio: 16 / 6; }
+@media (max-width: 600px) { .menu-card .dish-photo.none { aspect-ratio: 1; } }
+table.roster th.closed { width: 78px; font-size: .78rem; line-height: 1.3; }
+table.roster th.closed .day-toggle { display: inline-block; margin-top: 4px; }
+table.roster th.closed br + .small { display: block; }

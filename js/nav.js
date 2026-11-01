@@ -11,6 +11,7 @@ export const NAV_ITEMS = [
 export function orderPaths(paths, order) {
   const o = Array.isArray(order) ? order : [];
   const rank = (p) => { const i = o.indexOf(p);
+    if (p === 'today') return -1000; // Today is the start page: always first, not part of the order setting
     if (i === -1 && p === 'about') return -1; // About (added later) starts first until a manager places it
     return i === -1 ? o.length + NAV_ITEMS.findIndex(([x]) => x === p) : i; };
   return [...paths].sort((a, b) => rank(a) - rank(b));

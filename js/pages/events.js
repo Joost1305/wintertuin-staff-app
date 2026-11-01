@@ -91,7 +91,7 @@ const viewSwitch = (on) => `<div class="seg"><a href="#/events/list" class="seg-
 function eventsHead() {
   return `    <div class="page-head"><div><h1>${t('nav_events')}</h1><div class="muted small">${t('ev_sub')}</div></div>
       <div class="page-actions">
-        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#128424; ${t('ev_blank_beo')} &#9662;</summary>
+        <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-printer" aria-hidden="true"></i> ${t('ev_blank_beo')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:200px;padding:10px">
             <button type="button" class="btn-sm" data-blank="nl">Nederlands</button><button type="button" class="btn-sm" data-blank="en">English</button></div></details>
         <a class="btn btn-primary btn-sm" href="#/events/new">+ ${t('ev_new')}</a></div></div>
@@ -125,9 +125,9 @@ async function renderCalendar(month) {
   const chip = (e) => `<a class="ev-chip ev-${esc(e.status)}" href="#/events/${e.id}" title="${esc(e.title)}">${e.start_time || guestsOf(e) ? `<b>${e.start_time ? fmt.time(e.start_time) : ''}${guestsOf(e) ? `<span>${guestsOf(e)} ${t('ev_p')}</span>` : ''}</b>` : ''}<span class="ev-chip-t">${esc(e.title)}</span></a>`;
   app().innerHTML = `${eventsHead()}
     <div class="ev-bar">${viewSwitch('cal')}
-      <div class="ev-month"><a class="btn btn-sm" href="#/events/cal/${shift(-1)}" aria-label="${t('ev_prev_month')}">&#8249;</a>
+      <div class="ev-month"><a class="btn btn-sm" href="#/events/cal/${shift(-1)}" aria-label="${t('ev_prev_month')}"><i class="ic ic-prev" aria-hidden="true"></i></a>
         <a class="btn btn-sm" href="#/events/cal/${today.slice(0, 7)}">${t('ev_this_month')}</a>
-        <a class="btn btn-sm" href="#/events/cal/${shift(1)}" aria-label="${t('ev_next_month')}">&#8250;</a>
+        <a class="btn btn-sm" href="#/events/cal/${shift(1)}" aria-label="${t('ev_next_month')}"><i class="ic ic-next" aria-hidden="true"></i></a>
         <strong class="ev-month-name">${esc(monthName)}</strong></div></div>
     <div class="card ev-cal">
       <div class="evc-grid">${wd.map((w) => `<div class="ev-wd">${esc(w)}</div>`).join('')}
@@ -168,13 +168,13 @@ async function renderView(ev) {
   const allAllergens = [...new Set((ev.menu || []).flatMap((m) => m.allergens || []))];
   const staffWarn = ev.staff_needed && shifts.length < ev.staff_needed;
   app().innerHTML = `
-    <a class="settings-back" href="#/events" style="display:inline-block;margin-bottom:8px">&#8249; ${t('nav_events')}</a>
+    <a class="settings-back" href="#/events" style="display:inline-block;margin-bottom:8px"><i class="ic ic-prev" aria-hidden="true"></i> ${t('nav_events')}</a>
     <div class="page-head"><div><h1>${esc(ev.title)}</h1>
         <div class="muted small">${esc(fmt.dateLong(ev.event_date))}${ev.start_time ? ` · ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''} · ${statusTag(ev.status)}
           <a href="#/events/${ev.id}/history" class="small" style="margin-left:6px">v${ev.version} · ${t('ev_history')}</a></div></div>
       <div class="page-actions">
         <a class="btn btn-primary btn-sm" href="#/events/${ev.id}/edit">${t('edit')}</a>
-        <details class="export-menu" style="position:relative"><summary class="btn btn-sm">&#128424; ${t('print')} &#9662;</summary>
+        <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:240px;padding:10px">
             <button type="button" class="btn-sm" data-print="client-en">${t('ev_print_client')} (EN)</button>
             <button type="button" class="btn-sm" data-print="client-nl">${t('ev_print_client')} (NL)</button>
@@ -271,7 +271,7 @@ function renderEditor(ev, date = null) {
   const styleList = `<datalist id="ev-styles">${STYLES.map((c) => `<option value="${esc(t(c))}">`).join('')}</datalist>`;
 
   app().innerHTML = `
-    <a class="settings-back" href="${ev ? `#/events/${ev.id}` : '#/events'}" style="display:inline-block;margin-bottom:8px">&#8249; ${ev ? esc(ev.title) : t('nav_events')}</a>
+    <a class="settings-back" href="${ev ? `#/events/${ev.id}` : '#/events'}" style="display:inline-block;margin-bottom:8px"><i class="ic ic-prev" aria-hidden="true"></i> ${ev ? esc(ev.title) : t('nav_events')}</a>
     <div class="page-head"><div><h1>${ev ? t('ev_edit') : t('ev_new')}</h1><div class="muted small">${t('ev_form_sub')}</div></div></div>
     ${draft ? `<div class="note" style="margin:0 0 12px">${t('draft_restored')} <button type="button" class="btn-link" id="drop-draft">${t('ev_drop_draft')}</button></div>` : ''}
     <form id="ev-form" autocomplete="off">${courseList}${dietList}${styleList}
@@ -395,7 +395,7 @@ async function renderHistory(ev) {
   }
   const first = states[states.length - 1].snapshot;
   app().innerHTML = `
-    <a class="settings-back" href="#/events/${ev.id}" style="display:inline-block;margin-bottom:8px">&#8249; ${esc(ev.title)}</a>
+    <a class="settings-back" href="#/events/${ev.id}" style="display:inline-block;margin-bottom:8px"><i class="ic ic-prev" aria-hidden="true"></i> ${esc(ev.title)}</a>
     <div class="page-head"><div><h1>${t('ev_history')}</h1><div class="muted small">${t('ev_history_sub')}</div></div></div>
     <div class="ev-hist">${items.map((x) => `<div class="card"><div class="row-split"><strong>v${x.v}</strong><span class="small muted">${esc(x.by ? nameOf(x.by) : '?')} · ${esc(fmt.dateTime(x.at))}</span></div>
       <ul class="ev-changes">${x.changes.join('') || `<li class="muted">${t('ev_no_visible_change')}</li>`}</ul></div>`).join('')}

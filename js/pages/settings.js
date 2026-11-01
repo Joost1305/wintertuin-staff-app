@@ -27,7 +27,7 @@ export async function renderSettings(args = []) {
       <div class="page-actions"><button type="button" class="btn-sm" id="emp-on" title="${t('emp_view_hint')}">&#128065; ${t('emp_view')}</button></div></div>
     <div class="settings ${current ? 'has-section' : 'menu-only'}">
       <nav class="settings-nav">${SECTIONS.map((x) => `<a href="#/settings/${x.id}" class="${current && x.id === current.id ? 'active' : ''}">${t(x.label)}</a>`).join('')}</nav>
-      <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
+      <div class="settings-main">${current ? `<a class="settings-back" href="#/settings"><i class="ic ic-prev" aria-hidden="true"></i> ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;

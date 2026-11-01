@@ -4,7 +4,7 @@
   const uid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); });
   const role = window.__MOCK_ROLE || 'manager';
   const iso = (d) => d.toLocaleDateString('sv-SE');
-  const ME = uid();
+  const ME = '00000000-0000-4000-8000-00000000000' + (role === 'staff' ? '2' : '1'); // stable across reloads, like a real account
   const people = [[ME, 'Joost', role], [uid(), 'Anna', 'staff'], [uid(), 'Sam', 'staff']];
   const db = {
     profiles: people.map(([id, full_name, r]) => ({ id, full_name, role: r, active: true, email: full_name.toLowerCase() + '@example.test', language: 'en' })),
@@ -115,6 +115,16 @@
     rpc: async (name, args) => {
       db.day_overrides = db.day_overrides || {};
       if (name === 'fin_set_day_open') { db.day_overrides[args.p_day] = { is_open: args.p_open, note: args.p_note }; return { data: null, error: null }; }
+      // clock-in tablet: PIN 1234 is right for everyone in the mock
+      if (name === 'kiosk_people') return { data: db.profiles.filter((p) => p.active !== false).map((p, i) => { const open = db.checkins.find((c) => c.staff_id === p.id && !c.check_out_at); const sh = db.shifts.find((x) => x.staff_id === p.id && x.shift_date === iso(new Date()));
+        return { id: p.id, full_name: p.full_name, has_pin: i < 3, checked_in_at: open ? open.check_in_at : null, section: sh ? sh.section : null }; }), error: null };
+      if (name === 'kiosk_clock') { if (args.p_pin !== '1234') return { data: { ok: false, reason: 'wrong_pin' }, error: null };
+        const p = db.profiles.find((x) => x.id === args.p_staff); const open = db.checkins.find((c) => c.staff_id === args.p_staff && !c.check_out_at); const now = new Date().toISOString();
+        if (open) { open.check_out_at = now; return { data: { ok: true, action: 'out', name: p.full_name, since: open.check_in_at, at: now }, error: null }; }
+        db.checkins.push({ id: uid(), staff_id: args.p_staff, check_in_at: now, check_out_at: null }); return { data: { ok: true, action: 'in', name: p.full_name, at: now }, error: null }; }
+      if (name === 'check_my_kiosk_pin') return { data: args.p_pin === '1234', error: null };
+      if (name === 'has_kiosk_pin') return { data: !!db.__pinSet, error: null };
+      if (name === 'set_my_kiosk_pin') { db.__pinSet = true; return { data: null, error: null }; }
       if (name !== 'fin_public_calendar') return { data: null, error: null };
       const out = []; const d = new Date(args.p_from + 'T12:00:00'); const end = new Date(args.p_to + 'T12:00:00');
       for (; d <= end; d.setDate(d.getDate() + 1)) { const wd = d.getDay(); const o = db.day_overrides[iso(d)];

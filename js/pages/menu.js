@@ -35,10 +35,10 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions">
-      ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}">&#128196; ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}">&#11015;</a></span>`).join('')}
-      ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage">&#9998; ${t('menu_pdfs_manage')}</button>` : ''}
+      ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
+      ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}
       ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}
-      <button type="button" class="btn-sm" id="allergen-card">&#128424; ${t('allergen_card')}</button>
+      <button type="button" class="btn-sm" id="allergen-card"><i class="ic ic-printer" aria-hidden="true"></i> ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
     ${['food', 'beverage'].map((g) => {
@@ -61,16 +61,20 @@ const OPEN = 'wintertuinMenuOpen';
 let openIds = new Set((() => { try { return JSON.parse(localStorage.getItem(OPEN) || '[]'); } catch { return []; } })());
 const rememberOpen = () => { try { localStorage.setItem(OPEN, JSON.stringify([...openIds])); } catch { /* private mode */ } };
 function card(m) {
+  const al = (m.allergens || []).length;
+  const sub = [m.category, m.price != null && m.price !== '' ? fmt.money(m.price) : ''].filter(Boolean).map(esc).join(' <span aria-hidden="true">/</span> ');
   return `<details class="card menu-card" data-dish="${m.id}" ${openIds.has(m.id) ? 'open' : ''}>
-    <summary class="dish-sum"><span class="sop-chev" aria-hidden="true">&#9656;</span><h3>${esc(m.name)}</h3>
-      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button>` : ''}</summary>
-    ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy">` : ''}
+    <summary class="dish-sum">
+      ${m.photo_url ? `<img class="dish-photo" src="${esc(m.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
+      <span class="dish-meta"><h3>${esc(m.name)}</h3>${sub ? `<span class="dish-sub">${sub}</span>` : ''}
+        <span class="dish-al ${al ? '' : 'unset'}">${al ? t(al === 1 ? 'allergen_count_one' : 'allergen_count', { n: al }) : t('allergens_none_set')}</span></span>
+      <span class="dish-side"><span class="sop-chev" aria-hidden="true">&#9656;</span>
+      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button>` : ''}</span></summary>
+    ${m.photo_url ? `<img class="dish-big" src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy">` : ''}
     ${embedUrl(m.video_url) ? `<iframe src="${esc(embedUrl(m.video_url))}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="${esc(m.name)}"></iframe>` : ''}
     <div class="body">
-      ${m.category ? `<span><span class="tag">${esc(m.category)}</span></span>` : ''}
-      ${m.price != null && m.price !== '' ? `<div class="price">${fmt.money(m.price)}</div>` : ''}
       ${m.description ? `<p class="desc">${esc(m.description)}</p>` : ''}
-      ${(m.allergens || []).length ? `<div class="allergen-chips">${m.allergens.map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('')}</div>`
+      ${al ? `<div class="allergen-chips">${m.allergens.map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('')}</div>`
         : `<div class="tiny muted">${t('allergens_none_set')}</div>`}
     </div></details>`;
 }

@@ -29,6 +29,18 @@ GitHub Actions: daily keepalive ping
 | `supabase/migrations/` | Database changes made for this version |
 | `test/` | Browser smoke test with an in-memory Supabase |
 
+## Start page, PIN and the clock-in tablet
+
+- **Today** is the start page: next shift, clock in or out, today's checklists, who works today, events and swaps.
+- **Quick sign-in with a PIN** (`js/pinlock.js`, same file in Finance): the first time on a device you sign in with email and
+  password, then choose a 4-digit PIN. After that the app asks only for the PIN when it opens or after 30 minutes without use.
+  The PIN is a lock in front of the Supabase session, stored as a PBKDF2 hash on the device. 5 wrong tries sign you out.
+- **Clock-in tablet** (`#/kiosk`, managers): tap your name, type your PIN. Needs migration `010_kiosk.sql` in Supabase
+  (PINs hashed in `kiosk_pins`, only reachable through security definer functions, 5 wrong tries lock for 5 minutes).
+  Until that migration runs, the tablet screen says so and the PIN still works for signing in.
+- **Look**: `css/theme.css` (same file in Finance) holds the season colours (winter from the last Sunday of October,
+  summer from the last Sunday of March), Young Serif headings (`fonts/`) and the Lucide icons.
+
 ## Roles
 
 | | Staff | Manager |
