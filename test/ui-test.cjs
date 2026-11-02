@@ -407,6 +407,20 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const heads = await p.$$eval('.sop-cat', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 5).join() !== 'Bakery,Lunch,Borrel,Dinner,Drinks') throw new Error('headings: ' + heads);
       if (await p.$('details.menu-card[open]')) throw new Error('dishes open by default');
       await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
+    await step('menu archive: pick dishes or a whole heading, archive, bring one back', async () => {
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('#sel-on'); await p.click('#sel-on'); await p.waitForSelector('.sel-bar');
+      await p.click('details[data-dish]:has(h3:text-is("Croissant")) > summary'); await p.waitForSelector('.menu-card.picked');
+      await p.click('.sop-cat:has-text("Borrel") [data-pickall]');
+      if ((await p.$$('.menu-card.picked')).length !== 2) throw new Error('picked ' + (await p.$$('.menu-card.picked')).length);
+      await p.click('#sel-go'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("2 archived")');
+      const r = await p.evaluate(() => window.__mockdb.menu_items.filter((m) => ['Croissant', 'Borrelplank'].includes(m.name)).map((m) => m.active));
+      if (r.join() !== 'false,false') throw new Error(JSON.stringify(r));
+      if (await p.$('details[data-dish]:has(h3:text-is("Croissant"))')) throw new Error('archived dish still on the menu');
+      await p.click('a[href="#/menu/archive"]'); await p.waitForSelector('.ar-list'); await p.screenshot({ path: `${OUT}/28-menu-archive.png` });
+      await p.click('.ar-list li:has(strong:text-is("Croissant")) [data-one]'); await p.waitForSelector('.toast:has-text("1 back on the menu")');
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('details[data-dish]:has(h3:text-is("Croissant"))');
+      await p.click('details[data-dish]:has(h3:text-is("Croissant")) [data-edit]'); await p.waitForSelector('.modal #del');
+      if (!/Archive/.test(await p.textContent('.modal #del'))) throw new Error('editor still deletes'); await p.click('.modal [data-close]'); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {
       await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('#mc-frame');
       await p.waitForFunction(() => /Tartine met gerookte forel/.test(document.querySelector('#mc-frame').srcdoc || ''));
