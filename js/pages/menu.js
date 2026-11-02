@@ -298,7 +298,7 @@ async function renderArchive() {
           ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
           <span><strong>${esc(m.name)}</strong><span class="small muted">${esc([m.category, m.price != null && m.price !== '' ? fmt.money(m.price) : ''].filter(Boolean).join(' / '))}</span></span></label>
           <button type="button" class="btn-sm" data-one="${m.id}">${L({ en: 'Bring back', nl: 'Terugzetten' })}</button></li>`).join('')}</ul>`
-        : `<div class="empty">${all.length ? L({ en: 'Nothing found.', nl: 'Niets gevonden.' }) : L({ en: 'The archive is empty. Archive a dish from its Edit window, or several at once with Archive dishes on the Menu page.', nl: 'Het archief is leeg. Archiveer een gerecht via Wijzig, of meerdere tegelijk met Gerechten archiveren op de Menu-pagina.' })}</div>`}</div>`;
+        : `<div class="empty">${all.length ? L({ en: 'Nothing found.', nl: 'Niets gevonden.' }) : L({ en: 'The archive is empty. Archive a dish from its Edit window, or several at once with Archive dishes on the Menu page.', nl: 'Het archief is leeg. Archiveer een gerecht via Bewerken, of meerdere tegelijk met Gerechten archiveren op de Menu-pagina.' })}</div>`}</div>`;
     const qi = $('#ar-q'); if (qi) qi.oninput = () => { q = qi.value.toLowerCase(); const pos = qi.selectionStart; draw2(); const n = $('#ar-q'); n.focus(); n.setSelectionRange(pos, pos); };
     $$('[data-ar]').forEach((c) => (c.onchange = () => { if (c.checked) sel.add(c.dataset.ar); else sel.delete(c.dataset.ar); draw2(); }));
     const back = async (ids) => {

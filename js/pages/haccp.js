@@ -27,7 +27,7 @@ const dayShort = (iso) => new Intl.DateTimeFormat(lang() === 'en' ? 'en-GB' : 'n
 const timeOf = (ts) => (ts ? new Date(ts).toLocaleTimeString(lang() === 'en' ? 'en-GB' : 'nl-NL', { hour: '2-digit', minute: '2-digit' }) : '');
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 const minutesBetween = (a, b) => { if (!a || !b) return null; const [h1, m1] = a.split(':').map(Number); const [h2, m2] = b.split(':').map(Number); let d = (h2 * 60 + m2) - (h1 * 60 + m1); if (d < 0) d += 24 * 60; return d; };
-const YN = { yes: { nl: 'Ja', en: 'Yes' }, no: { nl: 'Nee', en: 'No' }, na: { nl: 'NVT', en: 'N/A' } };
+const YN = { yes: { nl: 'Ja', en: 'Yes' }, no: { nl: 'Nee', en: 'No' }, na: { nl: 'n.v.t.', en: 'N/A' } };
 
 const normText = (n) => {
   if (!n) return '';
@@ -89,7 +89,7 @@ export const LISTS = {
     icon: '&#128666;', layout: 'rows',
     title: { nl: 'Registratie ingangscontrole', en: 'Receiving check' },
     short: { nl: 'Ingangscontrole', en: 'Receiving check' },
-    freq: { nl: 'Alle leveranciers minimaal 1 maal per week. Gekoeld 2 tot 7 °C, diepvries −18 °C (maximaal −15 °C).', en: 'Every supplier at least once a week. Chilled 2 to 7 °C, frozen −18 °C (max. −15 °C).' },
+    freq: { nl: 'Alle leveranciers minimaal één keer per week. Gekoeld 2 tot 7 °C, diepvries −18 °C (maximaal −15 °C).', en: 'Every supplier at least once a week. Chilled 2 to 7 °C, frozen −18 °C (max. −15 °C).' },
     fields: () => [
       { k: 'supplier', label: { nl: 'Leverancier', en: 'Supplier' }, type: 'supplier', req: true },
       { k: 'product', label: { nl: 'Product', en: 'Product' }, type: 'text', req: true },
@@ -103,7 +103,7 @@ export const LISTS = {
     icon: '&#127859;', layout: 'rows',
     title: { nl: 'Registratie bereiden / serveren', en: 'Cooking and serving record' },
     short: { nl: 'Bereiden en serveren', en: 'Cooking and serving' },
-    freq: { nl: '1 maal per week per onderdeel dat jullie gebruiken; frituur elke frituur 1 maal per week.', en: 'Once a week for each part you use; every fryer once a week.' },
+    freq: { nl: 'Eén keer per week per onderdeel dat jullie gebruiken; elke frituur één keer per week.', en: 'Once a week for each part you use; every fryer once a week.' },
     fields: () => [
       { k: 'kind', label: { nl: 'Onderdeel', en: 'Part' }, type: 'select', req: true, opts: COOK_KINDS.map((c) => ({ v: c.v, l: c.l })) },
       { k: 'product', label: { nl: 'Product (of welke frituur)', en: 'Product (or which fryer)' }, type: 'text', req: true },
@@ -125,7 +125,7 @@ export const LISTS = {
     icon: '&#127777;&#65039;', layout: 'rows',
     title: { nl: 'Registratielijst testen thermometers', en: 'Thermometer test record' },
     short: { nl: 'Thermometers testen', en: 'Thermometer test' },
-    freq: { nl: '1 maal per 3 maanden (wettelijk minimaal jaarlijks kalibreren). Afwijking groter dan 1,0 °C: laten kalibreren of vervangen.', en: 'Every 3 months (by law at least yearly). Deviation over 1.0 °C: have it calibrated or replace it.' },
+    freq: { nl: 'Eens per 3 maanden (wettelijk minimaal één keer per jaar kalibreren). Afwijking groter dan 1,0 °C: laten kalibreren of vervangen.', en: 'Every 3 months (by law at least yearly). Deviation over 1.0 °C: have it calibrated or replace it.' },
     fields: () => [
       { k: 'thermo', label: { nl: 'Thermometer', en: 'Thermometer' }, type: 'text', req: true },
       { k: 'boil', label: { nl: 'Kokend water', en: 'Boiling water' }, type: 'num', req: true, norm: { near: 100, tol: 1 } },
@@ -176,7 +176,7 @@ export const LISTS = {
     icon: '&#127869;', layout: 'buffet',
     title: { nl: 'Borgingslijst ongekoelde presentatie, tijdregistratie', en: 'Unchilled presentation, time record' },
     short: { nl: 'Buffet / ongekoeld presenteren', en: 'Buffet / unchilled display' },
-    freq: { nl: 'Maximaal 2 uur presenteren na start. Begin elke dag met batch 1 voor elk soort product. Sluit elke presentatie af.', en: 'Present for 2 hours at most after the start. Start every day with batch 1 for each product. Close every presentation.' },
+    freq: { nl: 'Maximaal 2 uur presenteren na start. Begin elke dag met batch 1 voor elke soort product. Sluit elke presentatie af.', en: 'Present for 2 hours at most after the start. Start every day with batch 1 for each product. Close every presentation.' },
     fields: () => [
       { k: 'location', label: { nl: 'Locatie', en: 'Location' }, type: 'text' },
       { k: 'product', label: { nl: 'Maaltijdcomponent / product', en: 'Dish component / product' }, type: 'text', req: true },

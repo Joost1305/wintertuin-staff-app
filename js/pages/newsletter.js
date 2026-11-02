@@ -121,7 +121,7 @@ function draw() {
     if (error) toastError(error); else toast(L({ en: 'Draft saved for all managers', nl: 'Concept opgeslagen voor alle managers' }));
   };
   $('#nl-reset').onclick = () => { const keep = draft.highlights; draft = defaults(); draft.highlights = keep; draw(); };
-  $('#nl-copy').onclick = async () => { try { await navigator.clipboard.writeText(html()); toast(L({ en: 'HTML copied', nl: 'HTML gekopieerd' })); } catch { toastError(new Error(L({ en: 'Copying is not allowed here; use Download.', nl: 'Kopiëren mag hier niet; gebruik Downloaden.' }))); } };
+  $('#nl-copy').onclick = async () => { try { await navigator.clipboard.writeText(html()); toast(L({ en: 'HTML copied', nl: 'HTML gekopieerd' })); } catch { toastError(new Error(L({ en: 'Copying is not allowed here; use Download.', nl: 'Kopiëren lukt hier niet; gebruik Downloaden.' }))); } };
   $('#nl-dl').onclick = () => download(html(), `wintertuin-nieuwsbrief-${todayIso().slice(0, 7)}.html`, 'text/html;charset=utf-8');
 }
 

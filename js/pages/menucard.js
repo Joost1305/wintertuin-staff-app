@@ -8,8 +8,8 @@ import { sb } from '../data.js';
 import { ALLERGENS } from './menu.js';
 
 const L = (o) => o[lang()] || o.en;
-const AL_NL = { gluten: 'Gluten', crustaceans: 'Schaaldieren', eggs: 'Ei', fish: 'Vis', peanuts: 'Pinda', soy: 'Soja', milk: 'Melk', nuts: 'Noten', celery: 'Selderij',
-  mustard: 'Mosterd', sesame: 'Sesam', sulphites: 'Sulfiet', lupin: 'Lupine', molluscs: 'Weekdieren' };
+const AL_NL = { gluten: 'Gluten', crustaceans: 'Schaaldieren', eggs: 'Eieren', fish: 'Vis', peanuts: "Pinda's", soy: 'Soja', milk: 'Melk', nuts: 'Noten', celery: 'Selderij',
+  mustard: 'Mosterd', sesame: 'Sesam', sulphites: 'Sulfieten', lupin: 'Lupine', molluscs: 'Weekdieren' };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const nlText = (d) => String(d || '').split('\nEN:')[0].trim();
 const money = (p) => (p == null || p === '' ? '' : String(Number(p).toFixed(2)).replace('.', ',').replace(',00', ''));
@@ -210,8 +210,8 @@ function draw() {
               ${x.ref && !x.extraIndex && (s.cat && menu.find((m) => m.id === x.ref && m.category === s.cat))
                 ? `<label class="check"><input type="checkbox" data-show="${si}|${x.ref}" ${x.hidden ? '' : 'checked'}> ${esc(x.name)}</label><span class="mc-i-tools"><button type="button" class="link-btn small" data-iup="${si}|${x.ref}">&#9650;</button></span>`
                 : `<span>${esc(x.name)} <span class="tag">${x.ref ? L({ en: 'from menu', nl: 'uit menu' }) : L({ en: 'own line', nl: 'eigen regel' })}</span>${!x.ref && !(x.allergens || []).length ? ` <span class="tag warn">${L({ en: 'allergens?', nl: 'allergenen?' })}</span>` : ''}</span>
-                  <span class="mc-i-tools">${x.ref ? '' : `<button type="button" class="link-btn small" data-xedit="${si}|${(s.extra || []).indexOf((s.extra || []).find((y) => y.id === x.id))}">${L({ en: 'Edit', nl: 'Wijzig' })}</button>`}
-                  <button type="button" class="link-btn small" data-xdel="${si}|${x.id}">${L({ en: 'Remove', nl: 'Weg' })}</button></span>`}</li>`).join('')}</ul>
+                  <span class="mc-i-tools">${x.ref ? '' : `<button type="button" class="link-btn small" data-xedit="${si}|${(s.extra || []).indexOf((s.extra || []).find((y) => y.id === x.id))}">${L({ en: 'Edit', nl: 'Bewerken' })}</button>`}
+                  <button type="button" class="link-btn small" data-xdel="${si}|${x.id}">${L({ en: 'Remove', nl: 'Weghalen' })}</button></span>`}</li>`).join('')}</ul>
             <div class="mc-add"><select data-addref="${si}"><option value="">+ ${L({ en: 'dish from the menu', nl: 'gerecht uit het menu' })}</option>${menu.map((m) => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
               <button type="button" class="btn-sm" data-addline="${si}">+ ${L({ en: 'own line', nl: 'eigen regel' })}</button>
               <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>

@@ -29,22 +29,22 @@ export async function renderCheckin() {
     <div class="card pin-card"><p class="muted" style="margin-top:0">${L({ en: 'Four digits, only you know them. They open the app on this device and clock you in on the tablet at the pass.',
       nl: 'Vier cijfers, alleen jij kent ze. Ze openen de app op dit toestel en klokken je in op de tablet bij de pass.' })}</p>
       <form id="pin-form" class="pin-row" autocomplete="off"><input id="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="••••" aria-label="PIN">
-        <button type="submit" class="btn-primary" id="pin-save">${L({ en: 'Save PIN', nl: 'PIN opslaan' })}</button></form>
+        <button type="submit" class="btn-primary" id="pin-save">${L({ en: 'Save PIN', nl: 'Pincode opslaan' })}</button></form>
       <div class="small muted" id="pin-state"></div>
       ${isManager() ? `<a class="btn" href="#/kiosk" style="margin-top:14px"><i class="ic ic-tablet" aria-hidden="true"></i> ${L({ en: 'Open clock-in tablet mode on this device', nl: 'Inkloktablet openen op dit apparaat' })}</a>` : ''}</div>`;
   sb.rpc('has_kiosk_pin').then(({ data, error }) => {
     const el = $('#pin-state'); if (!el) return;
     if (error) return;
-    el.textContent = data ? L({ en: 'You have a PIN. Saving a new one replaces it.', nl: 'Je hebt een PIN. Een nieuwe opslaan vervangt hem.' }) : L({ en: 'No PIN yet.', nl: 'Nog geen PIN.' });
+    el.textContent = data ? L({ en: 'You have a PIN. Saving a new one replaces it.', nl: 'Je hebt al een pincode. Sla je een nieuwe op, dan vervangt die de oude.' }) : L({ en: 'No PIN yet.', nl: 'Nog geen pincode.' });
   });
   $('#pin-form').onsubmit = async (e) => {
     e.preventDefault();
     const v = $('#pin').value.trim();
-    if (!/^[0-9]{4}$/.test(v)) { toastError(new Error(L({ en: 'The PIN is 4 digits.', nl: 'De PIN is 4 cijfers.' }))); return; }
+    if (!/^[0-9]{4}$/.test(v)) { toastError(new Error(L({ en: 'The PIN is 4 digits.', nl: 'De pincode is 4 cijfers.' }))); return; }
     try { await setDevicePin({ id: state.me.id, full_name: state.me.full_name }, v);
       try { check(await sb.rpc('set_my_kiosk_pin', { p_pin: v })); } catch { /* tablet not switched on yet: the PIN still works for signing in */ }
-      $('#pin').value = ''; toast(L({ en: 'PIN saved', nl: 'PIN opgeslagen' }));
-      $('#pin-state').textContent = L({ en: 'You have a PIN. Saving a new one replaces it.', nl: 'Je hebt een PIN. Een nieuwe opslaan vervangt hem.' }); }
+      $('#pin').value = ''; toast(L({ en: 'PIN saved', nl: 'Pincode opgeslagen' }));
+      $('#pin-state').textContent = L({ en: 'You have a PIN. Saving a new one replaces it.', nl: 'Je hebt al een pincode. Sla je een nieuwe op, dan vervangt die de oude.' }); }
     catch (err) { toastError(err); }
   };
   $('#toggle').onclick = async (e) => {

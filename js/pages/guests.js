@@ -77,7 +77,7 @@ function draw() {
         <td>${full && x.email ? `<label class="switch"><input type="checkbox" data-nl="${data.guests.indexOf(x)}" ${x.newsletter ? 'checked' : ''} aria-label="${L({ en: 'Newsletter', nl: 'Nieuwsbrief' })}"><span></span></label>` : x.newsletter ? L({ en: 'Yes', nl: 'Ja' }) : '<span class="muted">–</span>'}</td></tr>`).join('')}
       </tbody></table></div>` : `<div class="empty">${guests.length ? L({ en: 'Nobody matches this search.', nl: 'Niemand gevonden met deze zoekopdracht.' }) : L({ en: 'No guests yet. They appear here as soon as an event has an email address.', nl: 'Nog geen gasten. Ze verschijnen hier zodra een event een e-mailadres heeft.' })}</div>`}</div>
     ${noEmail ? `<p class="small muted" style="margin-top:10px">${L({ en: `${noEmail} event(s) have a client but no email address; add it on the event to keep them in this list.`, nl: `${noEmail} event(s) hebben een klant maar geen e-mailadres; vul het in bij het event om ze in deze lijst te houden.` })}</p>` : ''}
-    <p class="small muted">${L({ en: 'Only tick the newsletter when the guest said yes. Somebody who unsubscribes: switch it off here.', nl: 'Zet de nieuwsbrief alleen aan als de gast ja heeft gezegd. Iemand die zich afmeldt: hier uitzetten.' })}</p>`;
+    <p class="small muted">${L({ en: 'Only tick the newsletter when the guest said yes. Somebody who unsubscribes: switch it off here.', nl: 'Zet de nieuwsbrief alleen aan als de gast ja heeft gezegd. Meldt iemand zich af? Zet het hier uit.' })}</p>`;
 
   const q = $('#g-q');
   q.oninput = () => { view.q = q.value; const pos = q.selectionStart; draw(); const n = $('#g-q'); n.focus(); n.setSelectionRange(pos, pos); };
@@ -92,7 +92,7 @@ function draw() {
   const lines = () => yes.map((x) => x.email);
   const cp = $('#g-copy'); if (cp) cp.onclick = async () => {
     try { await navigator.clipboard.writeText(lines().join(', ')); toast(L({ en: `${yes.length} addresses copied`, nl: `${yes.length} adressen gekopieerd` })); }
-    catch { toastError(new Error(L({ en: 'Copying is not allowed here; use the CSV.', nl: 'Kopiëren mag hier niet; gebruik de CSV.' }))); }
+    catch { toastError(new Error(L({ en: 'Copying is not allowed here; use the CSV.', nl: 'Kopiëren lukt hier niet; gebruik de CSV.' }))); }
   };
   const csv = $('#g-csv'); if (csv) csv.onclick = () => {
     const q2 = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;

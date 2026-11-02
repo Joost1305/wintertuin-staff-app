@@ -71,12 +71,12 @@ export async function renderHome() {
     </section>
 
     ${swaps ? `<a class="home-alert" href="#/swap"><i class="ic ic-swap" aria-hidden="true"></i><span>${isManager()
-      ? L({ en: `${swaps} shift swap${swaps > 1 ? 's' : ''} waiting for your approval`, nl: `${swaps} dienstruil${swaps > 1 ? 'en' : ''} wacht${swaps > 1 ? 'en' : ''} op je akkoord` })
-      : L({ en: `${swaps} shift swap update${swaps > 1 ? 's' : ''}`, nl: `${swaps} nieuws over dienstruilen` })}</span><i class="ic ic-next" aria-hidden="true"></i></a>` : ''}
+      ? L({ en: `${swaps} shift swap${swaps > 1 ? 's' : ''} waiting for your approval`, nl: swaps > 1 ? `${swaps} ruilverzoeken wachten op je akkoord` : '1 ruilverzoek wacht op je akkoord' })
+      : L({ en: `${swaps} shift swap update${swaps > 1 ? 's' : ''}`, nl: `Nieuws over ${swaps > 1 ? `${swaps} ruilverzoeken` : 'je ruilverzoek'}` })}</span><i class="ic ic-next" aria-hidden="true"></i></a>` : ''}
 
     <div class="home-cols">
       <section class="card home-card">
-        <div class="hc-head"><h2>${L({ en: 'Checklists today', nl: 'Checklists vandaag' })}</h2><a href="#/sops" class="small">${L({ en: 'All SOPs', nl: 'Alle SOPs' })}</a></div>
+        <div class="hc-head"><h2>${L({ en: 'Checklists today', nl: 'Checklists vandaag' })}</h2><a href="#/sops" class="small">${L({ en: 'All SOPs', nl: "Alle SOP's" })}</a></div>
         ${lists.length ? `<ul class="prog-list">${lists.map((x) => `<li><a href="#/sops" data-sop="${x.id}">
             <span class="pl-name">${esc(x.v.title)}<span class="pl-cat">${esc(x.v.category)}</span></span>
             <span class="pl-bar"><span style="width:${Math.round((x.done / x.n) * 100)}%"></span></span>
