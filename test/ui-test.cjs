@@ -551,6 +551,24 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const html = await p.$eval('#nl-frame', (f) => f.srcdoc); if (!/Tartine met gerookte forel/.test(html) || !/Afmelden/.test(html)) throw new Error('newsletter content');
       await p.screenshot({ path: `${OUT}/26-newsletter.png`, fullPage: false });
       const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#nl-dl')]); if (!dl.suggestedFilename().endsWith('.html')) throw new Error('no html');
+      // every block is editable: title, text, photo; blocks move and can be added
+      await p.click('details.nl-sec:has(.nl-sec-t:text-is("Uit de bakkerij")) > summary'); await p.fill('details.nl-sec[open] [data-bf="title"]', 'Vers uit de oven');
+      await p.fill('details.nl-sec[open] [data-bf="text"]', 'Deze maand een roggebrood met venkel.');
+      await p.setInputFiles('details.nl-sec[open] [data-bphoto]', { name: 'brood.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
+      await p.waitForSelector('details.nl-sec[open] .nl-ph img');
+      await p.waitForFunction(() => /Vers uit de oven/.test(document.querySelector('#nl-frame').srcdoc) && /roggebrood met venkel/.test(document.querySelector('#nl-frame').srcdoc) && /data:image\/gif/.test(document.querySelector("#nl-frame").srcdoc));
+      await p.click('[data-addb="text"]'); await p.waitForSelector('details.nl-sec[open]:has(.nl-sec-t:text-is("Nieuw blok"))');
+      await p.fill('details.nl-sec:has(.nl-sec-t:text-is("Nieuw blok")) [data-bf="title"]', 'Kerst in de kas');
+      await p.waitForFunction(() => /Kerst in de kas/.test(document.querySelector('#nl-frame').srcdoc));
+      const before = await p.$$eval('.nl-sec-t', (x) => x.map((e) => e.textContent));
+      await p.click(`details.nl-sec:has(.nl-sec-t:text-is("Kerst in de kas")) [data-bmv$="|-1"]`);
+      const after = await p.$$eval('.nl-sec-t', (x) => x.map((e) => e.textContent));
+      if (after.indexOf('Kerst in de kas') !== before.indexOf('Kerst in de kas') - 1) throw new Error('block did not move');
+      // on the menu now: pick from the menu
+      await p.click('details.nl-sec:has(.nl-sec-t:text-is("Nu op de kaart")) > summary'); await p.click('#nl-hlpick'); await p.waitForSelector('.dp-pick');
+      await p.fill('#hq', 'croissant'); await p.check('.dp-list li:has(strong:text-is("Croissant")) input'); await p.click('#h-ok');
+      await p.waitForFunction(() => /Croissant/.test(document.querySelector('#nl-frame').srcdoc));
+      await p.screenshot({ path: `${OUT}/26b-newsletter-blocks.png`, fullPage: false });
       await p.click('#nl-save'); await p.waitForSelector('.toast:has-text("Draft saved")'); });
     await A.ctx.close();
     if (A.errors.length) { failed = true; console.log('ERRORS (manager):', A.errors); }

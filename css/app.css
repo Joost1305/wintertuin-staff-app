@@ -1464,3 +1464,14 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
   .mc-grid:not(.view) .mc-form-head { top: 0; }
   .mc-grid:not(.view) .mc-frame-wrap { min-height: 100%; }
 }
+/* newsletter blocks */
+.nl-sec > summary { gap: 10px; }
+.nl-sec-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nl-sec-tools { display: flex; gap: 0; flex: none; }
+.nl-edit-cue { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 650; color: var(--primary); flex: none; }
+.nl-sec[open] .nl-edit-cue { color: var(--ink-3); }
+.nl-sec[open] .nl-edit-cue .sop-chev { transform: rotate(90deg); }
+.nl-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 0; }
+.nl-ph { width: 72px; height: 72px; }
+.nl-hl { border-top: 0; }
+@media (max-width: 480px) { .nl-edit-cue { font-size: 0; } .nl-edit-cue .sop-chev { font-size: .9rem; } }
