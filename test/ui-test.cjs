@@ -459,6 +459,9 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const pages = (buf.toString('latin1').match(/\/Type \/Page[^s]/g) || []).length; if (pages !== 2) throw new Error('pages ' + pages);
       fs.copyFileSync(path, `${OUT}/lunch.pdf`);
       await p.screenshot({ path: `${OUT}/27a-menucard-view.png` });
+      await p.click('.mcv-tab[href="#/menucard/voorbeeld"]'); await p.waitForFunction(() => /Pulled wortel/.test(document.querySelector('#mc-frame').srcdoc || '') && /6 \/ 9/.test(document.querySelector('#mc-frame').srcdoc));
+      if (await p.evaluate(() => window.__mockdb.menu_items.some((m) => m.name === 'Pulled wortel'))) throw new Error('example card added dishes');
+      await p.click('.mcv-tab[href="#/menucard/lunch"]'); await p.waitForSelector('#mcv-edit');
       await p.click('#mcv-edit'); await p.waitForSelector('.mc-form'); if (await p.$('.mc-viewer')) throw new Error('viewer still open in edit');
       await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('.mc-viewer'); await p.keyboard.press('Escape'); await p.waitForFunction(() => location.hash === '#/menu'); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {

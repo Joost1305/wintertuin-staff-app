@@ -12,7 +12,55 @@ const AL_NL = { gluten: 'Gluten', crustaceans: 'Schaaldieren', eggs: 'Eieren', f
   mustard: 'Mosterd', sesame: 'Sesam', sulphites: 'Sulfieten', lupin: 'Lupine', molluscs: 'Weekdieren' };
 const uid = () => Math.random().toString(36).slice(2, 10);
 const nlText = (d) => String(d || '').split('\nEN:')[0].trim();
-const money = (p) => (p == null || p === '' ? '' : String(Number(p).toFixed(2)).replace('.', ',').replace(',00', ''));
+// a number becomes 6,50; text such as "6 / 9" or "vanaf 5" stays as it is
+const money = (p) => {
+  if (p == null || p === '') return '';
+  const n = Number(String(p).replace(',', '.'));
+  return Number.isFinite(n) ? String(n.toFixed(2)).replace('.', ',').replace(',00', '') : String(p);
+};
+const line = (name, description, price) => ({ id: uid(), name, description, price, allergens: [] });
+
+// An example menu (ontbijt, lunch, borrelhappen) in our style. Only own lines: it does not touch the dishes on the Menu page.
+export function exampleCard() {
+  return { id: 'voorbeeld', kind: 'menu', name: 'Voorbeeldkaart', title: 'Ontbijt, lunch en borrel', subtitle: 'Voorbeeldkaart', priceLine: '', intro: '',
+    note: '100% plantaardig. Voor glutenvrije opties en allergieën: overleg gerust met ons.', showPrices: true, showCodes: false,
+    sections: [
+      { id: uid(), title: 'Ontbijt', sub: 'Maandag tot en met vrijdag 7.30 tot 10.00 uur, zaterdag en zondag 8.00 tot 10.30 uur', cat: null, hidden: [], extra: [
+        line('Groene startbuffet', 'Met koffie en/of thee', 17.5),
+        line('Croissant met jam', '', 4),
+        line('Yoghurt met granola en fruit', '', 7.5),
+        line('Muffin', '', 3.5),
+      ] },
+      { id: uid(), title: 'Lunch', sub: '11.30 tot 16.00 uur', cat: null, hidden: [], extra: [
+        line('Soep van de dag', 'Met brood en kruidenboter', '6 / 9'),
+        line('Knolselderijsoep', 'Met pastinaak, mosterd, plantaardige spekjes en bieslookolie, met brood en kruidenboter', '8 / 11'),
+        line('Gegrilde groenten', 'Op zuurdesembrood met zongedroogde-tomatenhummus en chimichurri', 12.5),
+        line('Paddenstoelenpaté', 'Op knoflookbruschetta met compote van rabarber en szechuanpeper', 12.5),
+        line('Pulled wortel', 'Op zuurdesembrood met licht pittige crème van maïs en jalapeño, en gepofte maïs', 12.5),
+        line('Pita döner', 'Pitabroodje met plantaardige döner, sumak-ui, tahin, salade en granaatappel', 14.5),
+        line('Combilunch', 'Zuurdesembrood met twee paprika-spinaziekroketten, groene mosterdmayonaise en een kleine soep naar keuze', 16.5),
+        line('Loaded fries', 'Ambachtelijke friet met rendang van jackfruit, atjar, bosui en seroendeng', 16.5),
+      ] },
+      { id: uid(), title: 'Lekker erbij', cat: null, hidden: [], newPage: true, pageTitle: 'Erbij, borrel en zoet', extra: [
+        line('Fattoush', 'Met groenten van het seizoen, peterselie, sumak en geroosterde pita', 11),
+        line('Bietensalade', 'Met gele en chioggiabieten, zwarte bonen en peppadewdressing', 12),
+        line('Ambachtelijke friet', 'Met kruidenzout en mayonaise', 6.5),
+        line('Zuurdesembrood', 'Met twee wisselende dips', 8),
+      ] },
+      { id: uid(), title: 'Borrelhappen, vanaf 14.00 uur', cat: null, hidden: [], extra: [] },
+      { id: uid(), title: 'Zoet', cat: null, hidden: [], extra: [
+        line('Huisgemaakte taart', 'Elke dag wisselend: appeltaart, chocoladetaart, amandelcake, citroen-maanzaad of wortel.', 'vanaf 5'),
+      ] },
+    ].map((sec) => (sec.title.startsWith('Borrelhappen') ? { ...sec, extra: [
+      line('Gestoomde edamame', 'Met Maldonzout', 8.5),
+      line('Bitterballen', 'Met mosterd, 6 stuks', 8.5),
+      line('Romescokroketjes', 'Met aioli, 6 stuks', 9.5),
+      line('Currybitterballen', 'Met piccalilly-mayonaise, 6 stuks', 9.5),
+      line('Bloemkoolwings', 'Met barbecuesaus, bosui en sesam', 9.5),
+      line("Samosa's", 'Met uienchutney', 9.5),
+      line("Mini-loempia's", 'Met zoete chilisaus, 8 stuks', 9.5),
+    ] } : sec)) };
+}
 
 export function defaultCards() {
   return [
@@ -35,6 +83,7 @@ export function defaultCards() {
         { id: uid(), title: 'Hoofd', cat: 'Diner: hoofdgerecht', hidden: [], extra: [] },
         { id: uid(), title: 'Na', cat: 'Diner: nagerecht', hidden: [], extra: [] },
       ] },
+    exampleCard(),
     { id: 'allergens', kind: 'allergens', name: 'Allergenenkaart', title: 'Allergenenkaart', subtitle: 'Een stip betekent: zit in het gerecht. Vraag bij twijfel altijd even na.',
       note: 'We werken in een open keuken met gluten, noten en sesam. Sporen kunnen we nooit helemaal uitsluiten.', sections: [] },
   ];
@@ -43,12 +92,17 @@ export function defaultCards() {
 export async function loadCards() {
   try {
     const { data } = await sb.from('team_settings').select('value').eq('key', 'menu_cards').maybeSingle();
-    if (data && data.value && Array.isArray(data.value.cards) && data.value.cards.length) return data.value.cards;
+    if (data && data.value && Array.isArray(data.value.cards) && data.value.cards.length) {
+      const cards = data.value.cards;
+      // the example card arrives once in saved sets too; deleted on purpose, it stays away
+      if (!data.value.example1 && !cards.some((c) => c.id === 'voorbeeld')) { const i = cards.findIndex((c) => c.kind === 'allergens'); cards.splice(i < 0 ? cards.length : i, 0, exampleCard()); }
+      return cards;
+    }
   } catch { /* defaults */ }
   return defaultCards();
 }
 async function saveCards(cards) {
-  const { error } = await sb.from('team_settings').upsert({ key: 'menu_cards', value: { cards }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  const { error } = await sb.from('team_settings').upsert({ key: 'menu_cards', value: { cards, example1: true }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   if (error) throw error;
 }
 
@@ -102,6 +156,7 @@ export function cardSheet(card, menu) {
   .mc-sec { margin-bottom: 6mm; }
   .mc-sheet h2 { font: 400 14pt/1.2 WTSerif, Georgia, serif !important; color: #22503F; margin: 0 0 3.5mm !important; padding: 0 0 1.6mm !important; border: 0 !important;
     background: linear-gradient(#71CE8D, #71CE8D) left bottom / 12mm 1.2pt no-repeat; }
+  .mc-secsub { color: #5A6A62; font-size: 8.4pt; margin: -2mm 0 3mm; }
   .mc-dish { display: flex; gap: 6mm; align-items: baseline; margin-bottom: 2.6mm; break-inside: avoid; }
   .mc-dish .t { flex: 1; }
   .mc-dish .n { font-weight: 600; font-size: 10.4pt; }
@@ -147,7 +202,7 @@ export function cardSheet(card, menu) {
     const body = secs.map((s) => {
       const items = sectionItems(s, menu).filter((x) => !x.hidden);
       if (!items.length && !s.title) return '';
-      return `<div class="mc-sec"><h2>${esc(s.title || '')}</h2>${items.map((x) => `<div class="mc-dish"><div class="t"><span class="n">${esc(x.name)}</span>${codes(x.allergens || [])}
+      return `<div class="mc-sec"><h2>${esc(s.title || '')}</h2>${s.sub ? `<div class="mc-secsub">${esc(s.sub)}</div>` : ''}${items.map((x) => `<div class="mc-dish"><div class="t"><span class="n">${esc(x.name)}</span>${codes(x.allergens || [])}
         ${x.description ? `<div class="d">${esc(x.description)}</div>` : ''}</div>${card.showPrices && x.price != null && x.price !== '' ? `<div class="p">${esc(money(x.price))}</div>` : ''}</div>`).join('')}</div>`;
     }).join('');
     const last = pi === pages.length - 1;
@@ -315,6 +370,7 @@ function draw() {
           <div class="nl-body">
             <div class="field-row"><input data-s="${si}" data-f="title" value="${esc(s.title || '')}" placeholder="${L({ en: 'Section title', nl: 'Titel van het blok' })}">
               <select data-s="${si}" data-f="cat"><option value="">${L({ en: 'No category: own lines only', nl: 'Geen categorie: alleen eigen regels' })}</option>${cats.map((k) => `<option ${s.cat === k ? 'selected' : ''}>${esc(k)}</option>`).join('')}${s.cat && !cats.includes(s.cat) ? `<option selected>${esc(s.cat)}</option>` : ''}</select></div>
+            <input data-s="${si}" data-f="sub" value="${esc(s.sub || '')}" placeholder="${L({ en: 'Line under the title (optional), such as the times', nl: 'Regel onder de titel (optioneel), zoals de tijden' })}">
             <label class="check small"><input type="checkbox" data-s="${si}" data-f="newPage" ${s.newPage ? 'checked' : ''}> ${L({ en: 'Start a new page here', nl: 'Hier een nieuwe pagina beginnen' })}</label>
             ${s.newPage ? `<input data-s="${si}" data-f="pageTitle" value="${esc(s.pageTitle || '')}" placeholder="${L({ en: 'Title of that page', nl: 'Titel van die pagina' })}">` : ''}
             <ul class="mc-items">${sectionItems(s, menu).map((x, xi) => `<li class="${x.hidden ? 'off' : ''}">
@@ -328,7 +384,7 @@ function draw() {
               <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>
           </div></details>`).join('')}
         <button type="button" class="btn-sm" id="mc-addsec">+ ${L({ en: 'Section', nl: 'Blok' })}</button>`}
-        <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Undo all changes: back to the original layout', nl: 'Alle wijzigingen terugdraaien: terug naar de oorspronkelijke indeling' })}</button>`}</div>
+        <div class="mc-danger">${!['lunch', 'dinner', 'voorbeeld', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Undo all changes: back to the original layout', nl: 'Alle wijzigingen terugdraaien: terug naar de oorspronkelijke indeling' })}</button>`}</div>
       </div>` : ''}
     </div>`;
   preview();
@@ -415,7 +471,7 @@ function lineEditor(sec, line) {
   dlg.innerHTML = `<form class="k-msg mc-line" autocomplete="off"><h2>${line ? L({ en: 'Edit line', nl: 'Regel wijzigen' }) : L({ en: 'Own line', nl: 'Eigen regel' })}</h2>
     <div class="field"><label>${L({ en: 'Name', nl: 'Naam' })}</label><input name="name" value="${esc(v.name)}" required></div>
     <div class="field"><label>${L({ en: 'Description', nl: 'Omschrijving' })}</label><textarea name="description" rows="2">${esc(v.description || '')}</textarea></div>
-    <div class="field"><label>${L({ en: 'Price', nl: 'Prijs' })}</label><input name="price" inputmode="decimal" value="${v.price != null ? String(v.price).replace('.', ',') : ''}"></div>
+    <div class="field"><label>${L({ en: 'Price', nl: 'Prijs' })}</label><input name="price" value="${v.price != null ? esc(String(v.price).replace('.', ',')) : ''}" placeholder="6,50  of  6 / 9  of  vanaf 5"></div>
     <div class="allergen-grid">${ALLERGENS.map((a) => `<label class="check"><input type="checkbox" name="al" value="${a}" ${(v.allergens || []).includes(a) ? 'checked' : ''}> ${AL_NL[a]}</label>`).join('')}</div>
     <div class="modal-actions"><button type="button" class="btn" data-x>${L({ en: 'Cancel', nl: 'Annuleren' })}</button><button type="submit" class="btn-primary">${L({ en: 'Done', nl: 'Klaar' })}</button></div></form>`;
   document.body.appendChild(dlg);
@@ -423,7 +479,7 @@ function lineEditor(sec, line) {
   dlg.querySelector('form').onsubmit = (e) => {
     e.preventDefault(); const f = e.target;
     const p = parseFloat(String(f.price.value).replace(',', '.'));
-    Object.assign(v, { name: f.name.value.trim(), description: f.description.value.trim(), price: Number.isFinite(p) ? p : null, allergens: [...f.querySelectorAll('[name=al]:checked')].map((x) => x.value) });
+    Object.assign(v, { name: f.name.value.trim(), description: f.description.value.trim(), price: /^\s*\d+([.,]\d+)?\s*$/.test(f.price.value) ? p : (f.price.value.trim() || null), allergens: [...f.querySelectorAll('[name=al]:checked')].map((x) => x.value) });
     if (!line) (sec.extra = sec.extra || []).push(v);
     dlg.remove(); changed(); draw();
   };
