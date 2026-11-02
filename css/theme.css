@@ -248,3 +248,13 @@ html.touch-nav .topbar:has(.nav.open) { z-index: 45; }
 .pin-row { display: flex; gap: 10px; align-items: center; }
 .pin-row input { width: 130px; font-size: 1.4rem; letter-spacing: .4em; text-align: center; }
 html.touch-nav .topbar-right { margin-left: auto; }
+
+/* Phones: iPhone Safari zooms in on any field with text under 16px and then shifts the screen sideways.
+   16px fields stop that. Popups sit above the tab bar and fit the visible screen. */
+@media (pointer: coarse) {
+  input, select, textarea { font-size: 16px !important; }
+}
+.modal { z-index: 60 !important; }
+html.touch-nav .modal { align-items: end; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
+html.touch-nav .modal-card { max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); max-width: 100%; overflow-x: hidden; overscroll-behavior: contain; }
+.modal-card fieldset { min-width: 0; margin-left: 0; margin-right: 0; }

@@ -148,7 +148,7 @@ function card(m) {
       <span class="dish-meta"><h3>${esc(m.name)}</h3>${sub ? `<span class="dish-sub">${sub}</span>` : ''}
         <span class="dish-al ${al ? '' : 'unset'}">${al ? t(al === 1 ? 'allergen_count_one' : 'allergen_count', { n: al }) : t('allergens_none_set')}</span></span>
       <span class="dish-side"><span class="sop-chev" aria-hidden="true">&#9656;</span>
-      ${isManager() ? `<button type="button" class="btn-sm" data-edit="${m.id}">${t('edit')}</button>` : ''}</span></summary>
+      ${isManager() ? `<button type="button" class="dish-pencil" data-edit="${m.id}" aria-label="${esc(`${t('edit')}: ${m.name}`)}" title="${t('edit')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>` : ''}</span></summary>
     ${m.photo_url ? `<img class="dish-big" src="${esc(m.photo_url)}" alt="${esc(m.name)}" loading="lazy">` : ''}
     ${embedUrl(m.video_url) ? `<iframe src="${esc(embedUrl(m.video_url))}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin" title="${esc(m.name)}"></iframe>` : ''}
     <div class="body">
@@ -246,7 +246,6 @@ function openEditor(m) {
     { name: 'name', label: t('name'), required: true },
     { name: 'category', label: t('menu_category'), placeholder: t('menu_category_ph') },
     { name: 'description', label: t('description'), type: 'textarea' },
-    { name: 'photo', label: m && m.photo_url ? t('menu_photo_replace') : t('menu_photo'), type: 'file', accept: 'image/*' },
     { name: 'video_url', label: t('menu_video'), placeholder: 'https://www.youtube.com/watch?v=...', hint: t('menu_video_hint') },
     { name: 'price', label: t('price'), type: 'number' },
   ];
@@ -254,11 +253,25 @@ function openEditor(m) {
   const allergenBox = `<fieldset class="allergen-box"><legend>${t('allergens')}</legend>
     <div class="allergen-grid">${ALLERGENS.map((a) => `<label class="check"><input type="checkbox" name="al" value="${a}" ${has.has(a) ? 'checked' : ''}> ${esc(t('al_' + a))}</label>`).join('')}</div>
     <div class="tiny muted" style="margin-top:6px">${t('allergens_hint')}</div></fieldset>`;
-  openModal(`<h2>${m ? t('menu_edit') : t('menu_add')}</h2><form id="f">${formHtml(fields, m || { group_type: 'food' })}${allergenBox}
+  // Photo: see the current one, pick one from the phone, or take one straight away
+  const photoBox = `<div class="field dish-photo-field"><label>${t('menu_photo')}</label>
+    <div class="dp-row"><div class="dp-prev" id="dp-prev">${m && m.photo_url ? `<img src="${esc(m.photo_url)}" alt="">` : '<i class="ic ic-image" aria-hidden="true"></i>'}</div>
+      <div class="dp-btns"><label class="btn btn-sm" for="dp-pick"><i class="ic ic-upload" aria-hidden="true"></i> ${L({ en: 'Choose a photo', nl: 'Foto kiezen' })}</label>
+        <label class="btn btn-sm dp-cam" for="dp-cam"><i class="ic ic-camera" aria-hidden="true"></i> ${L({ en: 'Take a photo', nl: 'Foto maken' })}</label>
+        ${m && m.photo_url ? `<button type="button" class="link-btn small" id="dp-rm">${L({ en: 'Remove photo', nl: 'Foto weghalen' })}</button>` : ''}</div></div>
+    <input type="file" id="dp-pick" accept="image/*" hidden><input type="file" id="dp-cam" accept="image/*" capture="environment" hidden></div>`;
+  const before = fields.filter((f) => ['group_type', 'name', 'category', 'description'].includes(f.name));
+  const after = fields.filter((f) => !before.includes(f));
+  const vals = m || { group_type: 'food' };
+  openModal(`<h2>${m ? t('menu_edit') : t('menu_add')}</h2><form id="f">${formHtml(before, vals)}${photoBox}${formHtml(after, vals)}${allergenBox}
     <div class="modal-actions" style="justify-content:space-between">
       <div>${m ? `<button type="button" class="btn-ghost" id="del">${L({ en: 'Archive', nl: 'Archiveren' })}</button>` : ''}</div>
       <div style="display:flex;gap:8px"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></div></form>`,
   (cardEl, close) => {
+    let newPhoto = null; let dropPhoto = false;
+    const showPhoto = (src) => { cardEl.querySelector('#dp-prev').innerHTML = src ? `<img src="${esc(src)}" alt="">` : '<i class="ic ic-image" aria-hidden="true"></i>'; };
+    ['#dp-pick', '#dp-cam'].forEach((id) => { const inp = cardEl.querySelector(id); inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return; newPhoto = f; dropPhoto = false; showPhoto(URL.createObjectURL(f)); }; });
+    const rm = cardEl.querySelector('#dp-rm'); if (rm) rm.onclick = () => { newPhoto = null; dropPhoto = true; showPhoto(null); rm.remove(); };
     cardEl.querySelector('#f').onsubmit = async (e) => {
       e.preventDefault();
       const v = readForm(cardEl, fields);
@@ -266,7 +279,8 @@ function openEditor(m) {
       try {
         const allergens = $$('input[name=al]:checked', cardEl).map((x) => x.value);
         const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: embedUrl(v.video_url) || null, price: v.price, allergens };
-        if (v.photo) row.photo_url = await uploadPhoto(v.photo);
+        if (newPhoto) row.photo_url = await uploadPhoto(newPhoto);
+        else if (dropPhoto) row.photo_url = null;
         if (m) check(await sb.from('menu_items').update(row).eq('id', m.id));
         else check(await sb.from('menu_items').insert({ ...row, sort_order: items.reduce((mx, x) => Math.max(mx, x.sort_order || 0), 0) + 10 })); // new dishes go last
         close(); toast(t('saved')); renderMenu();

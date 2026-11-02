@@ -78,9 +78,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('menu with food and beverage', async () => { await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card'); await p.screenshot({ path: `${OUT}/03-menu.png`, fullPage: true }); });
     await step('add menu item with photo', async () => {
       await p.click('#add'); await p.fill('.modal [name=name]', 'Apple pie'); await p.fill('.modal [name=category]', 'bakery'); await p.fill('.modal [name=price]', '4,50');
-      await p.setInputFiles('.modal [name=photo]', { name: 'pie.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
+      await p.setInputFiles('.modal #dp-pick', { name: 'pie.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Apple pie');
-      const price = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie').price); if (price !== 4.5) throw new Error(price); });
+      const pie = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie')); if (pie.price !== 4.5) throw new Error(pie.price);
+      if (!pie.photo_url) throw new Error('photo not saved'); });
     await step('settings: menu order by number changes the Menu page', async () => {
       await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#save-order');
       const pie = await p.$eval('.order-row:has-text("Apple pie") input', (i) => i.dataset.oid);

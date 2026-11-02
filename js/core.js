@@ -95,7 +95,8 @@ export function openModal(html, onMount, onClose) {
   card.querySelectorAll('[data-close]').forEach((b) => (b.onclick = close));
   if (onMount) onMount(card, close);
   const first = card.querySelector('input:not([type=hidden]):not([type=file]), select, textarea');
-  if (first) first.focus();
+  // not on a phone: focusing opens the keyboard and makes iPhone zoom in before you have even read the form
+  if (first && !window.matchMedia('(pointer: coarse)').matches) first.focus();
   return close;
 }
 export function confirmDialog(message, okLabel, danger = true) {
