@@ -371,7 +371,7 @@ function draw() {
             <input data-s="${si}" data-f="sub" value="${esc(s.sub || '')}" placeholder="${L({ en: 'Line under the title (optional), such as the times', nl: 'Regel onder de titel (optioneel), zoals de tijden' })}">
             <label class="check small"><input type="checkbox" data-s="${si}" data-f="newPage" ${s.newPage ? 'checked' : ''}> ${L({ en: 'Start a new page here', nl: 'Hier een nieuwe pagina beginnen' })}</label>
             ${s.newPage ? `<input data-s="${si}" data-f="pageTitle" value="${esc(s.pageTitle || '')}" placeholder="${L({ en: 'Title of that page', nl: 'Titel van die pagina' })}">` : ''}
-            ${(() => { const all = sectionItems(s, menu, lib); const list = all.filter((x) => !x.hidden); const off = all.length - list.length;
+            ${(() => { const all = sectionItems(s, menu, lib); const list = all.filter((x) => !x.hidden);
               return `<ul class="mc-items" data-sec="${si}">${list.map((x, xi) => `<li data-key="${esc(x.key)}">
                 <span class="mc-grip" draggable="true" data-dgrip="${si}|${esc(x.key)}" title="${L({ en: 'Drag to move', nl: 'Sleep om te verplaatsen' })}" aria-hidden="true">&#10303;</span>
                 <span class="mc-i-name"><span class="mc-i-n">${esc(x.name)}</span>${itemTags(x, c)}</span>
@@ -381,7 +381,7 @@ function draw() {
                   <button type="button" class="mc-ib" data-ed="${si}|${esc(x.key)}" aria-label="${esc(`${L({ en: 'Edit', nl: 'Bewerken' })}: ${x.name}`)}" title="${x.kind === 'own' ? L({ en: 'Edit this line', nl: 'Deze regel bewerken' }) : L({ en: 'Edit the dish (changes it everywhere)', nl: 'Gerecht bewerken (verandert overal)' })}"><i class="ic ic-pencil" aria-hidden="true"></i></button>
                   <button type="button" class="mc-ib mc-rm" data-rm="${si}|${esc(x.key)}" aria-label="${esc(`${L({ en: 'Remove from this card', nl: 'Van deze kaart halen' })}: ${x.name}`)}" title="${L({ en: 'Remove from this card', nl: 'Van deze kaart halen' })}"><i class="ic ic-x" aria-hidden="true"></i></button>
                 </span></li>`).join('')}${!list.length ? `<li class="mc-empty small muted">${L({ en: 'No dishes yet. Add them from the database.', nl: 'Nog geen gerechten. Voeg ze toe uit de database.' })}</li>` : ''}</ul>
-              ${off ? `<p class="tiny muted mc-off">${L({ en: `${off} more dish(es) in "${esc(s.cat)}" are not on this card. Add them again with Dishes from the database.`, nl: `Nog ${off} gerecht(en) uit "${esc(s.cat)}" staan niet op deze kaart. Zet ze terug met Gerechten uit de database.` })}</p>` : ''}`; })()}
+              `; })()}
             <div class="mc-add"><button type="button" class="btn-sm btn-primary-soft" data-pick="${si}"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Dishes from the database', nl: 'Gerechten uit de database' })}</button>
               <button type="button" class="btn-sm" data-addline="${si}">+ ${L({ en: 'own line', nl: 'eigen regel' })}</button>
               <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>

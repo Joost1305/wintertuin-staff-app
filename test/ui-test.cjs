@@ -482,7 +482,6 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.fill('[data-c="subtitle"]', 'Vrijdag tot en met zondag, 12 tot 15 uur');
       const firstName = await p.textContent('.mc-items li >> nth=0 >> .mc-i-n');
       await p.click('.mc-items [data-rm] >> nth=0'); await p.waitForFunction((n) => ![...document.querySelectorAll('.mc-items .mc-i-n')].some((e) => e.textContent === n), firstName);
-      if (!(await p.$('.mc-off'))) throw new Error('no note about removed dishes');
       const second = await p.textContent('.mc-items li >> nth=1 >> .mc-i-n'); await p.click('.mc-items [data-mv$="|-1"] >> nth=1');
       if (await p.textContent('.mc-items li >> nth=0 >> .mc-i-n') !== second) throw new Error('move up failed');
       await p.click('[data-addline="1"]'); await p.fill('.mc-line [name=name]', 'Soep van de dag'); await p.fill('.mc-line [name=price]', '7,5'); await p.check('.mc-line [name=al][value=celery]');
