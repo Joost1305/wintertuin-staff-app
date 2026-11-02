@@ -1171,3 +1171,18 @@ details.menu-group[open] > .mg-sum .sop-chev { transform: rotate(90deg); }
   .dom-card > span:last-child { padding: 12px 14px; }
   .dom-card strong { font-size: 1.15rem; }
 }
+/* Menu card page: the card as guests see it first, the editor beside it (computer) or under it (phone) */
+.mc-grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 430px); }
+.mc-grid.view { grid-template-columns: minmax(0, 860px); justify-content: center; }
+.mc-form-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; position: sticky; top: 64px; z-index: 5;
+  background: var(--bg); padding: 8px 0; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.mc-form-head h2 { margin: 0; }
+.mc-form-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 980px) {
+  .mc-grid { grid-template-columns: minmax(0, 1fr); }
+  .mc-form { margin-top: 18px; padding-top: 6px; }
+  .mc-form-head { top: 56px; }
+  .mc-frame-wrap { padding: 4px; }
+}
+.mc-form label.check { display: flex; gap: 8px; align-items: center; justify-content: flex-start; text-align: left; }
+.mc-checks label.check { white-space: nowrap; }

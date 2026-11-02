@@ -168,6 +168,8 @@ export async function renderMenuCard(args = []) {
   cards = c; menu = m; dirty = false;
   cur = cards.find((x) => x.id === args[0]) || cards[0];
   draw();
+  // from "Edit menu cards" on the Menu page: straight to the editor under the card
+  if (args[1] === 'edit' && $('#mc-edit')) setTimeout(() => $('#mc-edit').scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
 }
 
 function draw() {
@@ -176,17 +178,17 @@ function draw() {
   const c = cur;
   const inp = (k, ph = '') => `<input data-c="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}">`;
   app().innerHTML = `
-    <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${L({ en: 'Menu', nl: 'Menu' })}</a><h1>${L({ en: 'Menu cards', nl: 'Menukaarten' })}</h1>
-      <div class="muted small">${mgr ? L({ en: 'Made from the dishes in the app. Change texts, sections and which dishes show; print or save as PDF.', nl: 'Gemaakt van de gerechten in de app. Pas teksten, blokken en gerechten aan; print of bewaar als pdf.' })
-        : L({ en: 'Always up to date with the Menu page. Print or save as PDF.', nl: 'Altijd gelijk met de Menu-pagina. Print of bewaar als pdf.' })}</div></div>
-      <div class="page-actions">
-        ${mgr ? `<label class="btn btn-sm" for="mc-word"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Import Word', nl: 'Word importeren' })}</label><input type="file" id="mc-word" accept=".docx" hidden>
-          <button type="button" class="btn-sm" id="mc-new">+ ${L({ en: 'Card', nl: 'Kaart' })}</button>
-          <button type="button" class="btn-sm" id="mc-save" ${dirty ? '' : 'disabled'}>${L({ en: 'Save', nl: 'Opslaan' })}</button>` : ''}
-        <button type="button" class="btn-primary btn-sm" id="mc-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ en: 'Print or PDF', nl: 'Print of pdf' })}</button></div></div>
+    <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${L({ en: 'Menu', nl: 'Menu' })}</a><h1>${esc(c.name || c.title)}</h1>
+      <div class="muted small">${L({ en: 'As our guests see it. Always up to date with the Menu page.', nl: 'Zoals onze gasten hem zien. Altijd gelijk met de Menu-pagina.' })}</div></div>
+      <div class="page-actions"><button type="button" class="btn-primary btn-sm" id="mc-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ en: 'Print or PDF', nl: 'Print of pdf' })}</button></div></div>
     <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''}" href="#/menucard/${x.id}" data-tab="${x.id}">${esc(x.name || x.title)}</a>`).join('')}</div>
     <div class="mc-grid ${mgr ? '' : 'view'}">
-      ${mgr ? `<div class="mc-form">
+      <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
+      ${mgr ? `<div class="mc-form" id="mc-edit">
+        <div class="mc-form-head"><h2>${L({ en: 'Edit this card', nl: 'Deze kaart bewerken' })}</h2>
+          <div class="mc-form-tools"><label class="btn btn-sm" for="mc-word"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Import Word', nl: 'Word importeren' })}</label><input type="file" id="mc-word" accept=".docx" hidden>
+          <button type="button" class="btn-sm" id="mc-new">+ ${L({ en: 'New card', nl: 'Nieuwe kaart' })}</button>
+          <button type="button" class="btn-primary btn-sm" id="mc-save" ${dirty ? '' : 'disabled'}>${L({ en: 'Save', nl: 'Opslaan' })}</button></div></div>
         <div class="field-row"><div class="field"><label>${L({ en: 'Name (button)', nl: 'Naam (knop)' })}</label>${inp('name')}</div><div class="field"><label>${L({ en: 'Title on the card', nl: 'Titel op de kaart' })}</label>${inp('title')}</div></div>
         <div class="field"><label>${L({ en: 'Subtitle', nl: 'Ondertitel' })}</label>${inp('subtitle')}</div>
         ${c.kind === 'allergens' ? `<div class="field"><label>${L({ en: 'Line at the bottom', nl: 'Regel onderaan' })}</label>${inp('note')}</div>
@@ -217,7 +219,6 @@ function draw() {
         <button type="button" class="btn-sm" id="mc-addsec">+ ${L({ en: 'Section', nl: 'Blok' })}</button>`}
         <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Undo all changes: back to the original layout', nl: 'Alle wijzigingen terugdraaien: terug naar de oorspronkelijke indeling' })}</button>`}</div>
       </div>` : ''}
-      <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
     </div>`;
   preview();
   bind();

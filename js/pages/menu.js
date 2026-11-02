@@ -64,7 +64,7 @@ function draw() {
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions menu-actions">
       ${items.length ? menuCards.map((c) => `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}"><i class="ic ic-printer" aria-hidden="true"></i> ${esc(c.name || c.title)}</a>`).join('') : ''}
-      ${isManager() ? `<a class="btn btn-sm" href="#/menucard"><i class="ic ic-pencil" aria-hidden="true"></i> ${lang() === 'nl' ? 'Menukaarten maken' : 'Edit menu cards'}</a>` : ''}
+      ${isManager() ? `<a class="btn btn-sm" href="#/menucard/lunch/edit"><i class="ic ic-pencil" aria-hidden="true"></i> ${lang() === 'nl' ? 'Menukaarten bewerken' : 'Edit menu cards'}</a>` : ''}
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}
       ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}
