@@ -1282,3 +1282,8 @@ body:has(.mc-viewer) .toast { z-index: 1000; }
   .roster-bar .ro-views { width: 100%; }
   .roster-bar .ro-views button { flex: 1; }
 }
+/* archive: delete for good */
+.ar-row-tools { display: flex; gap: 6px; flex: none; }
+.ar-del-one { min-width: 40px; padding-left: 10px; padding-right: 10px; }
+.ar-del-one .ic, #ar-del .ic { background: currentColor; }
+.g-tools .ar-all { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }

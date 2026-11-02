@@ -292,12 +292,15 @@ async function renderArchive() {
     app().innerHTML = `
       <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${t('menu_title')}</a><h1>${L({ en: 'Archive', nl: 'Archief' })}</h1>
         <div class="muted small">${L({ en: 'Dishes that are off the menu, with their photo, text and allergens. Bring one back and it is on the Menu page again.', nl: 'Gerechten die van de kaart zijn, met foto, tekst en allergenen. Zet er een terug en hij staat weer op de Menu-pagina.' })}</div></div>
-        <div class="page-actions"><button type="button" class="btn-primary btn-sm" id="ar-back" ${sel.size ? '' : 'disabled'}>${L({ en: `Bring back ${sel.size || ''}`, nl: `${sel.size || ''} terugzetten` })}</button></div></div>
-      ${all.length ? `<div class="g-tools"><input type="search" id="ar-q" value="${esc(q)}" placeholder="${L({ en: 'Search a dish', nl: 'Zoek een gerecht' })}"></div>` : ''}
+        <div class="page-actions"><button type="button" class="btn-sm btn-danger" id="ar-del" ${sel.size ? '' : 'disabled'}><i class="ic ic-trash" aria-hidden="true"></i> ${L({ en: `Delete ${sel.size || ''}`, nl: `${sel.size || ''} verwijderen` })}</button>
+          <button type="button" class="btn-primary btn-sm" id="ar-back" ${sel.size ? '' : 'disabled'}>${L({ en: `Bring back ${sel.size || ''}`, nl: `${sel.size || ''} terugzetten` })}</button></div></div>
+      ${all.length ? `<div class="g-tools"><input type="search" id="ar-q" value="${esc(q)}" placeholder="${L({ en: 'Search a dish', nl: 'Zoek een gerecht' })}">
+        ${list.length ? `<label class="check small ar-all"><input type="checkbox" id="ar-all" ${list.every((m) => sel.has(m.id)) ? 'checked' : ''}> ${L({ en: 'Select all', nl: 'Alles kiezen' })}</label>` : ''}</div>` : ''}
       <div class="card" style="padding:0">${list.length ? `<ul class="ar-list">${list.map((m) => `<li><label class="check"><input type="checkbox" data-ar="${m.id}" ${sel.has(m.id) ? 'checked' : ''}>
           ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
           <span><strong>${esc(m.name)}</strong><span class="small muted">${esc([m.category, m.price != null && m.price !== '' ? fmt.money(m.price) : ''].filter(Boolean).join(' / '))}</span></span></label>
-          <button type="button" class="btn-sm" data-one="${m.id}">${L({ en: 'Bring back', nl: 'Terugzetten' })}</button></li>`).join('')}</ul>`
+          <span class="ar-row-tools"><button type="button" class="btn-sm" data-one="${m.id}">${L({ en: 'Bring back', nl: 'Terugzetten' })}</button>
+          <button type="button" class="btn-sm btn-danger ar-del-one" data-delone="${m.id}" aria-label="${esc(L({ en: `Delete ${m.name}`, nl: `${m.name} verwijderen` }))}" title="${L({ en: 'Delete for good', nl: 'Definitief verwijderen' })}"><i class="ic ic-trash" aria-hidden="true"></i></button></span></li>`).join('')}</ul>`
         : `<div class="empty">${all.length ? L({ en: 'Nothing found.', nl: 'Niets gevonden.' }) : L({ en: 'The archive is empty. Archive a dish from its Edit window, or several at once with Archive dishes on the Menu page.', nl: 'Het archief is leeg. Archiveer een gerecht via Bewerken, of meerdere tegelijk met Gerechten archiveren op de Menu-pagina.' })}</div>`}</div>`;
     const qi = $('#ar-q'); if (qi) qi.oninput = () => { q = qi.value.toLowerCase(); const pos = qi.selectionStart; draw2(); const n = $('#ar-q'); n.focus(); n.setSelectionRange(pos, pos); };
     $$('[data-ar]').forEach((c) => (c.onchange = () => { if (c.checked) sel.add(c.dataset.ar); else sel.delete(c.dataset.ar); draw2(); }));
@@ -312,6 +315,32 @@ async function renderArchive() {
     };
     $$('[data-one]').forEach((b) => (b.onclick = () => back([b.dataset.one])));
     $('#ar-back').onclick = () => back([...sel]);
+    const allBox = $('#ar-all'); if (allBox) allBox.onchange = () => { list.forEach((m) => (allBox.checked ? sel.add(m.id) : sel.delete(m.id))); draw2(); };
+    // Delete for good: the dish, and its photo when no other dish uses it. Cannot be undone.
+    const remove = async (ids) => {
+      const names = ids.map((id) => (all.find((m) => m.id === id) || {}).name).filter(Boolean);
+      const msg = ids.length === 1
+        ? L({ en: `Delete "${names[0]}" for good? Its photo, text and allergens are gone too. This cannot be undone.`, nl: `"${names[0]}" definitief verwijderen? De foto, tekst en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` })
+        : L({ en: `Delete ${ids.length} dishes for good? Their photos, texts and allergens are gone too. This cannot be undone.`, nl: `${ids.length} gerechten definitief verwijderen? De foto's, teksten en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` });
+      if (!(await confirmDialog(msg, L({ en: 'Delete', nl: 'Verwijderen' })))) return;
+      try {
+        const gone = check(await sb.from('menu_items').delete().in('id', ids).select('id, photo_url')) || [];
+        if (gone.length < ids.length) throw new Error(L({ en: 'The database does not allow deleting dishes yet. Run the database update 012_menu_delete.sql once (GitHub > Actions > Database update).', nl: 'De database staat verwijderen van gerechten nog niet toe. Draai één keer de database-update 012_menu_delete.sql (GitHub > Actions > Database update).' }));
+        // photos in our own storage that no dish uses any more
+        const ours = `/object/public/${PHOTO_BUCKET}/`;
+        const urls = [...new Set(gone.map((m) => m.photo_url).filter((u) => u && u.includes(ours)))];
+        if (urls.length) {
+          const still = new Set((check(await sb.from('menu_items').select('photo_url').in('photo_url', urls)) || []).map((r) => r.photo_url));
+          const paths = urls.filter((u) => !still.has(u)).map((u) => decodeURIComponent(u.split(ours)[1].split('?')[0]));
+          if (paths.length) { try { await sb.storage.from(PHOTO_BUCKET).remove(paths); } catch { /* the dish is gone; a stray photo does no harm */ } }
+        }
+        toast(L({ en: `${gone.length} deleted`, nl: `${gone.length} verwijderd` }));
+        ids.forEach((id) => { sel.delete(id); const i = all.findIndex((m) => m.id === id); if (i >= 0) all.splice(i, 1); });
+        draw2();
+      } catch (e) { toastError(e); }
+    };
+    $$('[data-delone]').forEach((b) => (b.onclick = () => remove([b.dataset.delone])));
+    $('#ar-del').onclick = () => remove([...sel]);
   };
   draw2();
 }

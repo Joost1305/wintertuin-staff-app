@@ -99,7 +99,7 @@
         }
         out.push(r); }
       if (this.op === 'upsert') for (const r of this.rows) { const hit = tbl.find((x) => this.conflict.every((k) => String(x[k]) === String(r[k]))); if (hit) Object.assign(hit, r); else tbl.push({ id: uid(), ...r }); }
-      if (this.op === 'delete') for (let i = tbl.length - 1; i >= 0; i--) if (match(tbl[i])) tbl.splice(i, 1);
+      if (this.op === 'delete') for (let i = tbl.length - 1; i >= 0; i--) if (match(tbl[i])) out.push(...tbl.splice(i, 1));
       if (this.head) return { data: null, count: out.length, error: null };
       for (const [k, asc] of [...this.ord].reverse()) out.sort((a, b) => ((a[k] ?? '') > (b[k] ?? '') ? 1 : (a[k] ?? '') < (b[k] ?? '') ? -1 : 0) * (asc ? 1 : -1));
       if (this.lim) out = out.slice(0, this.lim);

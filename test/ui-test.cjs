@@ -438,6 +438,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (r.join() !== 'false,false') throw new Error(JSON.stringify(r));
       if (await p.$('details[data-dish]:has(h3:text-is("Croissant"))')) throw new Error('archived dish still on the menu');
       await p.click('a[href="#/menu/archive"]'); await p.waitForSelector('.ar-list'); await p.screenshot({ path: `${OUT}/28-menu-archive.png` });
+      await p.evaluate(() => { const m = window.__mockdb.menu_items.find((x) => x.name === 'Croissant'); window.__mockdb.menu_items.push({ ...m, id: 'old-dish-1', name: 'Oud gerecht', active: false, photo_url: 'https://joost1305.github.io/storage/v1/object/public/menu-photos/old.jpg' }); });
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('a[href="#/menu/archive"]'); await p.click('a[href="#/menu/archive"]'); await p.waitForSelector('.ar-list li:has(strong:text-is("Oud gerecht"))');
+      await p.click('.ar-list li:has(strong:text-is("Oud gerecht")) [data-delone]'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("1 deleted")');
+      if (await p.evaluate(() => window.__mockdb.menu_items.some((x) => x.id === 'old-dish-1'))) throw new Error('dish not deleted');
+      if (await p.$('.ar-list li:has(strong:text-is("Oud gerecht"))')) throw new Error('still listed');
       await p.click('.ar-list li:has(strong:text-is("Croissant")) [data-one]'); await p.waitForSelector('.toast:has-text("1 back on the menu")');
       await p.goto(BASE + '#/menu'); await p.waitForSelector('details[data-dish]:has(h3:text-is("Croissant"))');
       await p.click('details[data-dish]:has(h3:text-is("Croissant")) [data-edit]'); await p.waitForSelector('.modal #del');
