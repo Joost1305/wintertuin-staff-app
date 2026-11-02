@@ -226,15 +226,22 @@ function draw() {
 
 function preview() {
   const f = $('#mc-frame');
-  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}"><style>html,body{margin:0;background:#E9E7DA}.mc-page{margin:0 auto 10mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}body{padding:8mm 0}</style></head><body>${cardSheet(cur, menu)}</body></html>`;
+  // iPhone Safari enlarges small text in a frame on its own (text autosizing): switched off, and the A4 pages are
+  // scaled with a transform instead of zoom, so the preview is an exact small copy of the printed card
+  f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href.split('#')[0]}">
+    <style>html{-webkit-text-size-adjust:100%;text-size-adjust:100%}html,body{margin:0;background:#E9E7DA;overflow:hidden}
+    #sc{width:210mm;padding:6mm 0;transform-origin:top left}.mc-page{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}.mc-page:last-child{margin-bottom:0}</style></head>
+    <body><div id="sc">${cardSheet(cur, menu)}</div></body></html>`;
   f.onload = () => {
     try {
       const d = f.contentDocument; const pages = [...d.querySelectorAll('.mc-page')];
       const over = pages.some((p) => p.scrollHeight > 1125); // taller than A4
       $('#mc-warn').textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
       // scale the A4 pages to the width of the preview
-      const w = f.clientWidth; const pw = pages[0] ? pages[0].offsetWidth : 794; const z = Math.min(1, (w - 16) / pw);
-      d.body.style.zoom = z; f.style.height = `${Math.min(d.body.scrollHeight * z + 20, 4000)}px`;
+      const sc = d.getElementById('sc'); const w = f.clientWidth; const pw = sc.offsetWidth || 794; const z = Math.min(1, w / pw);
+      sc.style.transform = `scale(${z})`; if (z === 1) sc.style.margin = '0 auto';
+      const fit = () => { f.style.height = `${Math.ceil(sc.offsetHeight * z) + 4}px`; };
+      fit(); [...d.images].forEach((im) => { if (!im.complete) im.addEventListener('load', fit); });
     } catch { /* preview only */ }
   };
 }

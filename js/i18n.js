@@ -575,7 +575,7 @@ const dict = {
     al_gluten: 'Gluten', al_crustaceans: 'Schaaldieren', al_eggs: 'Eieren', al_fish: 'Vis', al_peanuts: "Pinda's", al_soy: 'Soja', al_milk: 'Melk',
     al_nuts: 'Noten', al_celery: 'Selderij', al_mustard: 'Mosterd', al_sesame: 'Sesam', al_sulphites: 'Sulfieten', al_lupin: 'Lupine', al_molluscs: 'Weekdieren',
     nav_sops: "SOP's", nav_menu: 'Menu', nav_links: 'Links', nav_roster: 'Rooster', nav_checkin: 'Inklokken', nav_swap: 'Ruilen', nav_settings: 'Instellingen',
-    nav_guests: 'Gasten', hours_planned_day: 'Geplande uren', allergen_count_one: '1 allergeen', allergen_count: '{n} allergenen', nav_today: 'Vandaag', nav_more: 'Meer', nav_kiosk: 'Inkloktablet', nav_about: 'Over', nav_finance: 'Financiën', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
+    nav_guests: 'Gasten', hours_planned_day: 'Geplande uren', allergen_count_one: '1 allergeen', allergen_count: '{n} allergenen', nav_today: 'Vandaag', nav_more: 'Meer', nav_kiosk: 'Inkloktablet', nav_about: 'Over', nav_finance: 'Finance', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', signup_title: 'Account aanmaken', login_sub: 'Wintertuin Team', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen', signup_btn: 'Account aanmaken',
     no_account: 'Nog geen account?', have_account: 'Heb je al een account?', signup_done: 'Account aangemaakt. Als e-mailbevestiging aan staat, kijk dan in je inbox.',
     login_note: 'Eén login voor de team-app en Wintertuin Finance.',
