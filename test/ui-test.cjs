@@ -404,7 +404,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes added")');
       await p.goto(BASE + '#/menu'); await p.waitForSelector('.dom-card:has-text("Tartine")');
       if (!(await p.$('a[href="#/menucard/lunch"]')) || !(await p.$('a[href="#/menucard/allergens"]'))) throw new Error('menu card buttons missing');
-      const heads = await p.$$eval('.sop-cat', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 6).join() !== 'Bakery,Lunch,Borrel,Sweet,Dinner,Drinks') throw new Error('headings: ' + heads);
+      const heads = await p.$$eval('.sop-cat', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 5).join() !== 'Bakery,Lunch,Borrel,Dinner,Drinks') throw new Error('headings: ' + heads);
       if (await p.$('details.menu-card[open]')) throw new Error('dishes open by default');
       await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {

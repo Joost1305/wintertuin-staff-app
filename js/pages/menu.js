@@ -75,13 +75,12 @@ function draw() {
   const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-dish]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
 }
 
-// Headings follow the menu cards: Bakery, Lunch, Borrel, Sweet, Dinner, Drinks. Categories we do not know
+// Headings follow the menu cards: Bakery (with the sweet things), Lunch, Borrel, Dinner, Drinks. Categories we do not know
 // keep their own name and come after; the order inside a heading is the one set under Settings.
 const HEADS = [
-  ['bakery', { nl: 'Bakkerij', en: 'Bakery' }, /bakker|bakery|brood|bread|gebak|pastr|ontbijt|breakfast/i],
+  ['bakery', { nl: 'Bakkerij', en: 'Bakery' }, /bakker|bakery|brood|bread|gebak|pastr|ontbijt|breakfast|zoet|sweet|dessert|taart|cake/i],
   ['lunch', { nl: 'Lunch', en: 'Lunch' }, /lunch/i],
   ['borrel', { nl: 'Borrel', en: 'Borrel' }, /borrel|bites|snack/i],
-  ['sweet', { nl: 'Zoet', en: 'Sweet' }, /zoet|sweet|dessert|taart|cake/i],
   ['dinner', { nl: 'Diner', en: 'Dinner' }, /diner|dinner/i],
   ['drinks', { nl: 'Dranken', en: 'Drinks' }, /koffie|coffee|thee|tea|fris|sap|juice|wijn|wine|bier|beer|drank|drink|beverage/i],
 ];
