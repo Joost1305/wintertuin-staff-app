@@ -35,6 +35,7 @@ export async function saveDishOfMonth(v) {
 let dishOfMonth = null;
 const L = (o) => o[lang()] || o.en;
 let selecting = false;
+let openGroups = new Set(); // the headings start folded: the page is one overview
 let picked = new Set();
 let archivedCount = 0;
 let menuCards = [];
@@ -53,6 +54,7 @@ export async function renderMenu(args = []) {
   ]);
   items = check(rows) || [];
   openIds = new Set(); // the Menu page always opens folded
+  openGroups = new Set();
   selecting = false; picked = new Set();
   draw();
 }
@@ -60,7 +62,7 @@ export async function renderMenu(args = []) {
 function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
-      <div class="page-actions">
+      <div class="page-actions menu-actions">
       ${items.length ? menuCards.map((c) => `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}"><i class="ic ic-printer" aria-hidden="true"></i> ${esc(c.name || c.title)}</a>`).join('') : ''}
       ${isManager() ? `<a class="btn btn-sm" href="#/menucard"><i class="ic ic-pencil" aria-hidden="true"></i> ${lang() === 'nl' ? 'Menukaarten maken' : 'Edit menu cards'}</a>` : ''}
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
@@ -77,14 +79,19 @@ function draw() {
       return `<a class="card dom-card" href="#/menu" data-dom="${d.id}">${d.photo_url ? `<img src="${esc(d.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
         <span><span class="dom-label">${lang() === 'nl' ? 'Gerecht van de maand' : 'Dish of the month'}</span><strong>${esc(d.name)}</strong>
         ${dishOfMonth.note ? `<span class="dom-note">${esc(dishOfMonth.note)}</span>` : ''}</span></a>`; })()}
-    ${groups().map(([title, list]) => `<div class="sop-cat">${esc(title)}${selecting ? ` <button type="button" class="link-btn small" data-pickall="${esc(list.map((m) => m.id).join(','))}">${list.every((m) => picked.has(m.id)) ? L({ en: 'none', nl: 'geen' }) : L({ en: 'all', nl: 'alles' })}</button>` : ''}</div>
-      <div class="menu-grid ${selecting ? 'selecting' : ''}">${list.map(card).join('')}</div>`).join('')}`;
+    ${groups().map(([title, list, key]) => `<details class="menu-group" data-group="${esc(key)}" ${selecting || openGroups.has(key) || window.__MENU_OPEN_ALL ? 'open' : ''}>
+      <summary class="mg-sum"><span class="mg-title">${esc(title)}</span>
+        <span class="mg-thumbs" aria-hidden="true">${list.filter((m) => m.photo_url).slice(0, 4).map((m) => `<img src="${esc(m.photo_url)}" alt="" loading="lazy">`).join('')}</span>
+        <span class="mg-count">${list.length}</span>
+        ${selecting ? `<button type="button" class="link-btn small" data-pickall="${esc(list.map((m) => m.id).join(','))}">${list.every((m) => picked.has(m.id)) ? L({ en: 'none', nl: 'geen' }) : L({ en: 'all', nl: 'alles' })}</button>` : ''}
+        <span class="sop-chev" aria-hidden="true">&#9656;</span></summary>
+      <div class="menu-grid ${selecting ? 'selecting' : ''}">${list.map(card).join('')}</div></details>`).join('')}`;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
   const so = $('#sel-on'); if (so) so.onclick = () => { selecting = true; picked = new Set(); draw(); };
   const sf = $('#sel-off'); if (sf) sf.onclick = () => { selecting = false; picked = new Set(); draw(); };
   if (selecting) {
     $$('details[data-dish] > summary').forEach((sm) => (sm.onclick = (e) => { e.preventDefault(); const id = sm.parentElement.dataset.dish; if (picked.has(id)) picked.delete(id); else picked.add(id); draw(); }));
-    $$('[data-pickall]').forEach((b) => (b.onclick = () => { const ids = b.dataset.pickall.split(','); const all = ids.every((i) => picked.has(i)); ids.forEach((i) => (all ? picked.delete(i) : picked.add(i))); draw(); }));
+    $$('[data-pickall]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const ids = b.dataset.pickall.split(','); const all = ids.every((i) => picked.has(i)); ids.forEach((i) => (all ? picked.delete(i) : picked.add(i))); draw(); }));
     const go = $('#sel-go'); if (go) go.onclick = async () => {
       const n = picked.size;
       if (!(await confirmDialog(L({ en: `Archive ${n} dish(es)? They leave the Menu page and the menu cards. You can bring them back from the Archive at any time.`, nl: `${n} gerecht(en) archiveren? Ze verdwijnen van de Menu-pagina en de menukaarten. Vanuit het Archief zet je ze altijd terug.` }), L({ en: 'Archive', nl: 'Archiveren' }), false))) return;
@@ -96,7 +103,9 @@ function draw() {
   $$('[data-edit]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openEditor(items.find((m) => m.id === b.dataset.edit)); }));
   $$('details[data-dish]').forEach((d) => d.addEventListener('toggle', () => { if (d.open) openIds.add(d.dataset.dish); else openIds.delete(d.dataset.dish); rememberOpen(); }));
   const dc = $('[data-dom]'); if (dc) dc.onclick = (e) => { e.preventDefault(); const d = $(`details[data-dish="${dc.dataset.dom}"]`); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
-  const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-dish]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
+  $$('details.menu-group').forEach((g) => g.addEventListener('toggle', () => { if (g.open) openGroups.add(g.dataset.group); else openGroups.delete(g.dataset.group); }));
+  // Unfold all: every heading and every dish; tap again to fold everything back into the overview
+  const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = [...$$('details.menu-group'), ...$$('details[data-dish]')]; const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
 }
 
 // Headings follow the menu cards: Bakery (with the sweet things), Lunch, Borrel, Dinner, Drinks. Categories we do not know
@@ -122,7 +131,7 @@ function groups() {
     if (!out.has(k)) out.set(k, [k.slice(4), []]);
     out.get(k)[1].push(m);
   }
-  return [...out.values()].filter(([, list]) => list.length);
+  return [...out.entries()].map(([k, [title, list]]) => [title, list, k]).filter(([, list]) => list.length);
 }
 
 // Each dish is folded by default: only its name (and Edit for managers). Click to see photo, video, price,

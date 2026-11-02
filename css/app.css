@@ -1148,3 +1148,26 @@ table.roster th.closed br + .small { display: block; }
 .ar-list img, .ar-list .dish-photo { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; aspect-ratio: auto; flex: none; }
 .ar-list label > span:last-child { display: flex; flex-direction: column; min-width: 0; }
 @media (max-width: 600px) { .sel-bar { top: 56px; } }
+/* Menu page: every heading is a fold-out row, so the whole menu fits on one screen */
+.menu-group { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow); }
+.mg-sum { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; min-height: 64px; }
+.mg-sum::-webkit-details-marker { display: none; }
+.mg-title { font: 400 1.3rem/1.2 var(--serif); color: var(--ink); flex: 1; min-width: 0; }
+.mg-thumbs { display: flex; }
+.mg-thumbs img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--surface); margin-left: -10px; background: var(--surface-2); }
+.mg-thumbs img:first-child { margin-left: 0; }
+.mg-count { min-width: 30px; height: 26px; padding: 0 9px; border-radius: 13px; background: var(--primary-soft); color: var(--primary); font-weight: 650; font-size: .85rem; display: inline-grid; place-items: center; }
+.menu-group[open] > .mg-sum { border-bottom: 1px solid var(--line); }
+details.menu-group[open] > .mg-sum .sop-chev { transform: rotate(90deg); }
+.menu-group > .menu-grid { padding: 14px; }
+@media (max-width: 600px) { .mg-thumbs img:nth-child(n+4) { display: none; } .menu-group > .menu-grid { padding: 10px; } .mg-sum { padding: 12px 14px; } }
+/* Phone: the menu buttons in one row you can swipe, so the headings are in view straight away */
+@media (max-width: 600px) {
+  .menu-actions { flex-wrap: nowrap; overflow-x: auto; width: calc(100% + 28px); margin: 0 -14px; padding: 2px 14px 6px; scrollbar-width: none; }
+  .menu-actions::-webkit-scrollbar { display: none; }
+  .menu-actions > * { flex: none; }
+  .dom-card { grid-template-columns: 96px 1fr; margin-bottom: 12px; }
+  .dom-card img, .dom-card .dish-photo { min-height: 96px; }
+  .dom-card > span:last-child { padding: 12px 14px; }
+  .dom-card strong { font-size: 1.15rem; }
+}

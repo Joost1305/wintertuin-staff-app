@@ -14,7 +14,7 @@ async function session(browser, role, viewport) {
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.addInitScript((r) => { window.__MOCK_ROLE = r; try { window.__NO_PINLOCK = !localStorage.getItem('test_pin'); } catch (e) { window.__NO_PINLOCK = true; } window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
+  await page.addInitScript((r) => { window.__MOCK_ROLE = r; window.__MENU_OPEN_ALL = true; try { window.__NO_PINLOCK = !localStorage.getItem('test_pin'); } catch (e) { window.__NO_PINLOCK = true; } window.print = () => { window.__printed = (window.__printed || 0) + 1; }; window.__printHook = () => window.print(); }, role);
   // outside images (example photos, fonts in the newsletter) are not reachable in the test: a 1-pixel stand-in
   await page.route(/images\.pexels\.com|fonts\.googleapis\.com|joost1305\.github\.io/, (r) => r.fulfill({ contentType: 'image/gif', body: Buffer.from('R0lGODlhAQABAAAAACw=', 'base64') }));
   await page.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
@@ -404,13 +404,21 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes added")');
       await p.goto(BASE + '#/menu'); await p.waitForSelector('.dom-card:has-text("Tartine")');
       if (!(await p.$('a[href="#/menucard/lunch"]')) || !(await p.$('a[href="#/menucard/allergens"]'))) throw new Error('menu card buttons missing');
-      const heads = await p.$$eval('.sop-cat', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 5).join() !== 'Bakery,Lunch,Borrel,Dinner,Drinks') throw new Error('headings: ' + heads);
+      const heads = await p.$$eval('.mg-title', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 5).join() !== 'Bakery,Lunch,Borrel,Dinner,Drinks') throw new Error('headings: ' + heads);
       if (await p.$('details.menu-card[open]')) throw new Error('dishes open by default');
+      // without the test switch the headings start folded: one overview with a count per heading
+      await p.evaluate(() => { window.__MENU_OPEN_ALL = false; }); await p.goto(BASE + '#/today'); await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-group');
+      if (await p.$('details.menu-group[open]')) throw new Error('headings open by default');
+      if (!/\d/.test(await p.textContent('.menu-group:has(.mg-title:text-is("Lunch")) .mg-count'))) throw new Error('no count');
+      await p.setViewportSize({ width: 390, height: 844 }); await p.screenshot({ path: `${OUT}/29-menu-overview.png` }); await p.setViewportSize({ width: 1280, height: 900 });
+      await p.click('.menu-group:has(.mg-title:text-is("Lunch")) > summary'); await p.waitForSelector('details.menu-group[open] .menu-card');
+      await p.click('#dish-expand'); if ((await p.$$('details.menu-group:not([open])')).length) throw new Error('unfold all left a heading closed');
+      await p.evaluate(() => { window.__MENU_OPEN_ALL = true; });
       await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
     await step('menu archive: pick dishes or a whole heading, archive, bring one back', async () => {
       await p.goto(BASE + '#/menu'); await p.waitForSelector('#sel-on'); await p.click('#sel-on'); await p.waitForSelector('.sel-bar');
       await p.click('details[data-dish]:has(h3:text-is("Croissant")) > summary'); await p.waitForSelector('.menu-card.picked');
-      await p.click('.sop-cat:has-text("Borrel") [data-pickall]');
+      await p.click('.menu-group:has(.mg-title:text-is("Borrel")) [data-pickall]');
       if ((await p.$$('.menu-card.picked')).length !== 2) throw new Error('picked ' + (await p.$$('.menu-card.picked')).length);
       await p.click('#sel-go'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("2 archived")');
       const r = await p.evaluate(() => window.__mockdb.menu_items.filter((m) => ['Croissant', 'Borrelplank'].includes(m.name)).map((m) => m.active));
