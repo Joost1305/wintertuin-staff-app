@@ -1456,3 +1456,11 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .mc-items li.dragging { opacity: .4; }
 .mc-items li.drop-before { box-shadow: 0 -2px 0 var(--primary); }
 .mc-items li.drop-after { box-shadow: 0 2px 0 var(--primary); }
+/* card editor on a computer: the card and the form each scroll on their own, both always in view */
+@media (min-width: 981px) {
+  .mc-grid:not(.view) { position: sticky; top: 66px; height: calc(100dvh - 78px); align-items: stretch; }
+  .mc-grid:not(.view) > .mc-preview { position: static; height: 100%; overflow-y: auto; overscroll-behavior: contain; border-radius: 16px; scrollbar-width: thin; }
+  .mc-grid:not(.view) > .mc-form { height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 0 8px 40px 2px; scrollbar-width: thin; }
+  .mc-grid:not(.view) .mc-form-head { top: 0; }
+  .mc-grid:not(.view) .mc-frame-wrap { min-height: 100%; }
+}

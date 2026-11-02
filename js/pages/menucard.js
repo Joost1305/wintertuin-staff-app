@@ -212,6 +212,8 @@ export async function renderMenuCard(args = []) {
   if (editing) draw(); else drawViewer();
 }
 let editing = false;
+let previewZoom = 1;
+let pendingPrev = null; // where the preview pane was, put back once the new preview has its height
 
 // ------------------------------------------------------------------ full-screen viewer
 let pdfJob = null; // { id, promise, file }
@@ -324,6 +326,9 @@ export async function makePdf(c) {
 }
 
 function draw() {
+  // keep where you were: both panes scroll on their own, and which sections are open
+  const keep = { form: $('.mc-form') ? $('.mc-form').scrollTop : null, prev: $('.mc-preview') ? $('.mc-preview').scrollTop : null, win: window.scrollY,
+    open: $('.mc-form') ? $$('.mc-sec-ed').map((d) => d.open) : null };
   const mgr = isManager();
   const cats = [...new Set(menu.map((m) => m.category).filter(Boolean))];
   const c = cur;
@@ -385,8 +390,10 @@ function draw() {
         <div class="mc-danger">${!['lunch', 'dinner', 'allergens'].includes(c.id) ? `<button type="button" class="link-btn small" id="mc-del">${L({ en: 'Delete this card', nl: 'Deze kaart verwijderen' })}</button>` : `<button type="button" class="link-btn small" id="mc-reset">${L({ en: 'Undo all changes: back to the original layout', nl: 'Alle wijzigingen terugdraaien: terug naar de oorspronkelijke indeling' })}</button>`}</div>
       </div>` : ''}
     </div>`;
+  if (keep.open) $$('.mc-sec-ed').forEach((d, i) => { if (i < keep.open.length) d.open = keep.open[i]; });
   preview();
   bind();
+  if (keep.form != null) { const f = $('.mc-form'); if (f) f.scrollTop = keep.form; pendingPrev = keep.prev; window.scrollTo(0, keep.win); }
 }
 
 function preview() {
@@ -404,9 +411,10 @@ function preview() {
       const warn = $('#mc-warn'); if (warn) warn.textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
       // scale the A4 pages to the width of the preview
       const sc = d.getElementById('sc'); const w = f.clientWidth; const pw = sc.offsetWidth || 794; const z = Math.min(1, w / pw);
-      sc.style.transform = `scale(${z})`; if (z === 1) sc.style.margin = '0 auto';
+      sc.style.transform = `scale(${z})`; if (z === 1) sc.style.margin = '0 auto'; previewZoom = z;
       const fit = () => { f.style.height = `${Math.ceil(sc.offsetHeight * z) + 4}px`; };
       fit(); [...d.images].forEach((im) => { if (!im.complete) im.addEventListener('load', fit); });
+      if (pendingPrev != null) { const pv = $('.mc-preview'); if (pv) pv.scrollTop = pendingPrev; pendingPrev = null; }
     } catch { /* preview only */ }
   };
 }
@@ -514,6 +522,17 @@ function bind() {
     });
   });
   document.addEventListener('dragend', () => { drag = null; $$('.mc-items li.dragging, .mc-items li.drop-before, .mc-items li.drop-after').forEach((x) => x.classList.remove('dragging', 'drop-before', 'drop-after')); }, { once: true });
+  // open a section on the right: the card on the left shows that section
+  $$('.mc-sec-ed').forEach((d, si) => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    try {
+      const f = $('#mc-frame'); const doc = f.contentDocument; const pv = $('.mc-preview'); if (!doc || !pv) return;
+      const secs = [...doc.querySelectorAll('.mc-sec')]; const title = (c.sections[si].title || '').trim();
+      const h = secs.map((x) => x.querySelector('h2')).find((x) => x && x.textContent.trim() === title); if (!h) return;
+      const y = f.getBoundingClientRect().top - pv.getBoundingClientRect().top + pv.scrollTop + h.getBoundingClientRect().top - 16;
+      pv.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    } catch { /* preview only */ }
+  }));
   const se = $('#mc-season'); if (se) se.onchange = () => { c.season = se.value || null; changed(); draw(); };
   const cp = $('#mc-copy'); if (cp) cp.onclick = () => {
     const n = JSON.parse(JSON.stringify(c)); n.id = uid(); n.name = `${c.name || c.title} (${L({ en: 'copy', nl: 'kopie' })})`; n.validFrom = null; n.validTo = null;
