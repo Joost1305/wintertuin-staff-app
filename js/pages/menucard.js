@@ -167,9 +167,120 @@ export async function renderMenuCard(args = []) {
   const [c, m] = await Promise.all([loadCards(), sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name').then((r) => r.data || [], () => [])]);
   cards = c; menu = m; dirty = false;
   cur = cards.find((x) => x.id === args[0]) || cards[0];
-  draw();
-  // from "Edit menu cards" on the Menu page: straight to the editor under the card
-  if (args[1] === 'edit' && $('#mc-edit')) setTimeout(() => $('#mc-edit').scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+  // Tapping a card opens it full screen, as guests see it. The pencil (managers) opens the editor.
+  editing = args[1] === 'edit' && isManager();
+  if (editing) draw(); else drawViewer();
+}
+let editing = false;
+
+// ------------------------------------------------------------------ full-screen viewer
+let pdfJob = null; // { id, promise, file }
+function drawViewer() {
+  const mgr = isManager();
+  const c = cur;
+  app().innerHTML = `<div class="mc-viewer" role="dialog" aria-modal="true" aria-label="${esc(c.name || c.title)}">
+    <header class="mcv-bar">
+      <a class="mcv-btn" href="#/menu" id="mcv-close" aria-label="${L({ en: 'Close', nl: 'Sluiten' })}"><i class="ic ic-x" aria-hidden="true"></i></a>
+      <nav class="mcv-tabs">${cards.map((x) => `<a class="mcv-tab ${x === c ? 'on' : ''}" href="#/menucard/${x.id}">${esc(x.name || x.title)}</a>`).join('')}</nav>
+      <div class="mcv-tools">
+        <button type="button" class="mcv-btn" id="mcv-share" aria-label="${L({ en: 'Share', nl: 'Delen' })}"><i class="ic ic-share" aria-hidden="true"></i><span>${L({ en: 'Share', nl: 'Delen' })}</span></button>
+        <button type="button" class="mcv-btn" id="mcv-pdf" aria-label="${L({ en: 'Download PDF', nl: 'Pdf downloaden' })}"><i class="ic ic-download" aria-hidden="true"></i><span>PDF</span></button>
+        <button type="button" class="mcv-btn mcv-wide" id="mc-print" aria-label="${L({ en: 'Print', nl: 'Printen' })}"><i class="ic ic-printer" aria-hidden="true"></i><span>${L({ en: 'Print', nl: 'Printen' })}</span></button>
+        ${mgr ? `<a class="mcv-btn" href="#/menucard/${c.id}/edit" id="mcv-edit" aria-label="${L({ en: 'Edit this card', nl: 'Deze kaart bewerken' })}" title="${L({ en: 'Edit', nl: 'Bewerken' })}"><i class="ic ic-pencil" aria-hidden="true"></i></a>` : ''}
+      </div>
+    </header>
+    <div class="mcv-body"><iframe id="mc-frame" title="${esc(c.title || c.name)}"></iframe></div>
+  </div>`;
+  preview();
+  $('#mc-print').onclick = () => printHtml(cardSheet(c, menu));
+  $('#mcv-pdf').onclick = () => withPdf($('#mcv-pdf'), (file) => download(file));
+  $('#mcv-share').onclick = () => withPdf($('#mcv-share'), (file) => shareFile(file));
+  // make the PDF in the background, so "Share" opens WhatsApp at once (phones only allow sharing straight after a tap)
+  pdfJob = null;
+  setTimeout(() => { if ($('.mc-viewer') && cur === c) startPdf(c); }, 900);
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.mc-viewer') && !document.querySelector('.k-overlay, .modal:not([hidden])')) location.hash = '#/menu'; });
+
+const pdfName = (c) => `Wintertuin ${String(c.title || c.name || 'menu').replace(/[\\/:*?"<>|]/g, '')}.pdf`;
+function startPdf(c) {
+  if (pdfJob && pdfJob.id === c.id) return pdfJob.promise;
+  const job = { id: c.id, file: null };
+  job.promise = makePdf(c).then((f) => { job.file = f; return f; });
+  job.promise.catch(() => { if (pdfJob === job) pdfJob = null; });
+  pdfJob = job;
+  return job.promise;
+}
+async function withPdf(btn, use) {
+  if (pdfJob && pdfJob.id === cur.id && pdfJob.file) return use(pdfJob.file);
+  btn.disabled = true; btn.classList.add('busy');
+  try { await startPdf(cur); } catch (e) { btn.disabled = false; btn.classList.remove('busy'); return toastError(e); }
+  btn.disabled = false; btn.classList.remove('busy');
+  return use(pdfJob.file, true);
+}
+function download(file) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+async function shareFile(file) {
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: file.name.replace('.pdf', '') }); }
+    catch (e) {
+      if (e.name === 'AbortError') return;
+      // the phone wants a fresh tap: the PDF is ready now, so the next tap opens WhatsApp straight away
+      if (e.name === 'NotAllowedError') return toast(L({ en: 'The PDF is ready. Tap Share again.', nl: 'De pdf is klaar. Tik nog een keer op Delen.' }));
+      toastError(e);
+    }
+    return;
+  }
+  download(file);
+  toast(L({ en: 'This browser cannot share files, so the PDF was downloaded. Send it from your downloads.', nl: 'Deze browser kan geen bestanden delen, dus de pdf is gedownload. Stuur hem door vanuit je downloads.' }));
+}
+
+function loadScript(src, glob) {
+  if (window[glob]) return Promise.resolve(window[glob]);
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = () => res(window[glob]); s.onerror = () => rej(new Error(`${src} did not load`)); document.head.appendChild(s); });
+}
+// html2canvas draws the text in this window, so the card's fonts must be known here too, under the same names
+async function mainFonts() {
+  if (!document.getElementById('mc-fonts')) {
+    const st = document.createElement('style'); st.id = 'mc-fonts';
+    st.textContent = `@font-face{font-family:WTSerif;src:url(fonts/young-serif.woff2) format('woff2')}
+      @font-face{font-family:WTSans;src:url(fonts/inter-400.woff2) format('woff2');font-weight:400}
+      @font-face{font-family:WTSans;src:url(fonts/inter-600.woff2) format('woff2');font-weight:600}
+      @font-face{font-family:WTSans;src:url(fonts/inter-400-italic.woff2) format('woff2');font-style:italic}`;
+    document.head.appendChild(st);
+  }
+  try { await Promise.all(['16px WTSerif', '16px WTSans', '600 16px WTSans', 'italic 16px WTSans'].map((f) => document.fonts.load(f))); } catch { /* older browsers */ }
+}
+// The card as a real A4 PDF: each page drawn at full size in a hidden frame, then placed on its own A4 page
+export async function makePdf(c) {
+  await Promise.all([loadScript('vendor/html2canvas.min.js', 'html2canvas'), loadScript('vendor/jspdf.min.js', 'jspdf')]);
+  const fr = document.createElement('iframe');
+  fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
+  fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:820px;height:1200px;border:0;visibility:visible';
+  document.body.appendChild(fr);
+  try {
+    await new Promise((r) => { fr.onload = r; fr.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}">
+      <style>html,body{margin:0;background:#FFFDF0;-webkit-text-size-adjust:none;text-size-adjust:none}</style></head><body>${cardSheet(c, menu)}</body></html>`; });
+    const d = fr.contentDocument;
+    // load the card's own fonts before drawing, or the headings come out in a stand-in font
+    try { await Promise.all([...d.fonts].map((f) => f.load().catch(() => null))); await d.fonts.ready; } catch { /* older browsers */ }
+    await Promise.all([...d.images].map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = r; im.onerror = r; }))));
+    await mainFonts();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    const pages = [...d.querySelectorAll('.mc-page')];
+    for (let i = 0; i < pages.length; i++) {
+      const cv = await window.html2canvas(pages[i], { scale: 2, backgroundColor: '#FFFDF0', useCORS: true, logging: false, windowWidth: 820 });
+      if (i) pdf.addPage();
+      pdf.setFillColor(255, 253, 240); pdf.rect(0, 0, 210, 297, 'F');
+      const ratio = cv.height / cv.width; let w = 210; let h = 210 * ratio;
+      if (h > 297) { h = 297; w = 297 / ratio; }
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.9), 'JPEG', (210 - w) / 2, 0, w, h);
+    }
+    return new File([pdf.output('blob')], pdfName(c), { type: 'application/pdf' });
+  } finally { fr.remove(); }
 }
 
 function draw() {
@@ -179,9 +290,9 @@ function draw() {
   const inp = (k, ph = '') => `<input data-c="${k}" value="${esc(c[k] || '')}" placeholder="${esc(ph)}">`;
   app().innerHTML = `
     <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${L({ en: 'Menu', nl: 'Menu' })}</a><h1>${esc(c.name || c.title)}</h1>
-      <div class="muted small">${L({ en: 'As our guests see it. Always up to date with the Menu page.', nl: 'Zoals onze gasten hem zien. Altijd gelijk met de Menu-pagina.' })}</div></div>
-      <div class="page-actions"><button type="button" class="btn-primary btn-sm" id="mc-print"><i class="ic ic-printer" aria-hidden="true"></i> ${L({ en: 'Print or PDF', nl: 'Print of pdf' })}</button></div></div>
-    <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''}" href="#/menucard/${x.id}" data-tab="${x.id}">${esc(x.name || x.title)}</a>`).join('')}</div>
+      <div class="muted small">${L({ en: 'Changes show in the preview straight away. Save when you are done.', nl: 'Wijzigingen zie je meteen in het voorbeeld. Sla op als je klaar bent.' })}</div></div>
+      <div class="page-actions"><a class="btn btn-sm" href="#/menucard/${c.id}" data-tab="${c.id}" id="mc-view"><i class="ic ic-eye" aria-hidden="true"></i> ${L({ en: 'View card', nl: 'Kaart bekijken' })}</a></div></div>
+    <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''}" href="#/menucard/${x.id}/edit" data-tab="${x.id}">${esc(x.name || x.title)}</a>`).join('')}</div>
     <div class="mc-grid ${mgr ? '' : 'view'}">
       <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
       ${mgr ? `<div class="mc-form" id="mc-edit">
@@ -229,14 +340,14 @@ function preview() {
   // iPhone Safari enlarges small text in a frame on its own (text autosizing): switched off, and the A4 pages are
   // scaled with a transform instead of zoom, so the preview is an exact small copy of the printed card
   f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href.split('#')[0]}">
-    <style>html,body,body *{-webkit-text-size-adjust:none!important;text-size-adjust:none!important}html,body{margin:0;background:#E9E7DA;overflow:hidden}
+    <style>html,body,body *{-webkit-text-size-adjust:none!important;text-size-adjust:none!important}html,body{margin:0;background:${editing ? "#E9E7DA" : "transparent"};overflow:hidden}
     #sc{width:210mm;padding:6mm 0;transform-origin:top left}.mc-page{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}.mc-page:last-child{margin-bottom:0}</style></head>
     <body><div id="sc">${cardSheet(cur, menu)}</div></body></html>`;
   f.onload = () => {
     try {
       const d = f.contentDocument; const pages = [...d.querySelectorAll('.mc-page')];
       const over = pages.some((p) => p.scrollHeight > 1125); // taller than A4
-      $('#mc-warn').textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
+      const warn = $('#mc-warn'); if (warn) warn.textContent = over ? L({ en: 'Something does not fit on its page. Start a new page at a section, or hide a dish.', nl: 'Iets past niet op de pagina. Begin bij een blok een nieuwe pagina, of verberg een gerecht.' }) : '';
       // scale the A4 pages to the width of the preview
       const sc = d.getElementById('sc'); const w = f.clientWidth; const pw = sc.offsetWidth || 794; const z = Math.min(1, w / pw);
       sc.style.transform = `scale(${z})`; if (z === 1) sc.style.margin = '0 auto';
@@ -285,7 +396,6 @@ function bind() {
   $$('[data-xdel]').forEach((b) => (b.onclick = () => { const [si, id] = b.dataset.xdel.split('|'); const s = c.sections[Number(si)]; s.extra = (s.extra || []).filter((x) => x.id !== id); changed(); draw(); }));
   const add = $('#mc-addsec'); if (add) add.onclick = () => { c.sections.push({ id: uid(), title: '', cat: null, hidden: [], extra: [] }); changed(); draw(); };
   const sv = $('#mc-save'); if (sv) sv.onclick = save;
-  $('#mc-print').onclick = () => printHtml(cardSheet(c, menu));
   const nw = $('#mc-new'); if (nw) nw.onclick = () => { const n = { id: uid(), kind: 'menu', name: L({ en: 'New card', nl: 'Nieuwe kaart' }), title: 'Menu', subtitle: '', showPrices: true, showCodes: true, sections: [{ id: uid(), title: '', cat: null, hidden: [], extra: [] }] }; cards.push(n); cur = n; changed(); draw(); };
   const del = $('#mc-del'); if (del) del.onclick = async () => { if (!(await confirmDialog(L({ en: 'Delete this card?', nl: 'Deze kaart verwijderen?' }), L({ en: 'Delete', nl: 'Verwijderen' })))) return; cards = cards.filter((x) => x !== c); cur = cards[0]; await save(); draw(); };
   const rs = $('#mc-reset'); if (rs) rs.onclick = async () => { if (!(await confirmDialog(L({ en: 'Undo all your changes to this card? Titles, sections and hidden dishes go back to how the app made them. Dishes on the Menu page stay as they are.', nl: 'Al je wijzigingen aan deze kaart terugdraaien? Titels, blokken en verborgen gerechten gaan terug naar hoe de app ze maakte. De gerechten op de Menu-pagina blijven zoals ze zijn.' }), L({ en: 'Undo changes', nl: 'Terugdraaien' }), false))) return; const d = defaultCards().find((x) => x.id === c.id); cards[cards.indexOf(c)] = d; cur = d; changed(); draw(); };

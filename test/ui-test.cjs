@@ -429,8 +429,21 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/menu'); await p.waitForSelector('details[data-dish]:has(h3:text-is("Croissant"))');
       await p.click('details[data-dish]:has(h3:text-is("Croissant")) [data-edit]'); await p.waitForSelector('.modal #del');
       if (!/Archive/.test(await p.textContent('.modal #del'))) throw new Error('editor still deletes'); await p.click('.modal [data-close]'); });
+    await step('menu cards: tapping a card opens it full screen with share, PDF and a pencil; the PDF is a real A4 file', async () => {
+      await p.goto(BASE + '#/menu'); await p.click('a[href="#/menucard/lunch"]'); await p.waitForSelector('.mc-viewer #mc-frame');
+      if (await p.$('.mc-form')) throw new Error('editor shown without the pencil');
+      for (const id of ['#mcv-share', '#mcv-pdf', '#mcv-edit']) if (!(await p.$(id))) throw new Error(id + ' missing');
+      const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 30000 }), p.click('#mcv-pdf')]);
+      const fs = require('fs'); const path = await dl.path(); const buf = fs.readFileSync(path);
+      if (dl.suggestedFilename() !== 'Wintertuin Lunch.pdf') throw new Error('name ' + dl.suggestedFilename());
+      if (buf.slice(0, 5).toString() !== '%PDF-' || buf.length < 30000) throw new Error('not a real PDF ' + buf.length);
+      const pages = (buf.toString('latin1').match(/\/Type \/Page[^s]/g) || []).length; if (pages !== 2) throw new Error('pages ' + pages);
+      fs.copyFileSync(path, `${OUT}/lunch.pdf`);
+      await p.screenshot({ path: `${OUT}/27a-menucard-view.png` });
+      await p.click('#mcv-edit'); await p.waitForSelector('.mc-form'); if (await p.$('.mc-viewer')) throw new Error('viewer still open in edit');
+      await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('.mc-viewer'); await p.keyboard.press('Escape'); await p.waitForFunction(() => location.hash === '#/menu'); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {
-      await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('#mc-frame');
+      await p.goto(BASE + '#/menucard/lunch/edit'); await p.waitForSelector('#mc-frame');
       await p.waitForFunction(() => /Tartine met gerookte forel/.test(document.querySelector('#mc-frame').srcdoc || ''));
       await p.fill('[data-c="subtitle"]', 'Vrijdag tot en met zondag, 12 tot 15 uur');
       await p.uncheck('.mc-items input[data-show] >> nth=0');
@@ -440,6 +453,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#mc-save'); await p.waitForSelector('.toast:has-text("Menu cards saved")');
       const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'menu_cards').value.cards[0]);
       if (saved.subtitle !== 'Vrijdag tot en met zondag, 12 tot 15 uur' || !saved.sections[1].extra.some((x) => x.name === 'Soep van de dag')) throw new Error(JSON.stringify(saved).slice(0, 300));
+      await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('.mc-viewer #mc-print');
       const before = await p.evaluate(() => window.__printed || 0); await p.click('#mc-print'); await p.waitForTimeout(300);
       if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('not printed');
       if (!(await p.$('#printArea .mc-page'))) throw new Error('no printed card');
@@ -489,6 +503,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
       await q.goto(BASE + '#/menu'); await q.waitForSelector('a[href="#/menucard/allergens"]'); if (await q.$('#pdf-manage')) throw new Error('staff can manage menu PDFs');
+      await q.goto(BASE + '#/menucard/lunch/edit'); await q.waitForSelector('.mc-viewer #mc-frame'); if (await q.$('#mcv-edit, .mc-form')) throw new Error('staff can edit menu cards');
       await q.goto(BASE + '#/haccp/temperatures'); await q.waitForSelector('#hc-f'); if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('HACCP form scrolls sideways');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab');
       if (await q.isVisible('table.roster')) throw new Error('wide table still shown on phone');
