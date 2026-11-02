@@ -1480,3 +1480,4 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
   background: var(--ink); color: #fff; padding: 10px 12px 10px 16px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: .92rem; max-width: calc(100% - 24px); }
 .upd-bar .btn-sm { background: #fff; color: var(--ink); border: 0; font-weight: 700; }
 html.touch-nav .upd-bar { bottom: calc(86px + env(safe-area-inset-bottom)); }
+.nl-body label.check input[type=checkbox] { width: 18px !important; height: 18px; flex: none; }

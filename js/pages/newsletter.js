@@ -119,7 +119,8 @@ function draw() {
           <button type="button" class="mc-ib mc-rm" data-hrm="${x.id}" aria-label="${L({ en: 'Remove', nl: 'Weghalen' })}"><i class="ic ic-x" aria-hidden="true"></i></button></span></li>`).join('')
           || `<li class="mc-empty small muted">${L({ en: 'No dishes chosen yet.', nl: 'Nog geen gerechten gekozen.' })}</li>`}</ul>
         <div><button type="button" class="btn-sm btn-primary-soft" id="nl-hlpick"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Dishes from the menu', nl: 'Gerechten uit het menu' })}</button></div>
-        <p class="small muted">${L({ en: 'Two or three is enough. Name, price and text come from the menu.', nl: 'Twee of drie is genoeg. Naam, prijs en tekst komen uit het menu.' })}</p>`;
+        <label class="check small"><input type="checkbox" id="nl-hlprice" ${draft.hlPrices ? 'checked' : ''}> ${L({ en: 'Show prices', nl: 'Prijzen tonen' })}</label>
+        <p class="small muted">${L({ en: 'Two or three is enough. Name and text come from the menu.', nl: 'Twee of drie is genoeg. Naam en tekst komen uit het menu.' })}</p>`;
     }
     else if (bl.type === 'practical') body = titleIn + textIn(3) + `<div class="field-row"><input data-k="cta_label" value="${esc(draft.cta_label)}" placeholder="${L({ en: 'Button text', nl: 'Tekst knop' })}"><input data-k="cta_url" value="${esc(draft.cta_url)}" placeholder="https:// of mailto:"></div>`;
     return `<details class="nl-sec" data-bid="${bl.id}" ${openIds.has(bl.id) ? 'open' : ''}><summary>
@@ -182,6 +183,7 @@ function draw() {
   if ($('#nl-evadd')) $('#nl-evadd').onclick = () => { draft.events.push({ date: todayIso(), title: '', text: '' }); draw(); };
   $$('[data-hrm]').forEach((b) => (b.onclick = () => { draft.highlights = draft.highlights.filter((id) => id !== b.dataset.hrm); draw(); }));
   $$('[data-hmv]').forEach((b) => (b.onclick = () => { const [i, d] = b.dataset.hmv.split('|').map(Number); const h = draft.highlights.filter((id) => menu.some((x) => x.id === id)); const j = i + d; if (j < 0 || j >= h.length) return; [h[i], h[j]] = [h[j], h[i]]; draft.highlights = h; draw(); }));
+  const hpr = $('#nl-hlprice'); if (hpr) hpr.onchange = () => { draft.hlPrices = hpr.checked; refresh(); };
   const hp = $('#nl-hlpick'); if (hp) hp.onclick = pickHighlights;
   $('#nl-save').onclick = async () => {
     const { error } = await sb.from('team_settings').upsert({ key: 'newsletter_draft', value: draft, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
@@ -257,7 +259,7 @@ function html() {
     }
     if (bl.type === 'highlights') {
       const hl = draft.highlights.map((id) => menu.find((x) => x.id === id)).filter(Boolean); if (!hl.length) return;
-      parts.push(...sep, block(h2(bl.title || 'Nu op de kaart') + hl.map((x) => `<p style="margin:0 0 2px;font:600 16px/1.4 ${sans};color:${C.ink}">${esc(x.name)}${x.price != null ? `<span style="font-weight:400;color:${C.ink2}"> &nbsp;${String(Number(x.price).toFixed(2)).replace('.', ',')}</span>` : ''}</p>
+      parts.push(...sep, block(h2(bl.title || 'Nu op de kaart') + hl.map((x) => `<p style="margin:0 0 2px;font:600 16px/1.4 ${sans};color:${C.ink}">${esc(x.name)}${draft.hlPrices && x.price != null ? `<span style="font-weight:400;color:${C.ink2}"> &nbsp;${String(Number(x.price).toFixed(2)).replace('.', ',')}</span>` : ''}</p>
       <p style="margin:0 0 14px;font:15px/1.55 ${sans};color:${C.ink2}">${esc(nl(x.description))}</p>`).join('')));
       return;
     }
