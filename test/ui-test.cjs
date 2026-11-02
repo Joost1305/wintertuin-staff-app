@@ -77,7 +77,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p2.$('text=Create account')) throw new Error('sign-up still visible'); await ctx2.close(); });
     await step('menu with food and beverage', async () => { await p.goto(BASE + '#/menu'); await p.waitForSelector('.menu-card'); await p.screenshot({ path: `${OUT}/03-menu.png`, fullPage: true }); });
     await step('add menu item with photo', async () => {
-      await p.click('#add'); await p.fill('.modal [name=name]', 'Apple pie'); await p.fill('.modal [name=price]', '4,50');
+      await p.click('#add'); await p.fill('.modal [name=name]', 'Apple pie'); await p.fill('.modal [name=category]', 'bakery'); await p.fill('.modal [name=price]', '4,50');
       await p.setInputFiles('.modal [name=photo]', { name: 'pie.png', mimeType: 'image/png', buffer: Buffer.from('89504e47', 'hex') });
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Apple pie');
       const price = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie').price); if (price !== 4.5) throw new Error(price); });
@@ -97,8 +97,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.isVisible('.tag.allergen')) throw new Error('dishes should be folded');
       await p.click('#dish-expand'); await p.waitForSelector('.tag.allergen');
       const al = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Sourdough').allergens); if (JSON.stringify(al) !== '["gluten","milk"]') throw new Error(JSON.stringify(al));
-      const before = await p.evaluate(() => window.__printed || 0); await p.click('#allergen-card'); await p.waitForTimeout(200);
-      if ((await p.evaluate(() => window.__printed || 0)) !== before + 1) throw new Error('no print'); });
+      if (await p.$('#allergen-card')) throw new Error('old allergen card button still there'); });
     await step('links page', async () => { await p.goto(BASE + '#/links'); await p.waitForSelector('.link-row'); });
     await step('roster week grid with chips and fixed shifts', async () => {
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.waitForSelector('.tpl-chip');
@@ -405,6 +404,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#sample-load'); await p.waitForSelector('.toast:has-text("0 dishes added")');
       await p.goto(BASE + '#/menu'); await p.waitForSelector('.dom-card:has-text("Tartine")');
       if (!(await p.$('a[href="#/menucard/lunch"]')) || !(await p.$('a[href="#/menucard/allergens"]'))) throw new Error('menu card buttons missing');
+      const heads = await p.$$eval('.sop-cat', (x) => x.map((h) => h.textContent.trim())); if (heads.slice(0, 6).join() !== 'Bakery,Lunch,Borrel,Sweet,Dinner,Drinks') throw new Error('headings: ' + heads);
+      if (await p.$('details.menu-card[open]')) throw new Error('dishes open by default');
       await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {
       await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('#mc-frame');
@@ -465,7 +466,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (links.includes('#/settings')) throw new Error('settings visible');
       if (!links.includes('#/password')) throw new Error('staff lost password link');
       if (!(await q.isVisible('#app-switch'))) throw new Error('switch hidden on phone');
-      await q.goto(BASE + '#/menu'); await q.waitForSelector('#allergen-card'); if (await q.$('#pdf-manage')) throw new Error('staff can manage menu PDFs');
+      await q.goto(BASE + '#/menu'); await q.waitForSelector('a[href="#/menucard/allergens"]'); if (await q.$('#pdf-manage')) throw new Error('staff can manage menu PDFs');
       await q.goto(BASE + '#/haccp/temperatures'); await q.waitForSelector('#hc-f'); if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('HACCP form scrolls sideways');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab');
       if (await q.isVisible('table.roster')) throw new Error('wide table still shown on phone');
@@ -475,7 +476,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await q.screenshot({ path: `${OUT}/09b-roster-phone.png`, fullPage: true });
       await q.goto(BASE + '#/settings'); await q.waitForSelector('.home-hero');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
-      await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card'); await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
+      await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card');
+      await q.evaluate(() => document.querySelectorAll('details.sop-card').forEach((d) => { d.open = true; }));
+      if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1 || [...document.querySelectorAll('.sop-card')].some((c) => c.getBoundingClientRect().right > window.innerWidth + 1))) throw new Error('SOP card wider than the phone');
+      await q.screenshot({ path: `${OUT}/09-staff-phone.png`, fullPage: true }); });
     await step('staff: offer own shift for swap', async () => {
       await q.goto(BASE + '#/swap'); await q.waitForSelector('[data-offer]'); await q.click('[data-offer]'); await q.fill('.modal [name=v]', 'Wedding'); await q.click('.modal button[type=submit]');
       await q.waitForSelector('.tag.open'); });

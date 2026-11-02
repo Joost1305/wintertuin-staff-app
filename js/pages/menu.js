@@ -46,6 +46,7 @@ export async function renderMenu() {
     loadCards().then((c) => { menuCards = c; }),
   ]);
   items = check(rows) || [];
+  openIds = new Set(); // the Menu page always opens folded
   draw();
 }
 
@@ -58,20 +59,14 @@ function draw() {
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}
       ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}
-      <button type="button" class="btn-sm" id="allergen-card"><i class="ic ic-printer" aria-hidden="true"></i> ${t('allergen_card')}</button>
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
     ${(() => { const d = dishOfMonth && items.find((m) => m.id === dishOfMonth.id); if (!d) return '';
       return `<a class="card dom-card" href="#/menu" data-dom="${d.id}">${d.photo_url ? `<img src="${esc(d.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
         <span><span class="dom-label">${lang() === 'nl' ? 'Gerecht van de maand' : 'Dish of the month'}</span><strong>${esc(d.name)}</strong>
         ${dishOfMonth.note ? `<span class="dom-note">${esc(dishOfMonth.note)}</span>` : ''}</span></a>`; })()}
-    ${['food', 'beverage'].map((g) => {
-      const list = items.filter((m) => (m.group_type || 'food') === g);
-      if (!list.length) return '';
-      return `<div class="sop-cat">${t('group_' + g)}</div><div class="menu-grid">${list.map(card).join('')}</div>`;
-    }).join('')}`;
+    ${groups().map(([title, list]) => `<div class="sop-cat">${esc(title)}</div><div class="menu-grid">${list.map(card).join('')}</div>`).join('')}`;
   const add = $('#add'); if (add) add.onclick = () => openEditor(null);
-  $('#allergen-card').onclick = printAllergenCard;
   const pm = $('#pdf-manage'); if (pm) pm.onclick = managePdfs;
   // Edit sits in the folded header: it must not fold or unfold the dish
   $$('[data-edit]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openEditor(items.find((m) => m.id === b.dataset.edit)); }));
@@ -80,11 +75,38 @@ function draw() {
   const ex = $('#dish-expand'); if (ex) ex.onclick = () => { const all = $$('details[data-dish]'); const open = all.some((d) => !d.open); all.forEach((d) => { d.open = open; }); ex.textContent = t(open ? 'sops_collapse_all' : 'sops_expand_all'); };
 }
 
+// Headings follow the menu cards: Bakery, Lunch, Borrel, Sweet, Dinner, Drinks. Categories we do not know
+// keep their own name and come after; the order inside a heading is the one set under Settings.
+const HEADS = [
+  ['bakery', { nl: 'Bakkerij', en: 'Bakery' }, /bakker|bakery|brood|bread|gebak|pastr|ontbijt|breakfast/i],
+  ['lunch', { nl: 'Lunch', en: 'Lunch' }, /lunch/i],
+  ['borrel', { nl: 'Borrel', en: 'Borrel' }, /borrel|bites|snack/i],
+  ['sweet', { nl: 'Zoet', en: 'Sweet' }, /zoet|sweet|dessert|taart|cake/i],
+  ['dinner', { nl: 'Diner', en: 'Dinner' }, /diner|dinner/i],
+  ['drinks', { nl: 'Dranken', en: 'Drinks' }, /koffie|coffee|thee|tea|fris|sap|juice|wijn|wine|bier|beer|drank|drink|beverage/i],
+];
+const headOf = (m) => {
+  const c = String(m.category || '');
+  const hit = HEADS.find(([, , re]) => re.test(c));
+  if (hit) return hit[0];
+  if ((m.group_type || 'food') === 'beverage') return 'drinks';
+  return c ? `cat:${c}` : 'lunch';
+};
+function groups() {
+  const out = new Map(HEADS.map(([k, l]) => [k, [lang() === 'nl' ? l.nl : l.en, []]]));
+  for (const m of items) {
+    const k = headOf(m);
+    if (!out.has(k)) out.set(k, [k.slice(4), []]);
+    out.get(k)[1].push(m);
+  }
+  return [...out.values()].filter(([, list]) => list.length);
+}
+
 // Each dish is folded by default: only its name (and Edit for managers). Click to see photo, video, price,
 // description and allergens. What you unfolded is remembered in this browser.
 const OPEN = 'wintertuinMenuOpen';
-let openIds = new Set((() => { try { return JSON.parse(localStorage.getItem(OPEN) || '[]'); } catch { return []; } })());
-const rememberOpen = () => { try { localStorage.setItem(OPEN, JSON.stringify([...openIds])); } catch { /* private mode */ } };
+let openIds = new Set(); // every visit starts folded
+const rememberOpen = () => { try { localStorage.removeItem(OPEN); } catch { /* private mode */ } };
 function card(m) {
   const al = (m.allergens || []).length;
   const sub = [m.category, m.price != null && m.price !== '' ? fmt.money(m.price) : ''].filter(Boolean).map(esc).join(' <span aria-hidden="true">/</span> ');
@@ -227,10 +249,3 @@ function openEditor(m) {
   });
 }
 
-function printAllergenCard() {
-  const list = items.slice().sort((a, b) => (a.group_type || '').localeCompare(b.group_type || '') || a.name.localeCompare(b.name));
-  printHtml(`<h1>${t('allergen_card')}</h1><p>Wintertuin · ${esc(fmt.dateLong(new Date().toLocaleDateString('sv-SE')))}</p>
-    <table style="font-size:9pt"><thead><tr><th>${t('name')}</th>${ALLERGENS.map((a) => `<th style="writing-mode:vertical-rl;transform:rotate(180deg);height:110px;text-align:left">${esc(t('al_' + a))}</th>`).join('')}</tr></thead>
-    <tbody>${list.map((m) => `<tr><td><strong>${esc(m.name)}</strong></td>${ALLERGENS.map((a) => `<td style="text-align:center">${(m.allergens || []).includes(a) ? '&#9679;' : ''}</td>`).join('')}</tr>`).join('')}</tbody></table>
-    <p style="font-size:9pt;margin-top:10px">${t('allergen_card_note')}</p>`);
-}

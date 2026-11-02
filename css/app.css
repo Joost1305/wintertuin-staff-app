@@ -1104,3 +1104,14 @@ table.roster th.closed br + .small { display: block; }
 .mc-line { width: min(520px, 100%); text-align: left; }
 .mc-line .allergen-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px 12px; margin: 8px 0; font-size: .9rem; }
 @media (max-width: 980px) { .mc-grid { grid-template-columns: 1fr; } .mc-preview { position: static; } }
+
+/* SOP cards on a phone: title on its own line, progress and buttons underneath, never wider than the screen */
+.sop-list > details.sop-card, .sop-list { min-width: 0; max-width: 100%; }
+.sop-sum h3 { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .sop-sum { flex-wrap: wrap; padding: 12px 14px; row-gap: 8px; }
+  .sop-sum h3 { flex: 1 1 calc(100% - 30px); }
+  .sop-actions { flex: 1 1 100%; justify-content: flex-end; padding-left: 24px; }
+  .sop-prog { margin-right: auto; }
+  .sop-prog .pl-bar { width: 70px; }
+}
