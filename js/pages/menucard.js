@@ -229,7 +229,7 @@ function preview() {
   // iPhone Safari enlarges small text in a frame on its own (text autosizing): switched off, and the A4 pages are
   // scaled with a transform instead of zoom, so the preview is an exact small copy of the printed card
   f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href.split('#')[0]}">
-    <style>html{-webkit-text-size-adjust:100%;text-size-adjust:100%}html,body{margin:0;background:#E9E7DA;overflow:hidden}
+    <style>html,body,body *{-webkit-text-size-adjust:none!important;text-size-adjust:none!important}html,body{margin:0;background:#E9E7DA;overflow:hidden}
     #sc{width:210mm;padding:6mm 0;transform-origin:top left}.mc-page{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.12)}.mc-page:last-child{margin-bottom:0}</style></head>
     <body><div id="sc">${cardSheet(cur, menu)}</div></body></html>`;
   f.onload = () => {
