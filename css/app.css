@@ -1115,3 +1115,14 @@ table.roster th.closed br + .small { display: block; }
   .sop-prog { margin-right: auto; }
   .sop-prog .pl-bar { width: 70px; }
 }
+/* Menu on a phone: Edit sits top right on the card, so the card is only as tall as photo and text */
+@media (max-width: 600px) {
+  .menu-card .dish-sum { grid-template-columns: 104px 1fr; align-items: stretch; }
+  .menu-card .dish-photo { aspect-ratio: auto; height: 100%; min-height: 104px; }
+  .menu-card .dish-meta { padding: 12px 14px; justify-content: center; }
+  .menu-card:has([data-edit]) .dish-meta { padding-right: 62px; }
+  .dish-meta h3 { font-size: 1.12rem !important; }
+  .dish-side { position: absolute !important; top: 8px; right: 8px; padding: 0 !important; grid-column: auto !important; }
+  .dish-side .btn-sm { min-height: 34px; min-width: 0; padding: 5px 10px; font-size: .85rem; }
+}
+@media (max-width: 600px) { .menu-grid { gap: 10px; } .menu-grid > .menu-card { margin: 0 !important; } }
