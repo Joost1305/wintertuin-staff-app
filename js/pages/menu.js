@@ -4,7 +4,7 @@ import { state, isManager, app, esc, fmt, toast, toastError, $, $$, openModal, c
 import { t, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { PHOTO_BUCKET } from '../config.js';
-import { loadCards } from './menucard.js';
+import { loadCards, cardState } from './menucard.js';
 import { upgradeMenuOnce, addExampleDishesOnce } from '../menu-upgrade.js';
 import { SEASONS, seasonName, fitsSeason, seasonPills } from '../seasons.js';
 
@@ -64,7 +64,8 @@ function draw() {
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('menu_title')}</h1><div class="muted small">${t('menu_sub')}</div></div>
       <div class="page-actions menu-actions">
-      ${items.length ? menuCards.map((c) => `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}"><i class="ic ic-printer" aria-hidden="true"></i> ${esc(c.name || c.title)}</a>`).join('') : ''}
+      ${items.length ? menuCards.filter((c) => cardState(c) === 'current').map((c) => `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}"><i class="ic ic-printer" aria-hidden="true"></i> ${esc(c.name || c.title)}</a>`).join('') : ''}
+      ${isManager() && menuCards.some((c) => cardState(c) !== 'current') ? `<a class="btn btn-sm" href="#/menucard/archive">${L({ en: 'Card archive', nl: 'Kaartenarchief' })} (${menuCards.filter((c) => cardState(c) !== 'current').length})</a>` : ''}
       ${isManager() ? `<a class="btn btn-sm" href="#/menucard/lunch/edit"><i class="ic ic-pencil" aria-hidden="true"></i> ${lang() === 'nl' ? 'Menukaarten bewerken' : 'Edit menu cards'}</a>` : ''}
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}

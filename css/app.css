@@ -1440,3 +1440,19 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .mc-ib.mc-rm:hover { color: var(--bad); }
 .mc-empty { padding: 10px 0; }
 .mc-off { margin: 4px 0 8px; }
+/* card dates and archive */
+.mc-tabs .chip small { font-weight: 600; opacity: .7; margin-left: 4px; }
+.mc-tabs .chip.st-past:not(.on) { opacity: .65; }
+.mcv-tab small { font-weight: 500; opacity: .75; }
+.mc-valid-st { margin: -4px 0 4px; }
+.mc-arch { padding: 0; }
+.mc-arch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.mc-arch-row:first-child { border-top: 0; }
+.mc-arch-row > span:first-child { display: flex; flex-direction: column; gap: 2px; }
+.mc-arch-tools { display: flex; gap: 6px; flex-wrap: wrap; }
+/* drag a dish in the card editor */
+.mc-grip { cursor: grab; color: var(--ink-3); font-size: 16px; line-height: 1; padding: 4px 2px; flex: none; user-select: none; }
+@media (pointer: coarse) { .mc-grip { display: none; } }
+.mc-items li.dragging { opacity: .4; }
+.mc-items li.drop-before { box-shadow: 0 -2px 0 var(--primary); }
+.mc-items li.drop-after { box-shadow: 0 2px 0 var(--primary); }

@@ -62,6 +62,30 @@ async function saveCards(cards) {
   if (error) throw error;
 }
 
+// ------------------------------------------------------------------ valid from / until
+// A card without dates is always current. Before its start date it is coming, after its end date it goes to the card archive.
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+export function cardState(c, today = todayIso()) {
+  if (c.validFrom && today < c.validFrom) return 'upcoming';
+  if (c.validTo && today > c.validTo) return 'past';
+  return 'current';
+}
+const shortDate = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString(lang() === 'nl' ? 'nl-NL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
+const validNote = (c) => {
+  const st = cardState(c);
+  if (st === 'upcoming') return L({ en: `Not on the Menu page yet. It appears there on ${shortDate(c.validFrom)}.`, nl: `Staat nog niet op de Menu-pagina. Hij verschijnt daar op ${shortDate(c.validFrom)}.` });
+  if (st === 'past') return L({ en: 'Ended: this card is in the card archive and no longer on the Menu page.', nl: 'Verlopen: deze kaart staat in het kaartenarchief en niet meer op de Menu-pagina.' });
+  return c.validTo ? L({ en: `On the Menu page until ${shortDate(c.validTo)}, then it moves to the card archive by itself.`, nl: `Op de Menu-pagina tot en met ${shortDate(c.validTo)}, daarna gaat hij vanzelf naar het kaartenarchief.` })
+    : L({ en: 'No dates: always on the Menu page.', nl: 'Geen data: altijd op de Menu-pagina.' });
+};
+const validLine = (c) => {
+  const st = cardState(c);
+  if (st === 'upcoming') return L({ en: `From ${shortDate(c.validFrom)}`, nl: `Vanaf ${shortDate(c.validFrom)}` });
+  if (st === 'past') return L({ en: `Ended ${shortDate(c.validTo)}`, nl: `Verlopen op ${shortDate(c.validTo)}` });
+  if (c.validTo) return L({ en: `Until ${shortDate(c.validTo)}`, nl: `Tot en met ${shortDate(c.validTo)}` });
+  return c.validFrom ? L({ en: `Since ${shortDate(c.validFrom)}`, nl: `Sinds ${shortDate(c.validFrom)}` }) : '';
+};
+
 // ------------------------------------------------------------------ what a section shows
 function sectionItems(sec, menu, lib = menu) {
   // one list per section, in one order: dishes of the linked category, dishes picked from the database, own lines.
@@ -181,6 +205,7 @@ export async function renderMenuCard(args = []) {
   cards = c; lib = m; menu = m.filter((x) => x.active !== false); dirty = false;
   if (linkOwnLines(cards)) dirty = isManager(); // saved with the next Save
   if (!cards.some((x) => x.id === args[0]) && args[0] === 'voorbeeld') args = ['lunch'];
+  if (args[0] === 'archive') return drawArchive();
   cur = cards.find((x) => x.id === args[0]) || cards[0];
   // Tapping a card opens it full screen, as guests see it. The pencil (managers) opens the editor.
   editing = args[1] === 'edit' && isManager();
@@ -196,7 +221,7 @@ function drawViewer() {
   app().innerHTML = `<div class="mc-viewer" role="dialog" aria-modal="true" aria-label="${esc(c.name || c.title)}">
     <header class="mcv-bar">
       <a class="mcv-btn" href="#/menu" id="mcv-close" aria-label="${L({ en: 'Close', nl: 'Sluiten' })}"><i class="ic ic-x" aria-hidden="true"></i></a>
-      <nav class="mcv-tabs">${cards.map((x) => `<a class="mcv-tab ${x === c ? 'on' : ''}" href="#/menucard/${x.id}">${esc(x.name || x.title)}</a>`).join('')}</nav>
+      <nav class="mcv-tabs">${cards.filter((x) => x === c || cardState(x) === 'current').map((x) => `<a class="mcv-tab ${x === c ? 'on' : ''}" href="#/menucard/${x.id}">${esc(x.name || x.title)}${x === c && cardState(x) !== 'current' ? ` <small>(${esc(validLine(x))})</small>` : ''}</a>`).join('')}</nav>
       <div class="mcv-tools">
         <button type="button" class="mcv-btn" id="mcv-share" aria-label="${L({ en: 'Share', nl: 'Delen' })}"><i class="ic ic-share" aria-hidden="true"></i><span>${L({ en: 'Share', nl: 'Delen' })}</span></button>
         <button type="button" class="mcv-btn" id="mcv-pdf" aria-label="${L({ en: 'Download PDF', nl: 'Pdf downloaden' })}"><i class="ic ic-download" aria-hidden="true"></i><span>PDF</span></button>
@@ -307,7 +332,8 @@ function draw() {
     <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${L({ en: 'Menu', nl: 'Menu' })}</a><h1>${esc(c.name || c.title)}</h1>
       <div class="muted small">${L({ en: 'Changes show in the preview straight away. Save when you are done.', nl: 'Wijzigingen zie je meteen in het voorbeeld. Sla op als je klaar bent.' })}</div></div>
       <div class="page-actions"><a class="btn btn-sm" href="#/menucard/${c.id}" data-tab="${c.id}" id="mc-view"><i class="ic ic-eye" aria-hidden="true"></i> ${L({ en: 'View card', nl: 'Kaart bekijken' })}</a></div></div>
-    <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''}" href="#/menucard/${x.id}/edit" data-tab="${x.id}">${esc(x.name || x.title)}</a>`).join('')}</div>
+    <div class="mc-tabs">${cards.map((x) => `<a class="chip ${x === c ? 'on' : ''} st-${cardState(x)}" href="#/menucard/${x.id}/edit" data-tab="${x.id}">${esc(x.name || x.title)}${cardState(x) !== 'current' ? ` <small>${cardState(x) === 'past' ? L({ en: 'archive', nl: 'archief' }) : L({ en: 'coming', nl: 'komt' })}</small>` : ''}</a>`).join('')}
+      <a class="chip" href="#/menucard/archive">${L({ en: 'Card archive', nl: 'Kaartenarchief' })}</a></div>
     <div class="mc-grid ${mgr ? '' : 'view'}">
       <div class="mc-preview"><div class="mc-frame-wrap"><iframe id="mc-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div><div class="small muted" id="mc-warn"></div></div>
       ${mgr ? `<div class="mc-form" id="mc-edit">
@@ -323,6 +349,9 @@ function draw() {
         <div class="field-row"><div class="field"><label>${L({ en: 'Price line (optional)', nl: 'Prijsregel (optioneel)' })}</label>${inp('priceLine', 'Twee gangen 39')}</div>
           <div class="field mc-checks"><label class="check"><input type="checkbox" data-cb="showPrices" ${c.showPrices ? 'checked' : ''}> ${L({ en: 'Prices per dish', nl: 'Prijs per gerecht' })}</label>
           <label class="check"><input type="checkbox" data-cb="showCodes" ${c.showCodes ? 'checked' : ''}> ${L({ en: 'Allergen numbers', nl: 'Allergeennummers' })}</label></div></div>
+        <div class="field-row mc-valid"><div class="field"><label>${L({ en: 'Valid from (optional)', nl: 'Geldig vanaf (optioneel)' })}</label><input type="date" data-c="validFrom" value="${esc(c.validFrom || '')}"></div>
+          <div class="field"><label>${L({ en: 'Valid until (optional)', nl: 'Geldig tot en met (optioneel)' })}</label><input type="date" data-c="validTo" value="${esc(c.validTo || '')}"></div></div>
+        <div class="tiny muted mc-valid-st" id="mc-valid-st">${validNote(c)}</div>
         <div class="field"><label>${L({ en: 'Season of this card', nl: 'Seizoen van deze kaart' })}</label>
           <select id="mc-season"><option value="">${L({ en: 'No season (all year)', nl: 'Geen seizoen (hele jaar)' })}</option>${SEASONS.map(([k]) => `<option value="${k}" ${c.season === k ? 'selected' : ''}>${seasonName(k)}</option>`).join('')}</select>
           <div class="tiny muted" style="margin-top:4px">${L({ en: 'The database then opens on this season, and dishes that do not fit get a mark.', nl: 'De database opent dan op dit seizoen, en gerechten die er niet bij passen krijgen een markering.' })}</div></div>
@@ -338,7 +367,8 @@ function draw() {
             <label class="check small"><input type="checkbox" data-s="${si}" data-f="newPage" ${s.newPage ? 'checked' : ''}> ${L({ en: 'Start a new page here', nl: 'Hier een nieuwe pagina beginnen' })}</label>
             ${s.newPage ? `<input data-s="${si}" data-f="pageTitle" value="${esc(s.pageTitle || '')}" placeholder="${L({ en: 'Title of that page', nl: 'Titel van die pagina' })}">` : ''}
             ${(() => { const all = sectionItems(s, menu, lib); const list = all.filter((x) => !x.hidden); const off = all.length - list.length;
-              return `<ul class="mc-items">${list.map((x, xi) => `<li data-key="${esc(x.key)}">
+              return `<ul class="mc-items" data-sec="${si}">${list.map((x, xi) => `<li data-key="${esc(x.key)}">
+                <span class="mc-grip" draggable="true" data-dgrip="${si}|${esc(x.key)}" title="${L({ en: 'Drag to move', nl: 'Sleep om te verplaatsen' })}" aria-hidden="true">&#10303;</span>
                 <span class="mc-i-name"><span class="mc-i-n">${esc(x.name)}</span>${itemTags(x, c)}</span>
                 <span class="mc-i-tools">
                   <button type="button" class="mc-ib" data-mv="${si}|${esc(x.key)}|-1" ${xi === 0 ? 'disabled' : ''} aria-label="${L({ en: 'Up', nl: 'Omhoog' })}">&#9650;</button>
@@ -381,6 +411,25 @@ function preview() {
   };
 }
 
+// ------------------------------------------------------------------ card archive: coming, current and ended cards
+function drawArchive() {
+  const mgr = isManager();
+  const groups = [['upcoming', L({ en: 'Coming', nl: 'Komend' })], ['current', L({ en: 'Current', nl: 'Nu geldig' })], ['past', L({ en: 'Ended', nl: 'Verlopen' })]];
+  app().innerHTML = `<div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> Menu</a><h1>${L({ en: 'Card archive', nl: 'Kaartenarchief' })}</h1>
+      <div class="muted small">${L({ en: 'Every menu card with its dates. Ended cards stay here, so you can look back or reuse one.', nl: 'Alle menukaarten met hun data. Verlopen kaarten blijven hier, zodat je kunt terugkijken of er een opnieuw gebruikt.' })}</div></div></div>
+    ${groups.map(([k, title]) => { const list = cards.filter((c) => cardState(c) === k).sort((a, b) => String(b.validFrom || b.validTo || '').localeCompare(String(a.validFrom || a.validTo || '')));
+      return list.length ? `<h2 class="section-title">${title} <span class="muted">(${list.length})</span></h2><div class="card mc-arch">${list.map((c) => `<div class="mc-arch-row">
+        <span><strong>${esc(c.name || c.title)}</strong><span class="small muted">${esc([c.season ? seasonName(c.season) : '', validLine(c)].filter(Boolean).join(' / ')) || L({ en: 'No dates', nl: 'Geen data' })}</span></span>
+        <span class="mc-arch-tools"><a class="btn btn-sm" href="#/menucard/${esc(c.id)}">${L({ en: 'View', nl: 'Bekijken' })}</a>
+        ${mgr ? `<a class="btn btn-sm" href="#/menucard/${esc(c.id)}/edit">${L({ en: 'Edit', nl: 'Bewerken' })}</a>${k === 'past' ? `<button type="button" class="btn-sm" data-reuse="${esc(c.id)}">${L({ en: 'Use again', nl: 'Opnieuw gebruiken' })}</button>` : ''}` : ''}</span></div>`).join('')}</div>` : ''; }).join('')}`;
+  $$('[data-reuse]').forEach((b) => (b.onclick = async () => {
+    const o = cards.find((c) => c.id === b.dataset.reuse);
+    const n = JSON.parse(JSON.stringify(o)); n.id = uid(); n.validFrom = null; n.validTo = null; n.sections.forEach((x) => { x.id = uid(); });
+    cards.push(n);
+    try { await saveCards(cards); toast(L({ en: 'Copied: a new card without dates', nl: 'Gekopieerd: een nieuwe kaart zonder data' })); location.hash = `#/menucard/${n.id}/edit`; } catch (e) { toastError(e); }
+  }));
+}
+
 // the dishes again after one was edited, so the card shows the new name, price and allergens
 async function reloadDishes() {
   try { const { data } = await sb.from('menu_items').select('*').order('group_type').order('sort_order').order('name'); if (data) { lib = data; menu = data.filter((x) => x.active !== false); } } catch { /* keep what we had */ }
@@ -418,7 +467,7 @@ function bind() {
     if (await confirmDialog(L({ en: 'Save your changes first?', nl: 'Eerst je wijzigingen opslaan?' }), L({ en: 'Save', nl: 'Opslaan' }), false)) { await save(); }
     dirty = false; location.hash = a.getAttribute('href');
   }));
-  $$('[data-c]').forEach((el) => (el.oninput = () => { c[el.dataset.c] = el.value; changed(); soon(); }));
+  $$('[data-c]').forEach((el) => (el.oninput = () => { c[el.dataset.c] = el.value || (el.type === 'date' ? null : ''); changed(); soon(); const vs = $('#mc-valid-st'); if (vs && el.type === 'date') vs.innerHTML = validNote(c); }));
   $$('[data-cb]').forEach((el) => (el.onchange = () => { c[el.dataset.cb] = el.checked; changed(); preview(); }));
   $$('[data-s]').forEach((el) => {
     const s = c.sections[Number(el.dataset.s)]; const k = el.dataset.f;
@@ -448,9 +497,26 @@ function bind() {
     if (x.kind === 'own') lineEditor(c.sections[Number(si)], (c.sections[Number(si)].extra || []).find((y) => y.id === key));
     else editDish(x.dish, async () => { await reloadDishes(); draw(); });
   }));
+  // drag a dish by its grip onto another dish in the same section (computer)
+  let drag = null;
+  $$('[data-dgrip]').forEach((g) => (g.ondragstart = (e) => { const [si, key] = g.dataset.dgrip.split('|'); drag = { si: Number(si), key }; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', key); try { e.dataTransfer.setDragImage(g.closest('li'), 16, 16); } catch { /* ignore */ } g.closest('li').classList.add('dragging'); }));
+  $$('.mc-items[data-sec] > li[data-key]').forEach((li) => {
+    const si = Number(li.parentElement.dataset.sec);
+    li.addEventListener('dragover', (e) => { if (!drag || drag.si !== si || drag.key === li.dataset.key) return; e.preventDefault(); const r = li.getBoundingClientRect(); const top = e.clientY < r.top + r.height / 2; li.classList.toggle('drop-before', top); li.classList.toggle('drop-after', !top); });
+    li.addEventListener('dragleave', () => li.classList.remove('drop-before', 'drop-after'));
+    li.addEventListener('drop', (e) => {
+      if (!drag || drag.si !== si) return; e.preventDefault();
+      const before = li.classList.contains('drop-before'); li.classList.remove('drop-before', 'drop-after');
+      const s = c.sections[si]; const all = sectionItems(s, menu, lib);
+      const from = all.findIndex((x) => x.key === drag.key); const [moved] = all.splice(from, 1);
+      let to = all.findIndex((x) => x.key === li.dataset.key); if (!before) to += 1;
+      all.splice(to, 0, moved); s.order = all.map((x) => x.key); drag = null; changed(); draw();
+    });
+  });
+  document.addEventListener('dragend', () => { drag = null; $$('.mc-items li.dragging, .mc-items li.drop-before, .mc-items li.drop-after').forEach((x) => x.classList.remove('dragging', 'drop-before', 'drop-after')); }, { once: true });
   const se = $('#mc-season'); if (se) se.onchange = () => { c.season = se.value || null; changed(); draw(); };
   const cp = $('#mc-copy'); if (cp) cp.onclick = () => {
-    const n = JSON.parse(JSON.stringify(c)); n.id = uid(); n.name = `${c.name || c.title} (${L({ en: 'copy', nl: 'kopie' })})`;
+    const n = JSON.parse(JSON.stringify(c)); n.id = uid(); n.name = `${c.name || c.title} (${L({ en: 'copy', nl: 'kopie' })})`; n.validFrom = null; n.validTo = null;
     n.sections.forEach((x) => { x.id = uid(); });
     cards.push(n); cur = n; changed(); draw(); toast(L({ en: 'Copy made. Save to keep it.', nl: 'Kopie gemaakt. Sla op om hem te bewaren.' }));
   };

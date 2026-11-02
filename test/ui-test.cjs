@@ -505,6 +505,22 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!(await p.$('#printArea .mc-page'))) throw new Error('no printed card');
       await p.screenshot({ path: `${OUT}/27-menucard.png`, fullPage: false });
       await p.goto(BASE + '#/menucard/allergens'); await p.waitForFunction(() => /Allergenenkaart/.test(document.querySelector('#mc-frame').srcdoc || '')); });
+    await step('menu cards: drag a dish; valid until a past date sends a card to the card archive; use it again', async () => {
+      await p.goto(BASE + '#/menucard/dinner/edit'); await p.waitForSelector('.mc-items[data-sec="0"] li');
+      const names = await p.$$eval('.mc-items[data-sec="0"] .mc-i-n', (x) => x.map((e) => e.textContent));
+      await p.locator('.mc-items[data-sec="0"] li >> nth=0 >> .mc-grip').dragTo(p.locator('.mc-items[data-sec="0"] li >> nth=2'), { targetPosition: { x: 40, y: 30 } });
+      await p.waitForTimeout(300);
+      const after = await p.$$eval('.mc-items[data-sec="0"] .mc-i-n', (x) => x.map((e) => e.textContent));
+      if (after[0] === names[0]) throw new Error('drag did not move: ' + after.join(', '));
+      await p.fill('[data-c="validTo"]', '2025-12-31'); await p.waitForSelector('#mc-valid-st:has-text("Ended")');
+      await p.click('#mc-save'); await p.waitForSelector('.toast:has-text("Menu cards saved")');
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('a[href="#/menucard/archive"]');
+      if (await p.$('.menu-actions a[href="#/menucard/dinner"]')) throw new Error('ended card still on the Menu page');
+      await p.click('a[href="#/menucard/archive"]'); await p.waitForSelector('.mc-arch-row');
+      await p.screenshot({ path: `${OUT}/27c-card-archive.png` });
+      await p.click('.mc-arch-row:has-text("Dinerkaart") [data-reuse]'); await p.waitForSelector('.mc-form');
+      const cards = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'menu_cards').value.cards);
+      if (cards.filter((c) => c.name === 'Dinerkaart').length !== 2 || !cards.some((c) => c.name === 'Dinerkaart' && !c.validTo)) throw new Error('reuse failed'); });
     await step('menu cards: a Word document comes in as a card in the same style', async () => {
       const html = '<h1>Kerstlunch</h1><p>24 december</p><h2>Voor</h2><p><strong>Tartine met gerookte forel</strong> 14</p><p>Met dille.</p><p><strong>Paddenstoelenbouillon</strong></p><h2>Hoofd</h2><p>Hertenstoof met rode kool  24,50</p><p>Met jeneverbes</p>';
       const card = await p.evaluate(async (h) => { const m = await import('/js/pages/menucard.js'); return m.parseWordHtml(h, window.__mockdb.menu_items); }, html);
