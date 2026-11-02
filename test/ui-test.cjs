@@ -103,6 +103,19 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster'); await p.waitForSelector('.tpl-chip');
       if (!(await p.$('th.closed'))) throw new Error('no closed day'); if (!(await p.$('text=Wintertuin Verteld'))) throw new Error('no note');
       await p.screenshot({ path: `${OUT}/04-roster.png`, fullPage: true }); });
+    await step('roster: day, week and month overview; a day in the month opens that day', async () => {
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('table.roster');
+      await p.click('[data-view=month]'); await p.waitForSelector('.ro-mo-day');
+      const n = await p.$$eval('.ro-mo-day:not(.out)', (x) => x.length); if (n < 28 || n > 31) throw new Error('month days ' + n);
+      if (!(await p.$('.ro-mo-s'))) { await p.click('#prev'); await p.waitForSelector('.ro-mo-day'); }
+      await p.screenshot({ path: `${OUT}/04c-roster-month.png`, fullPage: true });
+      const dayWith = await p.$eval('.ro-mo-day:has(.ro-mo-s)', (b) => b.dataset.openDay);
+      await p.click(`[data-open-day="${dayWith}"]`); await p.waitForSelector('.ro-day .ro-tl-row');
+      if (!(await p.$(`.day-tab.on[data-mday="${dayWith}"]`))) throw new Error('wrong day opened');
+      await p.screenshot({ path: `${OUT}/04d-roster-day.png`, fullPage: true });
+      await p.click('#next'); await p.waitForSelector('.ro-day'); const nd = await p.$eval('.day-tab.on', (b) => b.dataset.mday); if (nd <= dayWith) throw new Error('next day did not move');
+      await p.click('[data-view=week]'); await p.waitForSelector('table.roster');
+      if (!(await p.$(`th`))) throw new Error('no week'); });
     await step('roster: close and reopen a day with one click', async () => {
       const b = await p.$('.day-toggle.is-open'); const ds = await b.getAttribute('data-day');
       await b.click(); await p.waitForSelector(`.day-toggle.is-closed[data-day="${ds}"]`);
@@ -511,6 +524,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await q.$('.day-toggle, .row-handle, .row-move')) throw new Error('staff can change days or order');
       await q.click('.day-tab:not(.on)'); await q.waitForSelector('.day-tab.on');
       await q.screenshot({ path: `${OUT}/09b-roster-phone.png`, fullPage: true });
+      await q.click('[data-view=week]'); await q.waitForSelector('.ro-wk-day'); if (!(await q.isVisible('.ro-wk'))) throw new Error('week list hidden on phone');
+      if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('week list scrolls sideways');
+      await q.screenshot({ path: `${OUT}/09c-roster-phone-week.png`, fullPage: true });
+      await q.click('[data-view=month]'); await q.waitForSelector('.ro-mo-day');
+      if (await q.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('month scrolls sideways on phone');
+      await q.screenshot({ path: `${OUT}/09d-roster-phone-month.png`, fullPage: true });
+      await q.click('[data-view=day]'); await q.waitForSelector('.roster-m .day-tab');
       await q.goto(BASE + '#/settings'); await q.waitForSelector('.home-hero');
       await q.goto(BASE + '#/roster'); await q.waitForSelector('.roster-m .day-tab'); if (await q.$('[data-add]')) throw new Error('plan button for staff');
       await q.goto(BASE + '#/sops'); await q.waitForSelector('.sop-card');

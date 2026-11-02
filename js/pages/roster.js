@@ -1,8 +1,8 @@
-// Roster: a week grid like Teams Shifts. Your own shifts in colour, colleagues in grey.
+// Roster: a day, week or month overview. The week is a grid like Teams Shifts. Your own shifts in colour, colleagues in grey.
 // Managers plan by clicking "+", by dragging a fixed shift onto a day, or by dragging a shift to another day or person.
 // Exports to calendar (.ics), prints "who works today", and compares planned hours with clocked hours.
 import { state, isManager, app, esc, fmt, toast, toastError, isoOf, $, $$, openModal, confirmDialog, download, printHtml } from '../core.js';
-import { t } from '../i18n.js';
+import { t, lang } from '../i18n.js';
 import { sectionClass } from './roster-colors.js';
 import { sb, check } from '../data.js';
 
@@ -17,7 +17,14 @@ const noteOf = (c) => (c && c.note && !/^Event:/.test(c.note) ? c.note : '');
 const guestsOfEv = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
 const evLabels = (ds) => weekEvents.filter((e) => e.event_date === ds).map((e) => `<a class="ro-ev ev-${esc(e.status)}" href="#/events/${e.id}" title="${esc(e.title)} · ${t('evs_' + e.status)}">
   <span class="evdot ev-${esc(e.status)}"></span><span class="ro-ev-t">${e.start_time ? `${fmt.time(e.start_time)} ` : ''}${esc(e.title)}</span>${guestsOfEv(e) ? `<span class="ro-ev-g">${guestsOfEv(e)} ${t('ev_p')}</span>` : ''}</a>`).join('');
-let mDay = null; // the day shown in the phone view (iso date)
+let mDay = null; // the day shown in the day view (iso date)
+// Day, week or month. Remembered on this device; a phone starts on the day, a computer on the week.
+const VIEW_KEY = 'wt_roster_view';
+let view = (() => { try { const v = localStorage.getItem(VIEW_KEY); if (['day', 'week', 'month'].includes(v)) return v; } catch { /* private mode */ } return window.matchMedia('(max-width: 700px)').matches ? 'day' : 'week'; })();
+let cursor = null; // the date the view is about (noon)
+let monthOf = null; // first day of the month shown in the month view
+const L = (o) => o[lang()] || o.en;
+const firstName = (n) => String(n || '').trim().split(/\s+/)[0];
 
 function mondayOf(d) { const m = new Date(d); const day = m.getDay(); m.setDate(m.getDate() + (day === 0 ? -6 : 1 - day)); m.setHours(12, 0, 0, 0); return m; }
 function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
@@ -26,14 +33,26 @@ const toTime = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${Stri
 const shiftHours = (s) => Math.max(0, (toMin(s.end_time) - toMin(s.start_time)) / 60);
 
 export async function renderRoster() {
-  if (!weekStart) weekStart = mondayOf(new Date());
+  if (!cursor) { cursor = new Date(); cursor.setHours(12, 0, 0, 0); }
+  weekStart = mondayOf(cursor);
+  monthOf = new Date(cursor.getFullYear(), cursor.getMonth(), 1, 12);
+  if (view === 'day') mDay = isoOf(cursor);
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   await load();
 }
 
+// The days a view covers: the week of the day (so the day strip works), the week, or whole weeks around the month
+function spanDays() {
+  if (view !== 'month') return [...Array(7)].map((_, i) => addDays(weekStart, i));
+  const start = mondayOf(monthOf); const last = new Date(monthOf.getFullYear(), monthOf.getMonth() + 1, 0, 12);
+  const end = addDays(mondayOf(last), 6); const out = [];
+  for (let d = start; isoOf(d) <= isoOf(end); d = addDays(d, 1)) out.push(d);
+  return out;
+}
+
 async function load() {
-  const days = [...Array(7)].map((_, i) => addDays(weekStart, i));
-  const from = isoOf(days[0]); const to = isoOf(days[6]);
+  const days = spanDays();
+  const from = isoOf(days[0]); const to = isoOf(days[days.length - 1]);
   // Opening days and notes (closed days, themed evenings) come from Wintertuin Finance: one source of truth
   try {
     const { data } = await sb.rpc('fin_public_calendar', { p_from: from, p_to: to });
@@ -47,7 +66,7 @@ async function load() {
     check(await sb.from('shifts').select('*, profiles:staff_id(full_name)').gte('shift_date', from).lte('shift_date', to).order('start_time')),
     check(await sb.from('shift_templates').select('*').order('sort_order').order('start_time')),
     (async () => {
-      let q = sb.from('checkins').select('*').gte('check_in_at', new Date(`${from}T00:00:00`).toISOString()).lt('check_in_at', new Date(`${isoOf(addDays(days[6], 1))}T00:00:00`).toISOString());
+      let q = sb.from('checkins').select('*').gte('check_in_at', new Date(`${from}T00:00:00`).toISOString()).lt('check_in_at', new Date(`${isoOf(addDays(days[days.length - 1], 1))}T00:00:00`).toISOString());
       if (!isManager()) q = q.eq('staff_id', state.me.id);
       return check(await q);
     })(),
@@ -61,8 +80,15 @@ function draw(days, checkins) {
   const staff = state.profiles.filter((p) => p.active !== false)
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0) || a.full_name.localeCompare(b.full_name));
   const today = isoOf(new Date());
-  const range = `${fmt.dayMonth(days[0])} – ${fmt.dayMonth(days[6])}`;
+  const loc = lang() === 'nl' ? 'nl-NL' : 'en-GB';
+  const range = view === 'month' ? monthOf.toLocaleDateString(loc, { month: 'long', year: 'numeric' })
+    : `${fmt.dayMonth(days[0])} – ${fmt.dayMonth(days[6])}`;
   const mgr = isManager();
+  const nowLabel = { day: L({ en: 'Today', nl: 'Vandaag' }), week: t('this_week'), month: L({ en: 'This month', nl: 'Deze maand' }) }[view];
+  const prevLabel = { day: L({ en: 'Previous day', nl: 'Vorige dag' }), week: t('prev_week'), month: L({ en: 'Previous month', nl: 'Vorige maand' }) }[view];
+  const nextLabel = { day: L({ en: 'Next day', nl: 'Volgende dag' }), week: t('next_week'), month: L({ en: 'Next month', nl: 'Volgende maand' }) }[view];
+  const viewSwitch = `<div class="ro-views" role="tablist" aria-label="${L({ en: 'Overview', nl: 'Overzicht' })}">${[['day', L({ en: 'Day', nl: 'Dag' })], ['week', L({ en: 'Week', nl: 'Week' })], ['month', L({ en: 'Month', nl: 'Maand' })]]
+    .map(([k, label]) => `<button type="button" role="tab" aria-selected="${view === k}" class="${view === k ? 'on' : ''}" data-view="${k}">${label}</button>`).join('')}</div>`;
   app().innerHTML = `
     <div class="page-head"><div><h1>${t('roster_title')}</h1><div class="muted small">${t('roster_sub')}</div></div>
       <div class="page-actions">
@@ -77,16 +103,16 @@ function draw(days, checkins) {
           </div></details></div></div>
     <div class="card">
       <div class="roster-bar">
-        <div style="display:flex;gap:6px;align-items:center"><button type="button" class="btn-sm" id="prev" aria-label="${t('prev_week')}"><i class="ic ic-prev" aria-hidden="true"></i></button>
-          <button type="button" class="btn-sm" id="this">${t('this_week')}</button>
-          <button type="button" class="btn-sm" id="next" aria-label="${t('next_week')}"><i class="ic ic-next" aria-hidden="true"></i></button></div>
-        <span class="week">${esc(range)}</span></div>
+        <div style="display:flex;gap:6px;align-items:center"><button type="button" class="btn-sm" id="prev" aria-label="${esc(prevLabel)}"><i class="ic ic-prev" aria-hidden="true"></i></button>
+          <button type="button" class="btn-sm" id="this">${esc(nowLabel)}</button>
+          <button type="button" class="btn-sm" id="next" aria-label="${esc(nextLabel)}"><i class="ic ic-next" aria-hidden="true"></i></button></div>
+        <span class="week">${esc(range)}</span>${viewSwitch}</div>
       <div class="tiny muted" style="margin:-4px 0 10px">${t('opening_from_finance')}</div>
-      ${mgr ? `<div class="note" style="margin:0 0 12px">
+      ${mgr && view === 'week' ? `<div class="note ro-fixed" style="margin:0 0 12px">
           <div class="row-split" style="margin-bottom:${templates.length ? '8px' : '0'}"><strong>${t('fixed_shifts')}</strong><a href="#/settings/templates" class="small">${t('fixed_manage')}</a></div>
           ${templates.length ? `<div class="tpl-chips">${templates.map((tp) => `<span class="tpl-chip" draggable="true" data-tpl="${tp.id}">${esc(tp.name)} · ${fmt.time(tp.start_time)}–${fmt.time(tp.end_time)}</span>`).join('')}</div>
           <div class="tiny muted" style="margin-top:6px">${t('fixed_drag_hint')}</div>` : `<div class="tiny muted">${t('fixed_none')}</div>`}</div>` : ''}
-      <div class="roster-wrap"><table class="roster"><thead><tr><th>${t('staff_member')}</th>
+      ${view === 'month' ? monthView(days, staff, today) : view === 'day' ? dayView(days, staff, mgr, today) : `<div class="roster-wrap"><table class="roster"><thead><tr><th>${t('staff_member')}</th>
         ${days.map((d) => { const c = calendar[isoOf(d)]; const closed = c && !c.is_open;
           return `<th class="${isoOf(d) === today ? 'today' : ''} ${closed ? 'closed' : ''}">${esc(fmt.weekdayShort(d))}<br><span class="small" style="font-weight:500">${d.getDate()}/${d.getMonth() + 1}</span>
           ${noteOf(c) ? `<span class="day-note">${esc(noteOf(c))}</span>` : ''}${evLabels(isoOf(d)) ? `<span class="ro-evs">${evLabels(isoOf(d))}</span>` : ''}
@@ -101,16 +127,31 @@ function draw(days, checkins) {
         </tbody>
         <tfoot><tr><td class="small muted">${t('hours_planned_day')}</td>${days.map((d) => { const ds = isoOf(d); const h = shifts.filter((x) => x.shift_date === ds).reduce((a, x) => a + shiftHours(x), 0);
           const closed = calendar[ds] && !calendar[ds].is_open; return `<td class="day-total ${closed ? 'closed' : ''}">${h ? `${fmt.num(h, 1)} ${t('h')}` : ''}</td>`; }).join('')}</tr></tfoot></table></div>
-      ${mobileView(days, staff, mgr, today)}</div>
-    ${hoursOverview(staff, checkins)}`;
+      ${weekList(days, today)}`}</div>
+    ${hoursOverview(staff, checkins, days)}`;
 
-  $('#prev').onclick = () => { weekStart = addDays(weekStart, -7); renderRoster(); };
-  $('#next').onclick = () => { weekStart = addDays(weekStart, 7); renderRoster(); };
-  $('#this').onclick = () => { weekStart = mondayOf(new Date()); renderRoster(); };
+  const step = (n) => {
+    if (view === 'month') cursor = new Date(monthOf.getFullYear(), monthOf.getMonth() + n, 1, 12);
+    else cursor = addDays(view === 'day' ? new Date(`${mDay}T12:00:00`) : weekStart, view === 'day' ? n : 7 * n);
+    weekStart = null; renderRoster();
+  };
+  $('#prev').onclick = () => step(-1);
+  $('#next').onclick = () => step(1);
+  $('#this').onclick = () => { cursor = new Date(); cursor.setHours(12, 0, 0, 0); weekStart = null; renderRoster(); };
+  $$('[data-view]').forEach((b) => (b.onclick = () => {
+    if (view === b.dataset.view) return;
+    // keep the same moment: from a day or week to its month, from a month to its first week (or today, if it is this month)
+    if (view === 'day' && mDay) cursor = new Date(`${mDay}T12:00:00`);
+    else if (view === 'month') { const now = new Date(); cursor = now.getMonth() === monthOf.getMonth() && now.getFullYear() === monthOf.getFullYear() ? now : new Date(monthOf); cursor.setHours(12, 0, 0, 0); }
+    view = b.dataset.view; try { localStorage.setItem(VIEW_KEY, view); } catch { /* private mode */ }
+    weekStart = null; renderRoster();
+  }));
+  // a day in the month or week list opens that day
+  $$('[data-open-day]').forEach((b) => (b.onclick = (e) => { if (e.target.closest('a')) return; cursor = new Date(`${b.dataset.openDay}T12:00:00`); view = 'day'; try { localStorage.setItem(VIEW_KEY, view); } catch { /* ignore */ } weekStart = null; renderRoster(); }));
   $('#print-today').onclick = printToday;
   $$('[data-ics]').forEach((b) => (b.onclick = () => exportIcs(b.dataset.ics)));
   const csv = $('#csv'); if (csv) csv.onclick = exportCsv;
-  $$('[data-mday]').forEach((b) => (b.onclick = () => { mDay = b.dataset.mday; draw(days, checkins); }));
+  $$('[data-mday]').forEach((b) => (b.onclick = () => { mDay = b.dataset.mday; cursor = new Date(`${mDay}T12:00:00`); draw(days, checkins); }));
   if (!mgr) return;
   $$('[data-add]').forEach((b) => (b.onclick = () => { const [pid, ds] = b.dataset.add.split('|'); openShift(null, pid, ds); }));
   $$('[data-shift]').forEach((b) => (b.onclick = () => openShift(shifts.find((s) => s.id === b.dataset.shift))));
@@ -222,10 +263,14 @@ function chip(s) {
     ${fmt.time(s.start_time)}–${fmt.time(s.end_time)}${s.section ? `<span class="sec">${esc(s.section)}</span>` : ''}</${mgr ? 'button' : 'div'}>`;
 }
 
-function hoursOverview(staff, checkins) {
+function hoursOverview(staff, allCheckins, days) {
   const list = isManager() ? staff : staff.filter((p) => p.id === state.me.id);
   if (!list.length) return '';
-  return `<h2 class="section-title">${t('hours_week')}</h2>
+  // in the month view: only the days of that month (the grid also shows the edges of the months around it)
+  const inMonth = (ds) => view !== 'month' || ds.slice(0, 7) === isoOf(monthOf).slice(0, 7);
+  const shifts = allShifts().filter((s) => inMonth(s.shift_date));
+  const checkins = allCheckins.filter((c) => inMonth(isoOf(new Date(c.check_in_at))));
+  return `<h2 class="section-title">${view === 'month' ? L({ en: 'Hours this month', nl: 'Uren deze maand' }) : t('hours_week')}</h2>
     <div class="card"><div class="small muted" style="margin-bottom:8px">${t('hours_week_sub')}</div><div class="table-wrap"><table class="num-table">
     <thead><tr><th>${t('staff_member')}</th><th>${t('planned')}</th><th>${t('worked')}</th></tr></thead><tbody>
     ${list.map((p) => {
@@ -233,6 +278,55 @@ function hoursOverview(staff, checkins) {
       const worked = checkins.filter((c) => c.staff_id === p.id && c.check_out_at).reduce((a, c) => a + (new Date(c.check_out_at) - new Date(c.check_in_at)) / 3600000, 0);
       return `<tr><td>${esc(p.full_name)}</td><td>${fmt.num(planned, 1)} ${t('h')}</td><td>${fmt.num(worked, 1)} ${t('h')}</td></tr>`;
     }).join('')}</tbody></table></div></div>`;
+}
+
+const allShifts = () => shifts;
+
+// Day view: the strip of seven days, then who works when, with a time line so you see the whole day at a glance
+function dayView(days, staff, mgr, today) {
+  const ds = mDay;
+  const dayShifts = shifts.filter((s) => s.shift_date === ds);
+  let lo = 9 * 60; let hi = 17 * 60;
+  dayShifts.forEach((s) => { lo = Math.min(lo, toMin(s.start_time)); hi = Math.max(hi, toMin(s.end_time)); });
+  lo = Math.floor(lo / 60) * 60; hi = Math.ceil(hi / 60) * 60;
+  const span = Math.max(60, hi - lo); const pct = (m) => `${((m - lo) / span) * 100}%`;
+  const hours = []; for (let m = lo; m <= hi; m += span > 12 * 60 ? 120 : 60) hours.push(m);
+  const tl = dayShifts.length ? `<div class="ro-tl" aria-hidden="true"><div class="ro-tl-scale">${hours.map((m) => `<span style="left:${pct(m)}">${toTime(m).slice(0, 2)}</span>`).join('')}</div>
+    ${staff.filter((p) => dayShifts.some((s) => s.staff_id === p.id)).sort((a, b) => toMin(dayShifts.find((s) => s.staff_id === a.id).start_time) - toMin(dayShifts.find((s) => s.staff_id === b.id).start_time))
+      .map((p) => `<div class="ro-tl-row ${p.id === state.me.id ? 'me' : ''}"><span class="ro-tl-name">${esc(firstName(p.full_name))}</span><span class="ro-tl-track">${hours.map((m) => `<i style="left:${pct(m)}"></i>`).join('')}
+        ${dayShifts.filter((s) => s.staff_id === p.id).map((s) => `<b class="${sectionClass(s.section)}" style="left:${pct(toMin(s.start_time))};width:calc(${pct(toMin(s.end_time))} - ${pct(toMin(s.start_time))})"></b>`).join('')}</span></div>`).join('')}
+    </div>` : '';
+  return `<div class="roster-m ro-day">${mobileView(days, staff, mgr, today).replace('<div class="roster-m">', '').replace(/<\/div>\s*$/, '')}${tl}</div>`;
+}
+
+// Week on a phone: the seven days under each other, with who works when
+function weekList(days, today) {
+  return `<div class="ro-wk">${days.map((d) => { const ds = isoOf(d); const c = calendar[ds]; const closed = c && !c.is_open;
+    const here = shifts.filter((s) => s.shift_date === ds).sort((a, b) => toMin(a.start_time) - toMin(b.start_time));
+    return `<button type="button" class="ro-wk-day ${ds === today ? 'today' : ''} ${closed ? 'closed' : ''}" data-open-day="${ds}">
+      <span class="ro-wk-date"><span>${esc(fmt.weekdayShort(d))}</span><b>${d.getDate()}</b></span>
+      <span class="ro-wk-body">${noteOf(c) ? `<span class="day-note">${esc(noteOf(c))}</span>` : ''}${weekEvents.filter((e) => e.event_date === ds).map((e) => `<span class="ro-wk-ev">&#9733; ${esc(e.title)}</span>`).join('')}
+        ${here.length ? here.map((s) => `<span class="ro-wk-s ${sectionClass(s.section)} ${s.staff_id === state.me.id ? 'mine' : ''}"><strong>${esc(firstName(s.profiles ? s.profiles.full_name : ''))}</strong> ${fmt.time(s.start_time)}–${fmt.time(s.end_time)}</span>`).join('')
+          : `<span class="muted small">${closed ? t('closed') : t('m_nobody')}</span>`}</span></button>`; }).join('')}</div>`;
+}
+
+// Month: a calendar with who works each day. Tap a day to open it.
+function monthView(days, staff, today) {
+  const month = isoOf(monthOf).slice(0, 7);
+  const head = days.slice(0, 7).map((d) => `<div class="ro-mo-wd">${esc(fmt.weekdayShort(d))}</div>`).join('');
+  const cells = days.map((d) => { const ds = isoOf(d); const c = calendar[ds]; const closed = c && !c.is_open;
+    const here = shifts.filter((s) => s.shift_date === ds).sort((a, b) => toMin(a.start_time) - toMin(b.start_time));
+    const ev = weekEvents.filter((e) => e.event_date === ds);
+    const mine = here.some((s) => s.staff_id === state.me.id);
+    const label = `${fmt.dateLong(ds)}: ${here.length} ${L({ en: here.length === 1 ? 'shift' : 'shifts', nl: here.length === 1 ? 'dienst' : 'diensten' })}${closed ? `, ${t('closed')}` : ''}`;
+    return `<button type="button" class="ro-mo-day ${ds.slice(0, 7) !== month ? 'out' : ''} ${ds === today ? 'today' : ''} ${closed ? 'closed' : ''} ${mine ? 'mine' : ''}" data-open-day="${ds}" aria-label="${esc(label)}">
+      <span class="ro-mo-top"><b>${d.getDate()}</b>${ev.length ? `<span class="ro-mo-ev" title="${esc(ev.map((e) => e.title).join(', '))}">&#9733;</span>` : ''}${closed ? `<span class="ro-mo-closed">${t('closed')}</span>` : ''}</span>
+      ${noteOf(c) ? `<span class="ro-mo-note">${esc(noteOf(c))}</span>` : ''}
+      <span class="ro-mo-list">${here.slice(0, 4).map((s) => `<span class="ro-mo-s ${sectionClass(s.section)} ${s.staff_id === state.me.id ? 'mine' : ''}">${fmt.time(s.start_time)} ${esc(firstName(s.profiles ? s.profiles.full_name : ''))}</span>`).join('')}${here.length > 4 ? `<span class="ro-mo-more">+${here.length - 4}</span>` : ''}</span>
+      <span class="ro-mo-dots">${here.slice(0, 6).map((s) => `<i class="${sectionClass(s.section)} ${s.staff_id === state.me.id ? 'mine' : ''}"></i>`).join('')}${here.length > 6 ? '<em>+</em>' : ''}</span>
+    </button>`; }).join('');
+  return `<div class="ro-mo"><div class="ro-mo-grid">${head}${cells}</div>
+    <div class="tiny muted ro-mo-hint">${L({ en: 'Tap a day to see who works when.', nl: 'Tik op een dag om te zien wie wanneer werkt.' })}</div></div>`;
 }
 
 // ------------------------------------------------------------------ add / edit a shift, with an Outlook-like time bar
@@ -317,8 +411,9 @@ function buildIcs(rows, calName) {
 }
 async function exportIcs(kind) {
   const [who, span] = kind.split('-');
-  const from = span === 'week' ? weekStart : new Date(weekStart.getFullYear(), weekStart.getMonth(), 1, 12);
-  const to = span === 'week' ? addDays(weekStart, 6) : new Date(weekStart.getFullYear(), weekStart.getMonth() + 1, 0, 12);
+  const base = view === 'month' ? monthOf : cursor;
+  const from = span === 'week' ? weekStart : new Date(base.getFullYear(), base.getMonth(), 1, 12);
+  const to = span === 'week' ? addDays(weekStart, 6) : new Date(base.getFullYear(), base.getMonth() + 1, 0, 12);
   try {
     let q = sb.from('shifts').select('*, profiles:staff_id(full_name)').gte('shift_date', isoOf(from)).lte('shift_date', isoOf(to)).order('shift_date').order('start_time');
     if (who === 'my') q = q.eq('staff_id', state.me.id);
