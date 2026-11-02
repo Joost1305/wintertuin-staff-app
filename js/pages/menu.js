@@ -5,7 +5,8 @@ import { t, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { PHOTO_BUCKET } from '../config.js';
 import { loadCards } from './menucard.js';
-import { upgradeMenuOnce } from '../menu-upgrade.js';
+import { upgradeMenuOnce, addExampleDishesOnce } from '../menu-upgrade.js';
+import { SEASONS, seasonName, fitsSeason, seasonPills } from '../seasons.js';
 
 // Turn any YouTube or Vimeo link (watch, share, shorts, embed) into the embed address that may be shown inside the app.
 export function embedUrl(raw) {
@@ -41,7 +42,7 @@ let archivedCount = 0;
 let menuCards = [];
 
 export async function renderMenu(args = []) {
-  if (args[0] === 'archive' && isManager()) return renderArchive();
+  if ((args[0] === 'dishes' || args[0] === 'archive') && isManager()) return renderDishDb();
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   // first visit of a manager after the update: our own menu goes in, the demo dishes and demo lunch card out
   if (isManager()) { const up = await upgradeMenuOnce(); if (up && (up.added || up.removed)) toast(lang() === 'nl' ? `Menu bijgewerkt: ${up.added} gerechten erbij, ${up.removed} demo's weg` : `Menu updated: ${up.added} dishes added, ${up.removed} demo dishes removed`); }
@@ -49,7 +50,7 @@ export async function renderMenu(args = []) {
     sb.from('menu_items').select('*').eq('active', true).order('group_type').order('sort_order').order('name'), // order set under Settings > Menu order
     loadPdfs(),
     loadDishOfMonth().then((d) => { dishOfMonth = d; }),
-    isManager() ? sb.from('menu_items').select('id', { count: 'exact', head: true }).eq('active', false).then((r) => { archivedCount = r.count || 0; }, () => {}) : null,
+    isManager() ? sb.from('menu_items').select('id', { count: 'exact', head: true }).then((r) => { archivedCount = r.count || 0; }, () => {}) : null,
     loadCards().then((c) => { menuCards = c; }),
   ]);
   items = check(rows) || [];
@@ -68,12 +69,12 @@ function draw() {
       ${pdfs.map((x) => `<span class="btn-pair"><a class="btn btn-sm" href="${esc(x.view)}" target="_blank" rel="noopener" data-pdf-view="${x.id}"><i class="ic ic-book" aria-hidden="true"></i> ${esc(x.label)}</a> <a class="btn btn-sm" href="${esc(x.download)}" ${x.sameSite ? `download="${esc(fileName(x.label))}"` : ''} data-pdf-dl="${x.id}" title="${t('download')}" aria-label="${t('download')}: ${esc(x.label)}"><i class="ic ic-download" aria-hidden="true"></i></a></span>`).join('')}
       ${isManager() ? `<button type="button" class="btn-sm" id="pdf-manage"><i class="ic ic-pencil" aria-hidden="true"></i> ${t('menu_pdfs_manage')}</button>` : ''}
       ${items.length ? `<button type="button" class="btn-sm" id="dish-expand">${t('sops_expand_all')}</button>` : ''}
-      ${isManager() && items.length ? `<button type="button" class="btn-sm" id="sel-on"><i class="ic ic-check" aria-hidden="true"></i> ${L({ en: 'Archive dishes', nl: 'Gerechten archiveren' })}</button>` : ''}
-      ${isManager() ? `<a class="btn btn-sm" href="#/menu/archive">${L({ en: 'Archive', nl: 'Archief' })}${archivedCount ? ` (${archivedCount})` : ''}</a>` : ''}
+      ${isManager() && items.length ? `<button type="button" class="btn-sm" id="sel-on"><i class="ic ic-check" aria-hidden="true"></i> ${L({ en: 'Take dishes off', nl: 'Gerechten van de kaart' })}</button>` : ''}
+      ${isManager() ? `<a class="btn btn-sm" href="#/menu/dishes"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Dish database', nl: 'Gerechtendatabase' })}${archivedCount ? ` (${archivedCount})` : ''}</a>` : ''}
       ${isManager() ? `<button type="button" class="btn-primary btn-sm" id="add">+ ${t('menu_add')}</button>` : ''}</div></div>
     ${selecting ? `<div class="sel-bar"><span>${L({ en: 'Tap the dishes that are off the menu, or a whole heading.', nl: 'Tik de gerechten aan die van de kaart gaan, of een hele kop.' })}</span>
       <span class="sel-tools"><button type="button" class="btn-sm" id="sel-off">${L({ en: 'Cancel', nl: 'Annuleren' })}</button>
-      <button type="button" class="btn-primary btn-sm" id="sel-go" ${picked.size ? '' : 'disabled'}>${L({ en: `Archive ${picked.size || ''}`, nl: `${picked.size || ''} archiveren` })}</button></span></div>` : ''}
+      <button type="button" class="btn-primary btn-sm" id="sel-go" ${picked.size ? '' : 'disabled'}>${L({ en: `Take ${picked.size || ''} off`, nl: `${picked.size || ''} van de kaart` })}</button></span></div>` : ''}
     ${!items.length ? `<div class="card empty">${t('menu_none')}</div>` : ''}
     ${(() => { const d = dishOfMonth && items.find((m) => m.id === dishOfMonth.id); if (!d) return '';
       return `<a class="card dom-card" href="#/menu" data-dom="${d.id}">${d.photo_url ? `<img src="${esc(d.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
@@ -94,8 +95,8 @@ function draw() {
     $$('[data-pickall]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); const ids = b.dataset.pickall.split(','); const all = ids.every((i) => picked.has(i)); ids.forEach((i) => (all ? picked.delete(i) : picked.add(i))); draw(); }));
     const go = $('#sel-go'); if (go) go.onclick = async () => {
       const n = picked.size;
-      if (!(await confirmDialog(L({ en: `Archive ${n} dish(es)? They leave the Menu page and the menu cards. You can bring them back from the Archive at any time.`, nl: `${n} gerecht(en) archiveren? Ze verdwijnen van de Menu-pagina en de menukaarten. Vanuit het Archief zet je ze altijd terug.` }), L({ en: 'Archive', nl: 'Archiveren' }), false))) return;
-      try { check(await sb.from('menu_items').update({ active: false }).in('id', [...picked])); toast(L({ en: `${n} archived`, nl: `${n} gearchiveerd` })); renderMenu(); } catch (err) { toastError(err); }
+      if (!(await confirmDialog(L({ en: `Take ${n} dish(es) off the menu? They leave the Menu page and the menu cards, and stay in the dish database. Put them back from there at any time.`, nl: `${n} gerecht(en) van de kaart halen? Ze verdwijnen van de Menu-pagina en de menukaarten en blijven in de gerechtendatabase. Vandaar zet je ze altijd terug.` }), L({ en: 'Take off', nl: 'Van de kaart' }), false))) return;
+      try { check(await sb.from('menu_items').update({ active: false }).in('id', [...picked])); toast(L({ en: `${n} off the menu`, nl: `${n} van de kaart` })); renderMenu(); } catch (err) { toastError(err); }
     };
   }
   const pm = $('#pdf-manage'); if (pm) pm.onclick = managePdfs;
@@ -240,7 +241,7 @@ async function uploadPhoto(file) {
   return sb.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
-function openEditor(m) {
+function openEditor(m, onDone = renderMenu) {
   const fields = [
     { name: 'group_type', label: t('menu_group'), type: 'select', options: [{ value: 'food', label: t('group_food') }, { value: 'beverage', label: t('group_beverage') }] },
     { name: 'name', label: t('name'), required: true },
@@ -248,7 +249,12 @@ function openEditor(m) {
     { name: 'description', label: t('description'), type: 'textarea' },
     { name: 'video_url', label: t('menu_video'), placeholder: 'https://www.youtube.com/watch?v=...', hint: t('menu_video_hint') },
     { name: 'price', label: t('price'), type: 'number' },
+    { name: 'dish_date', label: L({ en: 'Date', nl: 'Datum' }), type: 'date', hint: L({ en: 'When the dish was made or first on the menu.', nl: 'Wanneer het gerecht is bedacht of voor het eerst op de kaart stond.' }) },
   ];
+  const ss = new Set((m && m.seasons) || []);
+  const seasonBox = `<fieldset class="season-box"><legend>${L({ en: 'Season', nl: 'Seizoen' })}</legend>
+    <div class="season-checks">${SEASONS.map(([k]) => `<label class="season-check s-${k}"><input type="checkbox" name="season" value="${k}" ${ss.has(k) ? 'checked' : ''}><span>${seasonName(k)}</span></label>`).join('')}</div>
+    <div class="tiny muted" style="margin-top:6px">${L({ en: 'Nothing ticked means: all year.', nl: 'Niets aangevinkt betekent: het hele jaar.' })}</div></fieldset>`;
   const has = new Set((m && m.allergens) || []);
   const allergenBox = `<fieldset class="allergen-box"><legend>${t('allergens')}</legend>
     <div class="allergen-grid">${ALLERGENS.map((a) => `<label class="check"><input type="checkbox" name="al" value="${a}" ${has.has(a) ? 'checked' : ''}> ${esc(t('al_' + a))}</label>`).join('')}</div>
@@ -262,10 +268,10 @@ function openEditor(m) {
     <input type="file" id="dp-pick" accept="image/*" hidden><input type="file" id="dp-cam" accept="image/*" capture="environment" hidden></div>`;
   const before = fields.filter((f) => ['group_type', 'name', 'category', 'description'].includes(f.name));
   const after = fields.filter((f) => !before.includes(f));
-  const vals = m || { group_type: 'food' };
-  openModal(`<h2>${m ? t('menu_edit') : t('menu_add')}</h2><form id="f">${formHtml(before, vals)}${photoBox}${formHtml(after, vals)}${allergenBox}
+  const vals = m ? { ...m, dish_date: m.dish_date || '' } : { group_type: 'food', dish_date: new Date().toISOString().slice(0, 10) };
+  openModal(`<h2>${m ? t('menu_edit') : t('menu_add')}</h2><form id="f">${formHtml(before, vals)}${photoBox}${formHtml(after, vals)}${seasonBox}${allergenBox}
     <div class="modal-actions" style="justify-content:space-between">
-      <div>${m ? `<button type="button" class="btn-ghost" id="del">${L({ en: 'Archive', nl: 'Archiveren' })}</button>` : ''}</div>
+      <div>${m && m.active !== false ? `<button type="button" class="btn-ghost" id="del">${L({ en: 'Take off the menu', nl: 'Van de kaart' })}</button>` : ''}</div>
       <div style="display:flex;gap:8px"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></div></form>`,
   (cardEl, close) => {
     let newPhoto = null; let dropPhoto = false;
@@ -278,83 +284,132 @@ function openEditor(m) {
       const btn = cardEl.querySelector('button[type=submit]'); btn.disabled = true;
       try {
         const allergens = $$('input[name=al]:checked', cardEl).map((x) => x.value);
-        const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: embedUrl(v.video_url) || null, price: v.price, allergens };
+        const seasons = $$('input[name=season]:checked', cardEl).map((x) => x.value);
+        const row = { name: v.name, group_type: v.group_type, category: v.category, description: v.description, video_url: embedUrl(v.video_url) || null, price: v.price, allergens, seasons, dish_date: v.dish_date || null };
         if (newPhoto) row.photo_url = await uploadPhoto(newPhoto);
         else if (dropPhoto) row.photo_url = null;
         if (m) check(await sb.from('menu_items').update(row).eq('id', m.id));
         else check(await sb.from('menu_items').insert({ ...row, sort_order: items.reduce((mx, x) => Math.max(mx, x.sort_order || 0), 0) + 10 })); // new dishes go last
-        close(); toast(t('saved')); renderMenu();
+        close(); toast(t('saved')); onDone();
       } catch (err) { toastError(err); btn.disabled = false; }
     };
     const del = cardEl.querySelector('#del');
     if (del) del.onclick = async () => {
       close();
-      if (!(await confirmDialog(L({ en: 'Archive this dish? It leaves the Menu page and the menu cards; you can bring it back from the Archive.', nl: 'Dit gerecht archiveren? Het verdwijnt van de Menu-pagina en de menukaarten; vanuit het Archief zet je het terug.' }), L({ en: 'Archive', nl: 'Archiveren' }), false))) return;
-      try { check(await sb.from('menu_items').update({ active: false }).eq('id', m.id)); toast(L({ en: 'Archived', nl: 'Gearchiveerd' })); renderMenu(); } catch (err) { toastError(err); }
+      if (!(await confirmDialog(L({ en: 'Take this dish off the menu? It leaves the Menu page and the menu cards and stays in the dish database.', nl: 'Dit gerecht van de kaart halen? Het verdwijnt van de Menu-pagina en de menukaarten en blijft in de gerechtendatabase.' }), L({ en: 'Take off', nl: 'Van de kaart' }), false))) return;
+      try { check(await sb.from('menu_items').update({ active: false }).eq('id', m.id)); toast(L({ en: 'Off the menu', nl: 'Van de kaart' })); onDone(); } catch (err) { toastError(err); }
     };
   });
 }
 
 
-// ------------------------------------------------------------------ archive: dishes that are off the menu, kept with everything they had
-async function renderArchive() {
+// ------------------------------------------------------------------ dish database
+// Every dish we have, on the menu now or not. Filter by season, category and status; put dishes on or off the menu,
+// edit them with the pencil, delete for good. The menu cards pick their dishes from here too.
+const DB = { q: '', season: '', status: 'all', cat: '', sel: new Set() };
+async function renderDishDb() {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
-  const all = check(await sb.from('menu_items').select('*').eq('active', false).order('name')) || [];
-  let q = ''; const sel = new Set();
+  await addExampleDishesOnce();
+  let all = check(await sb.from('menu_items').select('*').order('name')) || [];
+  const cats = () => [...new Set(all.map((m) => m.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const filtered = () => all.filter((m) => fitsSeason(m, DB.season)
+    && (DB.status === 'all' || (DB.status === 'on') === (m.active !== false))
+    && (!DB.cat || m.category === DB.cat)
+    && (!DB.q || [m.name, m.category, m.description].some((v) => String(v || '').toLowerCase().includes(DB.q))));
+  const dateStr = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString(lang() === 'nl' ? 'nl-NL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '');
   const draw2 = () => {
-    const list = all.filter((m) => !q || [m.name, m.category].some((v) => String(v || '').toLowerCase().includes(q)));
+    const list = filtered();
+    const onN = all.filter((m) => m.active !== false).length;
+    const seasonCount = (k) => all.filter((m) => (DB.status === 'all' || (DB.status === 'on') === (m.active !== false)) && fitsSeason(m, k)).length;
+    DB.sel.forEach((id) => { if (!all.some((m) => m.id === id)) DB.sel.delete(id); });
+    const n = DB.sel.size;
     app().innerHTML = `
-      <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${t('menu_title')}</a><h1>${L({ en: 'Archive', nl: 'Archief' })}</h1>
-        <div class="muted small">${L({ en: 'Dishes that are off the menu, with their photo, text and allergens. Bring one back and it is on the Menu page again.', nl: 'Gerechten die van de kaart zijn, met foto, tekst en allergenen. Zet er een terug en hij staat weer op de Menu-pagina.' })}</div></div>
-        <div class="page-actions"><button type="button" class="btn-sm btn-danger" id="ar-del" ${sel.size ? '' : 'disabled'}><i class="ic ic-trash" aria-hidden="true"></i> ${L({ en: `Delete ${sel.size || ''}`, nl: `${sel.size || ''} verwijderen` })}</button>
-          <button type="button" class="btn-primary btn-sm" id="ar-back" ${sel.size ? '' : 'disabled'}>${L({ en: `Bring back ${sel.size || ''}`, nl: `${sel.size || ''} terugzetten` })}</button></div></div>
-      ${all.length ? `<div class="g-tools"><input type="search" id="ar-q" value="${esc(q)}" placeholder="${L({ en: 'Search a dish', nl: 'Zoek een gerecht' })}">
-        ${list.length ? `<label class="check small ar-all"><input type="checkbox" id="ar-all" ${list.every((m) => sel.has(m.id)) ? 'checked' : ''}> ${L({ en: 'Select all', nl: 'Alles kiezen' })}</label>` : ''}</div>` : ''}
-      <div class="card" style="padding:0">${list.length ? `<ul class="ar-list">${list.map((m) => `<li><label class="check"><input type="checkbox" data-ar="${m.id}" ${sel.has(m.id) ? 'checked' : ''}>
-          ${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="" loading="lazy">` : '<span class="dish-photo none" aria-hidden="true"></span>'}
-          <span><strong>${esc(m.name)}</strong><span class="small muted">${esc([m.category, m.price != null && m.price !== '' ? fmt.money(m.price) : ''].filter(Boolean).join(' / '))}</span></span></label>
-          <span class="ar-row-tools"><button type="button" class="btn-sm" data-one="${m.id}">${L({ en: 'Bring back', nl: 'Terugzetten' })}</button>
-          <button type="button" class="btn-sm btn-danger ar-del-one" data-delone="${m.id}" aria-label="${esc(L({ en: `Delete ${m.name}`, nl: `${m.name} verwijderen` }))}" title="${L({ en: 'Delete for good', nl: 'Definitief verwijderen' })}"><i class="ic ic-trash" aria-hidden="true"></i></button></span></li>`).join('')}</ul>`
-        : `<div class="empty">${all.length ? L({ en: 'Nothing found.', nl: 'Niets gevonden.' }) : L({ en: 'The archive is empty. Archive a dish from its Edit window, or several at once with Archive dishes on the Menu page.', nl: 'Het archief is leeg. Archiveer een gerecht via Bewerken, of meerdere tegelijk met Gerechten archiveren op de Menu-pagina.' })}</div>`}</div>`;
-    const qi = $('#ar-q'); if (qi) qi.oninput = () => { q = qi.value.toLowerCase(); const pos = qi.selectionStart; draw2(); const n = $('#ar-q'); n.focus(); n.setSelectionRange(pos, pos); };
-    $$('[data-ar]').forEach((c) => (c.onchange = () => { if (c.checked) sel.add(c.dataset.ar); else sel.delete(c.dataset.ar); draw2(); }));
-    const back = async (ids) => {
-      try {
-        const max = (check(await sb.from('menu_items').select('sort_order').eq('active', true)) || []).reduce((a, r) => Math.max(a, r.sort_order || 0), 0);
-        await Promise.all(ids.map((id, i) => sb.from('menu_items').update({ active: true, sort_order: max + (i + 1) * 10 }).eq('id', id).then(check)));
-        toast(L({ en: `${ids.length} back on the menu`, nl: `${ids.length} terug op de kaart` }));
-        ids.forEach((id) => { sel.delete(id); const i = all.findIndex((m) => m.id === id); if (i >= 0) all.splice(i, 1); });
-        draw2();
-      } catch (e) { toastError(e); }
-    };
-    $$('[data-one]').forEach((b) => (b.onclick = () => back([b.dataset.one])));
-    $('#ar-back').onclick = () => back([...sel]);
-    const allBox = $('#ar-all'); if (allBox) allBox.onchange = () => { list.forEach((m) => (allBox.checked ? sel.add(m.id) : sel.delete(m.id))); draw2(); };
-    // Delete for good: the dish, and its photo when no other dish uses it. Cannot be undone.
-    const remove = async (ids) => {
-      const names = ids.map((id) => (all.find((m) => m.id === id) || {}).name).filter(Boolean);
-      const msg = ids.length === 1
-        ? L({ en: `Delete "${names[0]}" for good? Its photo, text and allergens are gone too. This cannot be undone.`, nl: `"${names[0]}" definitief verwijderen? De foto, tekst en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` })
-        : L({ en: `Delete ${ids.length} dishes for good? Their photos, texts and allergens are gone too. This cannot be undone.`, nl: `${ids.length} gerechten definitief verwijderen? De foto's, teksten en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` });
-      if (!(await confirmDialog(msg, L({ en: 'Delete', nl: 'Verwijderen' })))) return;
-      try {
-        const gone = check(await sb.from('menu_items').delete().in('id', ids).select('id, photo_url')) || [];
-        if (gone.length < ids.length) throw new Error(L({ en: 'The database does not allow deleting dishes yet. Run the database update 012_menu_delete.sql once (GitHub > Actions > Database update).', nl: 'De database staat verwijderen van gerechten nog niet toe. Draai één keer de database-update 012_menu_delete.sql (GitHub > Actions > Database update).' }));
-        // photos in our own storage that no dish uses any more
-        const ours = `/object/public/${PHOTO_BUCKET}/`;
-        const urls = [...new Set(gone.map((m) => m.photo_url).filter((u) => u && u.includes(ours)))];
-        if (urls.length) {
-          const still = new Set((check(await sb.from('menu_items').select('photo_url').in('photo_url', urls)) || []).map((r) => r.photo_url));
-          const paths = urls.filter((u) => !still.has(u)).map((u) => decodeURIComponent(u.split(ours)[1].split('?')[0]));
-          if (paths.length) { try { await sb.storage.from(PHOTO_BUCKET).remove(paths); } catch { /* the dish is gone; a stray photo does no harm */ } }
-        }
-        toast(L({ en: `${gone.length} deleted`, nl: `${gone.length} verwijderd` }));
-        ids.forEach((id) => { sel.delete(id); const i = all.findIndex((m) => m.id === id); if (i >= 0) all.splice(i, 1); });
-        draw2();
-      } catch (e) { toastError(e); }
-    };
-    $$('[data-delone]').forEach((b) => (b.onclick = () => remove([b.dataset.delone])));
-    $('#ar-del').onclick = () => remove([...sel]);
+      <div class="page-head"><div><a class="small" href="#/menu"><i class="ic ic-prev" aria-hidden="true"></i> ${t('menu_title')}</a><h1>${L({ en: 'Dish database', nl: 'Gerechtendatabase' })}</h1>
+        <div class="muted small">${L({ en: 'Every dish we have, on the menu or not. Pick a season to see what fits, and put dishes on or off the menu.', nl: 'Al onze gerechten, op de kaart of niet. Kies een seizoen om te zien wat past, en zet gerechten op of van de kaart.' })}</div></div>
+        <div class="page-actions"><button type="button" class="btn-primary btn-sm" id="db-add">+ ${L({ en: 'New dish', nl: 'Nieuw gerecht' })}</button></div></div>
+      <div class="card db-filters">
+        <input type="search" id="db-q" value="${esc(DB.q)}" placeholder="${L({ en: 'Search name, category or ingredient', nl: 'Zoek op naam, categorie of ingrediënt' })}">
+        <div class="db-row"><span class="db-lbl">${L({ en: 'Season', nl: 'Seizoen' })}</span><div class="chips" role="group">
+          <button type="button" class="chip ${!DB.season ? 'on' : ''}" data-dbseason="">${L({ en: 'All', nl: 'Alle' })}</button>
+          ${SEASONS.map(([k]) => `<button type="button" class="chip s-${k} ${DB.season === k ? 'on' : ''}" data-dbseason="${k}">${seasonName(k)} <span class="cnt">${seasonCount(k)}</span></button>`).join('')}</div></div>
+        <div class="db-row"><span class="db-lbl">${L({ en: 'Show', nl: 'Toon' })}</span><div class="ro-views db-status">
+          ${[['all', L({ en: 'All', nl: 'Alles' }), all.length], ['on', L({ en: 'On the menu', nl: 'Op de kaart' }), onN], ['off', L({ en: 'Not on the menu', nl: 'Niet op de kaart' }), all.length - onN]]
+            .map(([k, lab, c]) => `<button type="button" class="${DB.status === k ? 'on' : ''}" data-status="${k}">${lab} <span class="cnt">${c}</span></button>`).join('')}</div>
+          <select id="db-cat" aria-label="${L({ en: 'Category', nl: 'Categorie' })}"><option value="">${L({ en: 'All categories', nl: 'Alle categorieën' })}</option>${cats().map((c) => `<option ${DB.cat === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
+      </div>
+      <div class="db-count small muted">${L({ en: `${list.length} dishes`, nl: `${list.length} gerechten` })}${list.length ? ` <button type="button" class="link-btn small" id="db-all">${list.every((m) => DB.sel.has(m.id)) ? L({ en: 'Select none', nl: 'Niets kiezen' }) : L({ en: 'Select all', nl: 'Alles kiezen' })}</button>` : ''}</div>
+      <div class="card db-card">${list.length ? `<div class="db-list" role="list">
+        <div class="db-th" aria-hidden="true"><span></span><span>${L({ en: 'Dish', nl: 'Gerecht' })}</span><span>${L({ en: 'Category', nl: 'Categorie' })}</span><span>${L({ en: 'Season', nl: 'Seizoen' })}</span><span>${L({ en: 'Date', nl: 'Datum' })}</span><span>${t('price')}</span><span></span></div>
+        ${list.map((m) => { const on = m.active !== false; const al = (m.allergens || []).length;
+          return `<div class="db-item ${on ? 'is-on' : ''} ${DB.sel.has(m.id) ? 'picked' : ''}" role="listitem">
+          <label class="db-pick"><input type="checkbox" data-sel="${m.id}" ${DB.sel.has(m.id) ? 'checked' : ''} aria-label="${esc(m.name)}"></label>
+          <span class="db-main">${m.photo_url ? `<img src="${esc(m.photo_url)}" alt="" loading="lazy">` : '<span class="db-ph" aria-hidden="true"><i class="ic ic-image"></i></span>'}
+            <span class="db-txt"><strong>${esc(m.name)}</strong><span class="db-desc">${esc(String(m.description || '').split('\nEN:')[0])}</span>
+              <span class="db-flags"><span class="db-status-pill ${on ? 'on' : ''}">${on ? L({ en: 'On the menu', nl: 'Op de kaart' }) : L({ en: 'Not on the menu', nl: 'Niet op de kaart' })}</span>${al ? '' : `<span class="db-warn">${L({ en: 'allergens?', nl: 'allergenen?' })}</span>`}</span></span></span>
+          <span class="db-cat">${esc(m.category || '')}</span>
+          <span class="db-seasons">${seasonPills(m)}</span>
+          <span class="db-date">${esc(dateStr(m.dish_date))}</span>
+          <span class="db-price">${m.price != null && m.price !== '' ? fmt.money(m.price) : ''}</span>
+          <span class="db-act"><button type="button" class="btn-sm db-toggle" data-toggle="${m.id}">${on ? L({ en: 'Take off', nl: 'Van de kaart' }) : L({ en: 'Put on', nl: 'Op de kaart' })}</button>
+            <button type="button" class="dish-pencil" data-dbedit="${m.id}" aria-label="${esc(`${t('edit')}: ${m.name}`)}" title="${t('edit')}"><i class="ic ic-pencil" aria-hidden="true"></i></button></span></div>`; }).join('')}
+        </div>` : `<div class="empty">${all.length ? L({ en: 'No dishes match these filters.', nl: 'Geen gerechten bij deze filters.' }) : L({ en: 'No dishes yet. Add one with New dish.', nl: 'Nog geen gerechten. Voeg er een toe met Nieuw gerecht.' })}</div>`}</div>
+      ${n ? `<div class="db-bar"><span>${L({ en: `${n} selected`, nl: `${n} gekozen` })}</span><span class="db-bar-tools">
+        <button type="button" class="btn-sm" id="db-on">${L({ en: 'Put on the menu', nl: 'Op de kaart' })}</button>
+        <button type="button" class="btn-sm" id="db-off">${L({ en: 'Take off the menu', nl: 'Van de kaart' })}</button>
+        <button type="button" class="btn-sm btn-danger" id="db-del"><i class="ic ic-trash" aria-hidden="true"></i> ${L({ en: 'Delete', nl: 'Verwijderen' })}</button>
+        <button type="button" class="btn-sm db-x" id="db-none" aria-label="${L({ en: 'Clear selection', nl: 'Keuze wissen' })}"><i class="ic ic-x" aria-hidden="true"></i></button></span></div>` : ''}`;
+    const qi = $('#db-q'); qi.oninput = () => { DB.q = qi.value.toLowerCase(); const pos = qi.selectionStart; draw2(); const nq = $('#db-q'); nq.focus(); nq.setSelectionRange(pos, pos); };
+    $$('[data-dbseason]').forEach((b) => (b.onclick = () => { DB.season = b.dataset.dbseason; draw2(); }));
+    $$('[data-status]').forEach((b) => (b.onclick = () => { DB.status = b.dataset.status; draw2(); }));
+    $('#db-cat').onchange = (e) => { DB.cat = e.target.value; draw2(); };
+    $$('[data-sel]').forEach((c) => (c.onchange = () => { if (c.checked) DB.sel.add(c.dataset.sel); else DB.sel.delete(c.dataset.sel); draw2(); }));
+    const ab = $('#db-all'); if (ab) ab.onclick = () => { const every = list.every((m) => DB.sel.has(m.id)); list.forEach((m) => (every ? DB.sel.delete(m.id) : DB.sel.add(m.id))); draw2(); };
+    $('#db-add').onclick = () => openEditor(null, renderDishDb);
+    $$('[data-dbedit]').forEach((b) => (b.onclick = () => openEditor(all.find((m) => m.id === b.dataset.dbedit), renderDishDb)));
+    $$('[data-toggle]').forEach((b) => (b.onclick = () => { const m = all.find((x) => x.id === b.dataset.toggle); setOnMenu([m.id], m.active === false); }));
+    const bOn = $('#db-on'); if (bOn) bOn.onclick = () => setOnMenu([...DB.sel], true);
+    const bOff = $('#db-off'); if (bOff) bOff.onclick = () => setOnMenu([...DB.sel], false);
+    const bDel = $('#db-del'); if (bDel) bDel.onclick = () => remove([...DB.sel]);
+    const bX = $('#db-none'); if (bX) bX.onclick = () => { DB.sel.clear(); draw2(); };
+  };
+  // on or off the menu: dishes that come on go last on the Menu page
+  const setOnMenu = async (ids, on) => {
+    try {
+      if (on) {
+        const max = all.filter((m) => m.active !== false).reduce((a, r) => Math.max(a, r.sort_order || 0), 0);
+        const off = ids.filter((id) => (all.find((m) => m.id === id) || {}).active === false);
+        await Promise.all(off.map((id, i) => sb.from('menu_items').update({ active: true, sort_order: max + (i + 1) * 10 }).eq('id', id).then(check)));
+        off.forEach((id, i) => Object.assign(all.find((m) => m.id === id), { active: true, sort_order: max + (i + 1) * 10 }));
+        toast(L({ en: `${off.length} on the menu`, nl: `${off.length} op de kaart` }));
+      } else {
+        check(await sb.from('menu_items').update({ active: false }).in('id', ids));
+        ids.forEach((id) => { const m = all.find((x) => x.id === id); if (m) m.active = false; });
+        toast(L({ en: `${ids.length} off the menu`, nl: `${ids.length} van de kaart` }));
+      }
+      DB.sel.clear(); draw2();
+    } catch (e) { toastError(e); }
+  };
+  // Delete for good: the dish, and its photo when no other dish uses it. Cannot be undone.
+  const remove = async (ids) => {
+    const names = ids.map((id) => (all.find((m) => m.id === id) || {}).name).filter(Boolean);
+    const msg = ids.length === 1
+      ? L({ en: `Delete "${names[0]}" for good? Its photo, text and allergens are gone too. This cannot be undone.`, nl: `"${names[0]}" definitief verwijderen? De foto, tekst en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` })
+      : L({ en: `Delete ${ids.length} dishes for good? Their photos, texts and allergens are gone too. This cannot be undone.`, nl: `${ids.length} gerechten definitief verwijderen? De foto's, teksten en allergenen zijn dan ook weg. Dit kun je niet terugdraaien.` });
+    if (!(await confirmDialog(msg, L({ en: 'Delete', nl: 'Verwijderen' })))) return;
+    try {
+      const gone = check(await sb.from('menu_items').delete().in('id', ids).select('id, photo_url')) || [];
+      if (gone.length < ids.length) throw new Error(L({ en: 'The database does not allow deleting dishes yet. Run the database update 012_menu_delete.sql once (GitHub > Actions > Database update).', nl: 'De database staat verwijderen van gerechten nog niet toe. Draai één keer de database-update 012_menu_delete.sql (GitHub > Actions > Database update).' }));
+      const ours = `/object/public/${PHOTO_BUCKET}/`;
+      const urls = [...new Set(gone.map((m) => m.photo_url).filter((u) => u && u.includes(ours)))];
+      if (urls.length) {
+        const still = new Set((check(await sb.from('menu_items').select('photo_url').in('photo_url', urls)) || []).map((r) => r.photo_url));
+        const paths = urls.filter((u) => !still.has(u)).map((u) => decodeURIComponent(u.split(ours)[1].split('?')[0]));
+        if (paths.length) { try { await sb.storage.from(PHOTO_BUCKET).remove(paths); } catch { /* the dish is gone; a stray photo does no harm */ } }
+      }
+      toast(L({ en: `${gone.length} deleted`, nl: `${gone.length} verwijderd` }));
+      all = all.filter((m) => !ids.includes(m.id)); DB.sel.clear();
+      draw2();
+    } catch (e) { toastError(e); }
   };
   draw2();
 }

@@ -35,7 +35,7 @@ const TEXT = {
     more_h: 'Meer over de Wintertuin',
     intro_h: 'Het gebouw en het park', intro_p: 'De kas, het Cantonspark en wat we hier gaan doen.',
     hist_h: 'Honderd jaar geschiedenis', hist_p: 'De tijdlijn van landgoed tot botanische tuin tot horeca.',
-    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen, op de cirkel voor een foto, en zet blokken en tegels met de pijltjes op hun plek. Daarna Opslaan.',
+    edit: 'Bewerken', save: 'Opslaan', cancel: 'Annuleren', editing: 'Klik op een tekst om te wijzigen en op de cirkel voor een foto. Verplaats een blok met Omhoog en Omlaag in de balk erboven, of sleep het aan het handvat. Tegels schuif je met de pijltjes. Daarna Opslaan.',
     nl_title: 'Ook in het Nederlands?', nl_sub: 'Engels is leidend. Hieronder de vertaling, pas aan waar nodig.', nl_save: 'Nederlands opslaan', nl_skip: 'Nederlands laten zoals het is',
     add_person: '+ Persoon', remove: 'Verwijderen', photo: 'Foto', photo_add: '+ Foto', photo_change: 'Wijzigen', up: 'Omhoog', down: 'Omlaag', left: 'Naar links', right: 'Naar rechts', saved: 'Opgeslagen voor iedereen', nothing: 'Niets gewijzigd',
     new_name: 'Naam', new_role: 'Rol', new_bio: 'Een paar zinnen over jezelf.',
@@ -76,7 +76,7 @@ const TEXT = {
     more_h: 'More about the Wintertuin',
     intro_h: 'The building and the park', intro_p: 'The greenhouse, the Cantonspark and what we are going to do here.',
     hist_h: 'A hundred years of history', hist_p: 'The timeline from country estate to botanical garden to restaurant.',
-    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it, the circle for a photo, and move blocks and tiles with the arrows. Then Save.',
+    edit: 'Edit', save: 'Save', cancel: 'Cancel', editing: 'Click any text to change it and the circle for a photo. Move a block with Up and Down in the bar above it, or drag it by the handle. Tiles move with the arrows. Then Save.',
     nl_title: 'Update the Dutch too?', nl_sub: 'English leads. Below is the Dutch translation; adjust where needed and save, or leave the Dutch as it is.', nl_save: 'Save Dutch', nl_skip: 'Leave Dutch as it is',
     add_person: '+ Person', remove: 'Remove', photo: 'Photo', photo_add: '+ Photo', photo_change: 'Change', up: 'Up', down: 'Down', left: 'Move left', right: 'Move right', saved: 'Saved for everyone', nothing: 'Nothing changed',
     new_name: 'Name', new_role: 'Role', new_bio: 'A few sentences about yourself.',
@@ -235,7 +235,11 @@ export async function renderAbout() {
   const navLabel = (p) => { const a = $(`#nav a[href="#/${p}"]`); if (!a) return p; const c = a.cloneNode(true); c.querySelectorAll('.badge-count').forEach((x) => x.remove()); return c.textContent.trim() || p; };
   const editable = (k, tag, cls = '') => `<${tag} data-edit="${k}"${cls ? ` class="${cls}"` : ''}>${textOf(k)}</${tag}>`;
 
-  const arrows = (k) => `<div class="ab-move"><button type="button" class="btn btn-sm" data-up="${k}" aria-label="${T.up}">&#9650;</button><button type="button" class="btn btn-sm" data-down="${k}" aria-label="${T.down}">&#9660;</button></div>`;
+  // In edit mode every block has a bar on top: its name, Up and Down, and a grip to drag it (computer)
+  const SEC_NAME = { concept: { nl: 'Concept', en: 'Concept' }, manifesto: { nl: 'Hoe wij koken', en: 'How we cook' }, team: { nl: 'Team', en: 'Team' }, app: { nl: 'Over deze app', en: 'About this app' }, more: { nl: 'Meer lezen', en: 'Read more' } };
+  const arrows = (k) => `<div class="ab-blockbar" contenteditable="false"><span class="ab-grip" draggable="true" data-grip="${k}" title="${L === 'nl' ? 'Sleep om te verplaatsen' : 'Drag to move'}" aria-hidden="true">&#10303;</span>
+    <span class="ab-bname">${esc(SEC_NAME[k][L])}</span>
+    <span class="ab-move"><button type="button" class="btn btn-sm" data-up="${k}" aria-label="${T.up}">&#9650; ${L === 'nl' ? 'Omhoog' : 'Up'}</button><button type="button" class="btn btn-sm" data-down="${k}" aria-label="${T.down}">&#9660; ${L === 'nl' ? 'Omlaag' : 'Down'}</button></span></div>`;
   const SEC = {
     concept: (ed) => `<section class="ab-sec" data-sec="concept">${ed ? arrows('concept') : ''}${editable('concept_h', 'h2')}
         <div class="ab-pillars">${pillars.map((i) => `<div class="ab-pillar" data-pi="${i}">${editable(`c${i}h`, 'h3')}${editable(`c${i}`, 'p')}${ed ? `<div class="ab-ptools"><span class="ab-lr"><button type="button" class="btn btn-sm" data-left aria-label="${T.left}">&#9664;</button><button type="button" class="btn btn-sm" data-right aria-label="${T.right}">&#9654;</button></span></div>` : ''}</div>`).join('')}</div>
@@ -258,13 +262,17 @@ export async function renderAbout() {
         </div>
       </section>`,
   };
-  const DEFAULT_ORDER = ['concept', 'manifesto', 'team', 'app', 'more'];
+  // "About this app" sits at the top, right under the welcome
+  const DEFAULT_ORDER = ['app', 'concept', 'manifesto', 'team', 'more'];
+  const APP_TOP_AT = '2026-11-02T21:30:00Z';
   let pillars = [1, 2, 3, 4, 5];
   try { if (shared.pillars) { const o = JSON.parse(shared.pillars.html).filter((i) => pillars.includes(i)); pillars = [...o, ...pillars.filter((i) => !o.includes(i))]; } } catch { /* default order */ }
   let order = DEFAULT_ORDER;
   try { if (shared.order) { const o = JSON.parse(shared.order.html).filter((k) => SEC[k]);
     // a section added later (the manifesto) goes right after the concept, not at the bottom
     if (!o.includes('manifesto')) o.splice(o.includes('concept') ? o.indexOf('concept') + 1 : 0, 0, 'manifesto');
+    // an order saved before "About this app" moved up: put it at the top once; a newer saved order is followed as it is
+    if (String(shared.order.at || '') < APP_TOP_AT && o.includes('app')) { o.splice(o.indexOf('app'), 1); o.unshift('app'); }
     order = [...o, ...DEFAULT_ORDER.filter((k) => !o.includes(k))]; } } catch { /* default order */ }
 
   const draw = (editing) => {
@@ -321,11 +329,24 @@ export async function renderAbout() {
       const b = e.target.closest('[data-left], [data-right]'); if (!b) return;
       side(b.closest('.ab-person, .ab-pillar'), b.hasAttribute('data-left') ? -1 : 1);
     };
+    const marks = () => { const secs = $$('#ab-secs > .ab-sec'); secs.forEach((x, i) => { const u = $('[data-up]', x); const d = $('[data-down]', x); if (u) u.disabled = i === 0; if (d) d.disabled = i === secs.length - 1; }); };
     const move = (k, d) => {
       const secs = $$('#ab-secs > .ab-sec'); const i = secs.findIndex((x) => x.dataset.sec === k); const j = i + d;
       if (j < 0 || j >= secs.length) return;
       if (d < 0) secs[j].before(secs[i]); else secs[j].after(secs[i]);
+      marks(); secs[i].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      secs[i].classList.remove('ab-moved'); void secs[i].offsetWidth; secs[i].classList.add('ab-moved');
     };
+    marks();
+    // drag a block by its grip and drop it on another block (computer)
+    let dragSec = null;
+    $$('[data-grip]').forEach((g) => (g.ondragstart = (e) => { dragSec = g.closest('.ab-sec'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', g.dataset.grip); try { e.dataTransfer.setDragImage(dragSec, 30, 20); } catch { /* ignore */ } dragSec.classList.add('ab-dragging'); }));
+    $$('#ab-secs > .ab-sec').forEach((sec) => {
+      sec.addEventListener('dragover', (e) => { if (!dragSec || dragSec === sec) return; e.preventDefault(); const r = sec.getBoundingClientRect(); sec.classList.toggle('ab-drop-before', e.clientY < r.top + r.height / 2); sec.classList.toggle('ab-drop-after', e.clientY >= r.top + r.height / 2); });
+      sec.addEventListener('dragleave', () => sec.classList.remove('ab-drop-before', 'ab-drop-after'));
+      sec.addEventListener('drop', (e) => { if (!dragSec) return; e.preventDefault(); const before = sec.classList.contains('ab-drop-before'); sec.classList.remove('ab-drop-before', 'ab-drop-after'); if (dragSec !== sec) { if (before) sec.before(dragSec); else sec.after(dragSec); } marks(); });
+    });
+    document.addEventListener('dragend', () => { if (dragSec) dragSec.classList.remove('ab-dragging'); dragSec = null; $$('.ab-drop-before, .ab-drop-after').forEach((x) => x.classList.remove('ab-drop-before', 'ab-drop-after')); }, { once: true });
     $$('[data-up]').forEach((b) => (b.onclick = () => move(b.dataset.up, -1)));
     $$('[data-down]').forEach((b) => (b.onclick = () => move(b.dataset.down, 1)));
     $('#ab-cancel').onclick = () => draw(false);

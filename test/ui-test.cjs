@@ -355,14 +355,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.$eval('.ab-person:first-child [data-f="name"]', (e) => e.textContent) !== 'Kees') throw new Error('tile did not move left');
       await p.click('.ab-pillar:first-child [data-right]');
       if (await p.$eval('.ab-pillar:nth-child(2)', (e) => e.dataset.pi) !== '1') throw new Error('concept tile did not move');
-      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,manifesto,app,team,more') throw new Error('move failed');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'app,concept,manifesto,more,team') throw new Error('move failed ' + (await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join());
       await p.click('#ab-save'); await p.waitForSelector('#ab-edit');
       const row = await p.evaluate(() => window.__mockdb.about_content.find((r) => r.key === 'team'));
       const ppl = JSON.parse(row.html); if (ppl.length !== 4 || ppl[3].name !== 'Testpersoon' || ppl[0].name !== 'Kees') throw new Error(row.html);
       await p.screenshot({ path: `${OUT}/10a-about-app.png`, fullPage: true });
       await p.goto(BASE + '#/sops'); await p.goto(BASE + '#/about'); await p.waitForSelector('.ab-person');
       if (!/Testpersoon/.test(await p.textContent('#ab-people'))) throw new Error('team not reloaded');
-      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'concept,manifesto,app,team,more') throw new Error('order not kept');
+      if ((await p.$$eval('#ab-secs > .ab-sec', (x) => x.map((e) => e.dataset.sec))).join() !== 'app,concept,manifesto,more,team') throw new Error('order not kept');
       if (await p.$eval('.ab-pillar:first-child', (e) => e.dataset.pi) !== '2') throw new Error('concept order not kept');
       const nlBtn = async (re) => p.evaluate((src) => { const b = [...document.querySelectorAll('#lang-toggle button')].find((x) => new RegExp(src).test(x.textContent)); b && b.click(); }, re);
       await nlBtn('NL'); await p.waitForSelector('text=Het team');
@@ -429,25 +429,39 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#dish-expand'); if ((await p.$$('details.menu-group:not([open])')).length) throw new Error('unfold all left a heading closed');
       await p.evaluate(() => { window.__MENU_OPEN_ALL = true; });
       await p.screenshot({ path: `${OUT}/23-menu-sample.png`, fullPage: false }); });
-    await step('menu archive: pick dishes or a whole heading, archive, bring one back', async () => {
+    await step('menu: take dishes off (one or a whole heading); dish database with seasons, filters, back on, delete', async () => {
       await p.goto(BASE + '#/menu'); await p.waitForSelector('#sel-on'); await p.click('#sel-on'); await p.waitForSelector('.sel-bar');
       await p.click('details[data-dish]:has(h3:text-is("Croissant")) > summary'); await p.waitForSelector('.menu-card.picked');
       await p.click('.menu-group:has(.mg-title:text-is("Borrel")) [data-pickall]');
       if ((await p.$$('.menu-card.picked')).length !== 2) throw new Error('picked ' + (await p.$$('.menu-card.picked')).length);
-      await p.click('#sel-go'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("2 archived")');
+      await p.click('#sel-go'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("2 off the menu")');
       const r = await p.evaluate(() => window.__mockdb.menu_items.filter((m) => ['Croissant', 'Borrelplank'].includes(m.name)).map((m) => m.active));
       if (r.join() !== 'false,false') throw new Error(JSON.stringify(r));
-      if (await p.$('details[data-dish]:has(h3:text-is("Croissant"))')) throw new Error('archived dish still on the menu');
-      await p.click('a[href="#/menu/archive"]'); await p.waitForSelector('.ar-list'); await p.screenshot({ path: `${OUT}/28-menu-archive.png` });
+      if (await p.$('details[data-dish]:has(h3:text-is("Croissant"))')) throw new Error('dish still on the menu');
+      // the dish database: the example dishes are in it once, not on the menu
+      await p.click('a[href="#/menu/dishes"]'); await p.waitForSelector('.db-list');
+      const ex = await p.evaluate(() => window.__mockdb.menu_items.filter((m) => m.name === 'Pulled wortel').map((m) => m.active));
+      if (ex.join() !== 'false') throw new Error('example dish ' + JSON.stringify(ex));
+      await p.click('[data-dbseason=winter]'); await p.waitForSelector('.chip.on[data-dbseason=winter]');
+      if (!(await p.$('.db-item:has(strong:text-is("Knolselderijsoep"))')) || await p.$('.db-item:has(strong:text-is("Fattoush"))')) throw new Error('winter filter wrong');
+      await p.click('[data-dbseason=""]'); await p.click('[data-status=off]'); await p.waitForSelector('[data-status=off].on');
+      if (await p.$('.db-item.is-on')) throw new Error('status filter shows dishes on the menu');
+      await p.screenshot({ path: `${OUT}/28-dish-database.png`, fullPage: true });
+      await p.click('[data-status=all]');
       await p.evaluate(() => { const m = window.__mockdb.menu_items.find((x) => x.name === 'Croissant'); window.__mockdb.menu_items.push({ ...m, id: 'old-dish-1', name: 'Oud gerecht', active: false, photo_url: 'https://joost1305.github.io/storage/v1/object/public/menu-photos/old.jpg' }); });
-      await p.goto(BASE + '#/menu'); await p.waitForSelector('a[href="#/menu/archive"]'); await p.click('a[href="#/menu/archive"]'); await p.waitForSelector('.ar-list li:has(strong:text-is("Oud gerecht"))');
-      await p.click('.ar-list li:has(strong:text-is("Oud gerecht")) [data-delone]'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("1 deleted")');
+      await p.goto(BASE + '#/menu'); await p.waitForSelector('a[href="#/menu/dishes"]'); await p.click('a[href="#/menu/dishes"]'); await p.waitForSelector('.db-item:has(strong:text-is("Oud gerecht"))');
+      await p.click('.db-item:has(strong:text-is("Oud gerecht")) [data-sel]'); await p.waitForSelector('.db-bar'); await p.click('#db-del'); await p.click('#cf-ok'); await p.waitForSelector('.toast:has-text("1 deleted")');
       if (await p.evaluate(() => window.__mockdb.menu_items.some((x) => x.id === 'old-dish-1'))) throw new Error('dish not deleted');
-      if (await p.$('.ar-list li:has(strong:text-is("Oud gerecht"))')) throw new Error('still listed');
-      await p.click('.ar-list li:has(strong:text-is("Croissant")) [data-one]'); await p.waitForSelector('.toast:has-text("1 back on the menu")');
+      if (await p.$('.db-item:has(strong:text-is("Oud gerecht"))')) throw new Error('still listed');
+      await p.click('.db-item:has(strong:text-is("Croissant")) [data-toggle]'); await p.waitForSelector('.toast:has-text("1 on the menu")');
+      // seasons and date in the editor
+      await p.click('.db-item:has(strong:text-is("Croissant")) [data-dbedit]'); await p.waitForSelector('.modal .season-checks');
+      await p.click('.modal .season-check.s-winter'); await p.fill('.modal [name=dish_date]', '2026-12-01'); await p.click('.modal button[type=submit]'); await p.waitForSelector('.toast:has-text("Saved")');
+      const cr = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Croissant'));
+      if (cr.seasons.join() !== 'winter' || cr.dish_date !== '2026-12-01') throw new Error(JSON.stringify([cr.seasons, cr.dish_date]));
       await p.goto(BASE + '#/menu'); await p.waitForSelector('details[data-dish]:has(h3:text-is("Croissant"))');
       await p.click('details[data-dish]:has(h3:text-is("Croissant")) [data-edit]'); await p.waitForSelector('.modal #del');
-      if (!/Archive/.test(await p.textContent('.modal #del'))) throw new Error('editor still deletes'); await p.click('.modal [data-close]'); });
+      if (!/off the menu/i.test(await p.textContent('.modal #del'))) throw new Error('editor still deletes'); await p.click('.modal [data-close]'); });
     await step('menu cards: tapping a card opens it full screen with share, PDF and a pencil; the PDF is a real A4 file', async () => {
       await p.goto(BASE + '#/menu'); await p.click('a[href="#/menucard/lunch"]'); await p.waitForSelector('.mc-viewer #mc-frame');
       if (await p.$('.mc-form')) throw new Error('editor shown without the pencil');
@@ -459,9 +473,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const pages = (buf.toString('latin1').match(/\/Type \/Page[^s]/g) || []).length; if (pages !== 2) throw new Error('pages ' + pages);
       fs.copyFileSync(path, `${OUT}/lunch.pdf`);
       await p.screenshot({ path: `${OUT}/27a-menucard-view.png` });
-      await p.click('.mcv-tab[href="#/menucard/voorbeeld"]'); await p.waitForFunction(() => /Pulled wortel/.test(document.querySelector('#mc-frame').srcdoc || '') && /6 \/ 9/.test(document.querySelector('#mc-frame').srcdoc));
-      if (await p.evaluate(() => window.__mockdb.menu_items.some((m) => m.name === 'Pulled wortel'))) throw new Error('example card added dishes');
-      await p.click('.mcv-tab[href="#/menucard/lunch"]'); await p.waitForSelector('#mcv-edit');
+      if (await p.$('.mcv-tab[href="#/menucard/voorbeeld"]')) throw new Error('example card still there');
       await p.click('#mcv-edit'); await p.waitForSelector('.mc-form'); if (await p.$('.mc-viewer')) throw new Error('viewer still open in edit');
       await p.goto(BASE + '#/menucard/lunch'); await p.waitForSelector('.mc-viewer'); await p.keyboard.press('Escape'); await p.waitForFunction(() => location.hash === '#/menu'); });
     await step('menu cards: edit the lunch card, hide a dish, add an own line, print; staff cannot edit', async () => {
@@ -472,6 +484,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('[data-addline="1"]'); await p.fill('.mc-line [name=name]', 'Soep van de dag'); await p.fill('.mc-line [name=price]', '7,5'); await p.check('.mc-line [name=al][value=celery]');
       await p.click('.mc-line button[type=submit]'); await p.waitForSelector('.mc-items li:has-text("Soep van de dag")');
       await p.waitForFunction(() => /Soep van de dag/.test(document.querySelector('#mc-frame').srcdoc) && /12 tot 15 uur/.test(document.querySelector('#mc-frame').srcdoc));
+      await p.click('[data-pick="1"]'); await p.waitForSelector('.dp-pick'); await p.click('.dp-pick [data-se=winter]');
+      if (await p.$('.dp-list li:has(strong:text-is("Fattoush"))')) throw new Error('picker winter filter');
+      await p.check('.dp-list li:has(strong:text-is("Knolselderijsoep")) input'); await p.click('#dp-ok');
+      await p.waitForFunction(() => /Knolselderijsoep/.test(document.querySelector('#mc-frame').srcdoc));
+      await p.screenshot({ path: `${OUT}/27b-menucard-picker.png` });
       await p.click('#mc-save'); await p.waitForSelector('.toast:has-text("Menu cards saved")');
       const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'menu_cards').value.cards[0]);
       if (saved.subtitle !== 'Vrijdag tot en met zondag, 12 tot 15 uur' || !saved.sections[1].extra.some((x) => x.name === 'Soep van de dag')) throw new Error(JSON.stringify(saved).slice(0, 300));

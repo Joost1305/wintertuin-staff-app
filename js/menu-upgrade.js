@@ -40,3 +40,48 @@ export async function upgradeMenuOnce() {
     return r;
   } catch (e) { console.warn('menu upgrade', e); return null; }
 }
+
+// The dishes from the example card (ontbijt, lunch, borrel) go into the dish database once, not onto the menu:
+// they are there to put a menu together from. Flag 'dishes_example1' in team_settings.
+const EX = (name, category, description, price, seasons = []) => ({ name, category, description, price, seasons, group_type: 'food', allergens: [], active: false, dish_date: '2026-11-02' });
+export const EXAMPLE_DISHES = [
+  EX('Groene startbuffet', 'Ontbijt', 'Ontbijtbuffet met koffie en/of thee.', 17.5),
+  EX('Croissant met jam', 'Ontbijt', '', 4),
+  EX('Yoghurt met granola en fruit', 'Ontbijt', '', 7.5),
+  EX('Muffin', 'Ontbijt', '', 3.5),
+  EX('Huisgemaakte taart', 'Zoet', 'Elke dag wisselend: appeltaart, chocoladetaart, amandelcake, citroen-maanzaad of wortel. Vanaf 5.', 5),
+  EX('Soep van de dag', 'Lunch', 'Met brood en kruidenboter. Klein 6, groot 9.', 6),
+  EX('Knolselderijsoep', 'Lunch', 'Met pastinaak, mosterd, plantaardige spekjes en bieslookolie, met brood en kruidenboter. Klein 8, groot 11.', 8, ['najaar', 'winter']),
+  EX('Gegrilde groenten op zuurdesem', 'Lunch', 'Op zuurdesembrood met zongedroogde-tomatenhummus en chimichurri.', 12.5, ['zomer', 'najaar']),
+  EX('Paddenstoelenpaté', 'Lunch', 'Op knoflookbruschetta met compote van rabarber en szechuanpeper.', 12.5, ['najaar', 'winter']),
+  EX('Pulled wortel', 'Lunch', 'Op zuurdesembrood met licht pittige crème van maïs en jalapeño, en gepofte maïs.', 12.5),
+  EX('Pita döner', 'Lunch', 'Pitabroodje met plantaardige döner, sumak-ui, tahin, salade en granaatappel.', 14.5),
+  EX('Combilunch', 'Lunch', 'Zuurdesembrood met twee paprika-spinaziekroketten, groene mosterdmayonaise en een kleine soep naar keuze.', 16.5),
+  EX('Loaded fries', 'Lunch', 'Ambachtelijke friet met rendang van jackfruit, atjar, bosui en seroendeng.', 16.5),
+  EX('Fattoush', 'Lunch: erbij', 'Met groenten van het seizoen, peterselie, sumak en geroosterde pita.', 11, ['zomer']),
+  EX('Bietensalade', 'Lunch: erbij', 'Met gele en chioggiabieten, zwarte bonen en peppadewdressing.', 12, ['najaar', 'winter']),
+  EX('Ambachtelijke friet', 'Lunch: erbij', 'Met kruidenzout en mayonaise.', 6.5),
+  EX('Zuurdesembrood met dips', 'Lunch: erbij', 'Met twee wisselende dips.', 8),
+  EX('Gestoomde edamame', 'Borrel', 'Met Maldonzout.', 8.5),
+  EX('Bitterballen', 'Borrel', 'Met mosterd, 6 stuks.', 8.5),
+  EX('Romescokroketjes', 'Borrel', 'Met aioli, 6 stuks.', 9.5),
+  EX('Currybitterballen', 'Borrel', 'Met piccalilly-mayonaise, 6 stuks.', 9.5),
+  EX('Bloemkoolwings', 'Borrel', 'Met barbecuesaus, bosui en sesam.', 9.5),
+  EX("Samosa's", 'Borrel', 'Met uienchutney.', 9.5),
+  EX("Mini-loempia's", 'Borrel', 'Met zoete chilisaus, 8 stuks.', 9.5),
+];
+export async function addExampleDishesOnce() {
+  try {
+    const { data } = await sb.from('team_settings').select('value').eq('key', 'dishes_example1').maybeSingle();
+    if (data && data.value && data.value.done) return 0;
+    const rows = check(await sb.from('menu_items').select('id, name, active')) || [];
+    // the old demo dishes were only switched off; in the database they would only be in the way
+    const demo = rows.filter((r) => r.active === false && isDemo(r.name)).map((r) => r.id);
+    if (demo.length) { try { check(await sb.from('menu_items').delete().in('id', demo)); } catch { /* not allowed yet: they stay switched off */ } }
+    const have = new Set(rows.filter((r) => !demo.includes(r.id)).map((r) => String(r.name || '').trim().toLowerCase()));
+    const fresh = EXAMPLE_DISHES.filter((d) => !have.has(d.name.toLowerCase()));
+    if (fresh.length) check(await sb.from('menu_items').insert(fresh));
+    await sb.from('team_settings').upsert({ key: 'dishes_example1', value: { done: true, added: fresh.length, at: new Date().toISOString() }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    return fresh.length;
+  } catch (e) { console.warn('example dishes', e); return 0; }
+}
