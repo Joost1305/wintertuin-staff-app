@@ -6,7 +6,7 @@ import { state, isManager, app, esc, toast, toastError, $, $$, confirmDialog, pr
 import { lang } from '../i18n.js';
 import { SEASONS, seasonName, fitsSeason, seasonPills } from '../seasons.js';
 import { sb } from '../data.js';
-import { ALLERGENS } from './menu.js';
+import { ALLERGENS, editDish } from './menu.js';
 
 const L = (o) => o[lang()] || o.en;
 const AL_NL = { gluten: 'Gluten', crustaceans: 'Schaaldieren', eggs: 'Eieren', fish: 'Vis', peanuts: "Pinda's", soy: 'Soja', milk: 'Melk', nuts: 'Noten', celery: 'Selderij',
@@ -64,15 +64,16 @@ async function saveCards(cards) {
 
 // ------------------------------------------------------------------ what a section shows
 function sectionItems(sec, menu, lib = menu) {
+  // one list per section, in one order: dishes of the linked category, dishes picked from the database, own lines.
+  // Dishes come by id, so a new name or price in the database shows on the card straight away.
   const fromCat = sec.cat ? menu.filter((m) => (m.category || '') === sec.cat) : [];
-  const order = sec.order || [];
-  fromCat.sort((a, b) => { const ia = order.indexOf(a.id); const ib = order.indexOf(b.id); return (ia < 0 ? 1e6 + (a.sort_order || 0) : ia) - (ib < 0 ? 1e6 + (b.sort_order || 0) : ib); });
-  const live = fromCat.map((m) => ({ ref: m.id, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [], hidden: (sec.hidden || []).includes(m.id) }));
+  const live = fromCat.map((m) => ({ key: m.id, kind: 'cat', ref: m.id, dish: m, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [], hidden: (sec.hidden || []).includes(m.id) }));
   const extra = (sec.extra || []).map((x) => {
-    if (x.ref) { const m = lib.find((y) => y.id === x.ref); return m ? { ...x, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [] } : null; }
-    return { ...x, allergens: x.allergens || [] };
+    if (x.ref) { const m = lib.find((y) => y.id === x.ref); return m ? { ...x, key: x.id, kind: 'ref', dish: m, name: m.name, description: nlText(m.description), price: m.price, allergens: m.allergens || [] } : null; }
+    return { ...x, key: x.id, kind: 'own', allergens: x.allergens || [] };
   }).filter(Boolean);
-  return [...live, ...extra];
+  const order = sec.order || [];
+  return [...live, ...extra].map((it, i) => [it, order.indexOf(it.key) < 0 ? 1e6 + i : order.indexOf(it.key)]).sort((x, y) => x[1] - y[1]).map(([it]) => it);
 }
 
 // ------------------------------------------------------------------ the printed card (also the preview)
@@ -178,6 +179,7 @@ export async function renderMenuCard(args = []) {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   const [c, m] = await Promise.all([loadCards(), sb.from('menu_items').select('*').order('group_type').order('sort_order').order('name').then((r) => r.data || [], () => [])]);
   cards = c; lib = m; menu = m.filter((x) => x.active !== false); dirty = false;
+  if (linkOwnLines(cards)) dirty = isManager(); // saved with the next Save
   if (!cards.some((x) => x.id === args[0]) && args[0] === 'voorbeeld') args = ['lunch'];
   cur = cards.find((x) => x.id === args[0]) || cards[0];
   // Tapping a card opens it full screen, as guests see it. The pencil (managers) opens the editor.
@@ -312,6 +314,7 @@ function draw() {
         <div class="mc-form-head"><h2>${L({ en: 'Edit this card', nl: 'Deze kaart bewerken' })}</h2>
           <div class="mc-form-tools"><label class="btn btn-sm" for="mc-word"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Import Word', nl: 'Word importeren' })}</label><input type="file" id="mc-word" accept=".docx" hidden>
           <button type="button" class="btn-sm" id="mc-new">+ ${L({ en: 'New card', nl: 'Nieuwe kaart' })}</button>
+          ${c.kind !== 'allergens' ? `<button type="button" class="btn-sm" id="mc-copy" title="${L({ en: 'Start the next season from this card', nl: 'Begin het volgende seizoen vanuit deze kaart' })}">${L({ en: 'Copy', nl: 'Kopie maken' })}</button>` : ''}
           <button type="button" class="btn-primary btn-sm" id="mc-save" ${dirty ? '' : 'disabled'}>${L({ en: 'Save', nl: 'Opslaan' })}</button></div></div>
         <div class="field-row"><div class="field"><label>${L({ en: 'Name (button)', nl: 'Naam (knop)' })}</label>${inp('name')}</div><div class="field"><label>${L({ en: 'Title on the card', nl: 'Titel op de kaart' })}</label>${inp('title')}</div></div>
         <div class="field"><label>${L({ en: 'Subtitle', nl: 'Ondertitel' })}</label>${inp('subtitle')}</div>
@@ -320,6 +323,9 @@ function draw() {
         <div class="field-row"><div class="field"><label>${L({ en: 'Price line (optional)', nl: 'Prijsregel (optioneel)' })}</label>${inp('priceLine', 'Twee gangen 39')}</div>
           <div class="field mc-checks"><label class="check"><input type="checkbox" data-cb="showPrices" ${c.showPrices ? 'checked' : ''}> ${L({ en: 'Prices per dish', nl: 'Prijs per gerecht' })}</label>
           <label class="check"><input type="checkbox" data-cb="showCodes" ${c.showCodes ? 'checked' : ''}> ${L({ en: 'Allergen numbers', nl: 'Allergeennummers' })}</label></div></div>
+        <div class="field"><label>${L({ en: 'Season of this card', nl: 'Seizoen van deze kaart' })}</label>
+          <select id="mc-season"><option value="">${L({ en: 'No season (all year)', nl: 'Geen seizoen (hele jaar)' })}</option>${SEASONS.map(([k]) => `<option value="${k}" ${c.season === k ? 'selected' : ''}>${seasonName(k)}</option>`).join('')}</select>
+          <div class="tiny muted" style="margin-top:4px">${L({ en: 'The database then opens on this season, and dishes that do not fit get a mark.', nl: 'De database opent dan op dit seizoen, en gerechten die er niet bij passen krijgen een markering.' })}</div></div>
         <div class="field"><label>${L({ en: 'Introduction (optional)', nl: 'Inleiding (optioneel)' })}</label><textarea data-c="intro" rows="2">${esc(c.intro || '')}</textarea></div>
         <div class="field"><label>${L({ en: 'Closing line (optional)', nl: 'Slotregel (optioneel)' })}</label>${inp('note')}</div>
         <div class="subhead">${L({ en: 'Sections', nl: 'Blokken' })}</div>
@@ -331,12 +337,16 @@ function draw() {
             <input data-s="${si}" data-f="sub" value="${esc(s.sub || '')}" placeholder="${L({ en: 'Line under the title (optional), such as the times', nl: 'Regel onder de titel (optioneel), zoals de tijden' })}">
             <label class="check small"><input type="checkbox" data-s="${si}" data-f="newPage" ${s.newPage ? 'checked' : ''}> ${L({ en: 'Start a new page here', nl: 'Hier een nieuwe pagina beginnen' })}</label>
             ${s.newPage ? `<input data-s="${si}" data-f="pageTitle" value="${esc(s.pageTitle || '')}" placeholder="${L({ en: 'Title of that page', nl: 'Titel van die pagina' })}">` : ''}
-            <ul class="mc-items">${sectionItems(s, menu, lib).map((x, xi) => `<li class="${x.hidden ? 'off' : ''}">
-              ${x.ref && !x.extraIndex && (s.cat && menu.find((m) => m.id === x.ref && m.category === s.cat))
-                ? `<label class="check"><input type="checkbox" data-show="${si}|${x.ref}" ${x.hidden ? '' : 'checked'}> ${esc(x.name)}</label><span class="mc-i-tools"><button type="button" class="link-btn small" data-iup="${si}|${x.ref}">&#9650;</button></span>`
-                : `<span>${esc(x.name)} <span class="tag">${x.ref ? L({ en: 'from menu', nl: 'uit menu' }) : L({ en: 'own line', nl: 'eigen regel' })}</span>${!x.ref && !(x.allergens || []).length ? ` <span class="tag warn">${L({ en: 'allergens?', nl: 'allergenen?' })}</span>` : ''}</span>
-                  <span class="mc-i-tools">${x.ref ? '' : `<button type="button" class="link-btn small" data-xedit="${si}|${(s.extra || []).indexOf((s.extra || []).find((y) => y.id === x.id))}">${L({ en: 'Edit', nl: 'Bewerken' })}</button>`}
-                  <button type="button" class="link-btn small" data-xdel="${si}|${x.id}">${L({ en: 'Remove', nl: 'Weghalen' })}</button></span>`}</li>`).join('')}</ul>
+            ${(() => { const all = sectionItems(s, menu, lib); const list = all.filter((x) => !x.hidden); const off = all.length - list.length;
+              return `<ul class="mc-items">${list.map((x, xi) => `<li data-key="${esc(x.key)}">
+                <span class="mc-i-name"><span class="mc-i-n">${esc(x.name)}</span>${itemTags(x, c)}</span>
+                <span class="mc-i-tools">
+                  <button type="button" class="mc-ib" data-mv="${si}|${esc(x.key)}|-1" ${xi === 0 ? 'disabled' : ''} aria-label="${L({ en: 'Up', nl: 'Omhoog' })}">&#9650;</button>
+                  <button type="button" class="mc-ib" data-mv="${si}|${esc(x.key)}|1" ${xi === list.length - 1 ? 'disabled' : ''} aria-label="${L({ en: 'Down', nl: 'Omlaag' })}">&#9660;</button>
+                  <button type="button" class="mc-ib" data-ed="${si}|${esc(x.key)}" aria-label="${esc(`${L({ en: 'Edit', nl: 'Bewerken' })}: ${x.name}`)}" title="${x.kind === 'own' ? L({ en: 'Edit this line', nl: 'Deze regel bewerken' }) : L({ en: 'Edit the dish (changes it everywhere)', nl: 'Gerecht bewerken (verandert overal)' })}"><i class="ic ic-pencil" aria-hidden="true"></i></button>
+                  <button type="button" class="mc-ib mc-rm" data-rm="${si}|${esc(x.key)}" aria-label="${esc(`${L({ en: 'Remove from this card', nl: 'Van deze kaart halen' })}: ${x.name}`)}" title="${L({ en: 'Remove from this card', nl: 'Van deze kaart halen' })}"><i class="ic ic-x" aria-hidden="true"></i></button>
+                </span></li>`).join('')}${!list.length ? `<li class="mc-empty small muted">${L({ en: 'No dishes yet. Add them from the database.', nl: 'Nog geen gerechten. Voeg ze toe uit de database.' })}</li>` : ''}</ul>
+              ${off ? `<p class="tiny muted mc-off">${L({ en: `${off} more dish(es) in "${esc(s.cat)}" are not on this card. Add them again with Dishes from the database.`, nl: `Nog ${off} gerecht(en) uit "${esc(s.cat)}" staan niet op deze kaart. Zet ze terug met Gerechten uit de database.` })}</p>` : ''}`; })()}
             <div class="mc-add"><button type="button" class="btn-sm btn-primary-soft" data-pick="${si}"><i class="ic ic-book" aria-hidden="true"></i> ${L({ en: 'Dishes from the database', nl: 'Gerechten uit de database' })}</button>
               <button type="button" class="btn-sm" data-addline="${si}">+ ${L({ en: 'own line', nl: 'eigen regel' })}</button>
               <button type="button" class="link-btn small" data-sdel="${si}">${L({ en: 'Remove section', nl: 'Blok weghalen' })}</button></div>
@@ -371,6 +381,31 @@ function preview() {
   };
 }
 
+// the dishes again after one was edited, so the card shows the new name, price and allergens
+async function reloadDishes() {
+  try { const { data } = await sb.from('menu_items').select('*').order('group_type').order('sort_order').order('name'); if (data) { lib = data; menu = data.filter((x) => x.active !== false); } } catch { /* keep what we had */ }
+}
+// small marks on a line, so you see at a glance what still needs work
+function itemTags(x, c) {
+  const t = [];
+  if (x.kind === 'own') t.push(`<span class="tag">${L({ en: 'own line', nl: 'eigen regel' })}</span>`);
+  else if (x.dish && x.dish.active === false) t.push(`<span class="tag">${L({ en: 'not on the Menu page', nl: 'niet op de Menu-pagina' })}</span>`);
+  if (c.season && x.dish && !fitsSeason(x.dish, c.season)) t.push(`<span class="tag warn">${L({ en: `not ${seasonName(c.season).toLowerCase()}`, nl: `past niet bij ${seasonName(c.season).toLowerCase()}` })}</span>`);
+  if (c.showCodes && !(x.allergens || []).length) t.push(`<span class="tag warn">${L({ en: 'allergens?', nl: 'allergenen?' })}</span>`);
+  if (c.showPrices && (x.price == null || x.price === '')) t.push(`<span class="tag warn">${L({ en: 'price?', nl: 'prijs?' })}</span>`);
+  return t.length ? `<span class="mc-i-tags">${t.join('')}</span>` : '';
+}
+// an own line with exactly the name of a dish in the database becomes that dish, so it follows every change
+function linkOwnLines(cardsIn) {
+  const byName = new Map(lib.map((m) => [String(m.name || '').trim().toLowerCase(), m]));
+  let n = 0;
+  cardsIn.forEach((cd) => (cd.sections || []).forEach((sec) => (sec.extra || []).forEach((x, i) => {
+    if (x.ref) return; const m = byName.get(String(x.name || '').trim().toLowerCase());
+    if (m) { sec.extra[i] = { id: x.id, ref: m.id }; n++; }
+  })));
+  return n;
+}
+
 function changed() { dirty = true; const b = $('#mc-save'); if (b) b.disabled = false; }
 
 function bind() {
@@ -391,23 +426,39 @@ function bind() {
     else if (el.tagName === 'SELECT') el.onchange = () => { s[k] = el.value || null; s.hidden = []; changed(); draw(); };
     else el.oninput = () => { s[k] = el.value; changed(); soon(); };
   });
-  $$('[data-show]').forEach((el) => (el.onchange = () => {
-    const [si, id] = el.dataset.show.split('|'); const s = c.sections[Number(si)];
-    s.hidden = (s.hidden || []).filter((x) => x !== id); if (!el.checked) s.hidden.push(id);
-    el.closest('li').classList.toggle('off', !el.checked); changed(); preview();
+  const itemOf = (si, key) => sectionItems(c.sections[si], menu, lib).find((x) => x.key === key);
+  // up or down among the dishes you see on the card
+  $$('[data-mv]').forEach((b) => (b.onclick = () => {
+    const [si, key, d] = b.dataset.mv.split('|'); const s = c.sections[Number(si)];
+    const all = sectionItems(s, menu, lib).map((x) => x); const vis = all.filter((x) => !x.hidden);
+    const i = vis.findIndex((x) => x.key === key); const j = i + Number(d); if (i < 0 || j < 0 || j >= vis.length) return;
+    const ai = all.indexOf(vis[i]); const aj = all.indexOf(vis[j]); [all[ai], all[aj]] = [all[aj], all[ai]];
+    s.order = all.map((x) => x.key); changed(); draw();
   }));
-  $$('[data-iup]').forEach((b) => (b.onclick = () => {
-    const [si, id] = b.dataset.iup.split('|'); const s = c.sections[Number(si)];
-    const ids = sectionItems(s, menu).filter((x) => x.ref && menu.find((m) => m.id === x.ref && m.category === s.cat)).map((x) => x.ref);
-    const i = ids.indexOf(id); if (i > 0) { [ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]; s.order = ids; changed(); draw(); }
+  // remove from this card: really gone from the list (a category dish is kept out, the dish itself stays in the database)
+  $$('[data-rm]').forEach((b) => (b.onclick = () => {
+    const [si, key] = b.dataset.rm.split('|'); const s = c.sections[Number(si)]; const x = itemOf(Number(si), key); if (!x) return;
+    if (x.kind === 'cat') s.hidden = [...new Set([...(s.hidden || []), key])];
+    else s.extra = (s.extra || []).filter((y) => y.id !== key);
+    changed(); draw();
   }));
+  // edit: a dish opens the dish itself (name, price, photo, allergens: changed everywhere), an own line its own little form
+  $$('[data-ed]').forEach((b) => (b.onclick = () => {
+    const [si, key] = b.dataset.ed.split('|'); const x = itemOf(Number(si), key); if (!x) return;
+    if (x.kind === 'own') lineEditor(c.sections[Number(si)], (c.sections[Number(si)].extra || []).find((y) => y.id === key));
+    else editDish(x.dish, async () => { await reloadDishes(); draw(); });
+  }));
+  const se = $('#mc-season'); if (se) se.onchange = () => { c.season = se.value || null; changed(); draw(); };
+  const cp = $('#mc-copy'); if (cp) cp.onclick = () => {
+    const n = JSON.parse(JSON.stringify(c)); n.id = uid(); n.name = `${c.name || c.title} (${L({ en: 'copy', nl: 'kopie' })})`;
+    n.sections.forEach((x) => { x.id = uid(); });
+    cards.push(n); cur = n; changed(); draw(); toast(L({ en: 'Copy made. Save to keep it.', nl: 'Kopie gemaakt. Sla op om hem te bewaren.' }));
+  };
   $$('[data-sup]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); const i = Number(b.dataset.sup); [c.sections[i - 1], c.sections[i]] = [c.sections[i], c.sections[i - 1]]; changed(); draw(); }));
   $$('[data-sdown]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); const i = Number(b.dataset.sdown); [c.sections[i + 1], c.sections[i]] = [c.sections[i], c.sections[i + 1]]; changed(); draw(); }));
   $$('[data-sdel]').forEach((b) => (b.onclick = () => { c.sections.splice(Number(b.dataset.sdel), 1); changed(); draw(); }));
   $$('[data-pick]').forEach((b) => (b.onclick = () => pickDishes(c.sections[Number(b.dataset.pick)])));
   $$('[data-addline]').forEach((b) => (b.onclick = () => lineEditor(c.sections[Number(b.dataset.addline)], null)));
-  $$('[data-xedit]').forEach((b) => (b.onclick = () => { const [si, xi] = b.dataset.xedit.split('|').map(Number); lineEditor(c.sections[si], c.sections[si].extra[xi]); }));
-  $$('[data-xdel]').forEach((b) => (b.onclick = () => { const [si, id] = b.dataset.xdel.split('|'); const s = c.sections[Number(si)]; s.extra = (s.extra || []).filter((x) => x.id !== id); changed(); draw(); }));
   const add = $('#mc-addsec'); if (add) add.onclick = () => { c.sections.push({ id: uid(), title: '', cat: null, hidden: [], extra: [] }); changed(); draw(); };
   const sv = $('#mc-save'); if (sv) sv.onclick = save;
   const nw = $('#mc-new'); if (nw) nw.onclick = () => { const n = { id: uid(), kind: 'menu', name: L({ en: 'New card', nl: 'Nieuwe kaart' }), title: 'Menu', subtitle: '', showPrices: true, showCodes: true, sections: [{ id: uid(), title: '', cat: null, hidden: [], extra: [] }] }; cards.push(n); cur = n; changed(); draw(); };
@@ -423,8 +474,8 @@ async function save() {
 
 // Pick dishes for a section from the whole dish database: search, season, category, with photos. Ticked dishes are added.
 function pickDishes(sec) {
-  const already = new Set(sectionItems(sec, menu, lib).map((x) => x.ref).filter(Boolean));
-  const st = { q: '', season: '', cat: '', status: 'all', sel: new Set() };
+  const already = new Set(sectionItems(sec, menu, lib).filter((x) => !x.hidden).map((x) => x.ref).filter(Boolean));
+  const st = { q: '', season: (cur && cur.season) || '', cat: '', status: 'all', sel: new Set() };
   const cats = [...new Set(lib.map((m) => m.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   const dlg = document.createElement('div');
   dlg.className = 'k-overlay dp-overlay';
@@ -455,7 +506,10 @@ function pickDishes(sec) {
     dlg.querySelectorAll('[data-d]').forEach((c) => (c.onchange = () => { if (c.checked) st.sel.add(c.dataset.d); else st.sel.delete(c.dataset.d); const ok = dlg.querySelector('#dp-ok'); ok.disabled = !st.sel.size; ok.textContent = L({ en: `Add ${st.sel.size || ''}`, nl: `${st.sel.size || ''} toevoegen` }); }));
     dlg.querySelectorAll('[data-x]').forEach((b) => (b.onclick = () => dlg.remove()));
     dlg.querySelector('#dp-ok').onclick = () => {
-      st.sel.forEach((id) => (sec.extra = sec.extra || []).push({ id: uid(), ref: id }));
+      st.sel.forEach((id) => {
+        if ((sec.hidden || []).includes(id)) sec.hidden = sec.hidden.filter((h) => h !== id); // a category dish comes back where it was
+        else (sec.extra = sec.extra || []).push({ id: uid(), ref: id });
+      });
       dlg.remove(); changed(); draw();
       toast(L({ en: `${st.sel.size} added`, nl: `${st.sel.size} toegevoegd` }));
     };

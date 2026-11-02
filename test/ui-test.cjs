@@ -480,7 +480,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/menucard/lunch/edit'); await p.waitForSelector('#mc-frame');
       await p.waitForFunction(() => /Tartine met gerookte forel/.test(document.querySelector('#mc-frame').srcdoc || ''));
       await p.fill('[data-c="subtitle"]', 'Vrijdag tot en met zondag, 12 tot 15 uur');
-      await p.uncheck('.mc-items input[data-show] >> nth=0');
+      const firstName = await p.textContent('.mc-items li >> nth=0 >> .mc-i-n');
+      await p.click('.mc-items [data-rm] >> nth=0'); await p.waitForFunction((n) => ![...document.querySelectorAll('.mc-items .mc-i-n')].some((e) => e.textContent === n), firstName);
+      if (!(await p.$('.mc-off'))) throw new Error('no note about removed dishes');
+      const second = await p.textContent('.mc-items li >> nth=1 >> .mc-i-n'); await p.click('.mc-items [data-mv$="|-1"] >> nth=1');
+      if (await p.textContent('.mc-items li >> nth=0 >> .mc-i-n') !== second) throw new Error('move up failed');
       await p.click('[data-addline="1"]'); await p.fill('.mc-line [name=name]', 'Soep van de dag'); await p.fill('.mc-line [name=price]', '7,5'); await p.check('.mc-line [name=al][value=celery]');
       await p.click('.mc-line button[type=submit]'); await p.waitForSelector('.mc-items li:has-text("Soep van de dag")');
       await p.waitForFunction(() => /Soep van de dag/.test(document.querySelector('#mc-frame').srcdoc) && /12 tot 15 uur/.test(document.querySelector('#mc-frame').srcdoc));
@@ -488,6 +492,9 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (await p.$('.dp-list li:has(strong:text-is("Fattoush"))')) throw new Error('picker winter filter');
       await p.check('.dp-list li:has(strong:text-is("Knolselderijsoep")) input'); await p.click('#dp-ok');
       await p.waitForFunction(() => /Knolselderijsoep/.test(document.querySelector('#mc-frame').srcdoc));
+      await p.click('.mc-items li:has(.mc-i-n:text-is("Knolselderijsoep")) [data-ed]'); await p.waitForSelector('.modal [name=name]');
+      await p.fill('.modal [name=name]', 'Knolseldersoep met hazelnoot'); await p.click('.modal button[type=submit]');
+      await p.waitForFunction(() => /Knolseldersoep met hazelnoot/.test(document.querySelector('#mc-frame').srcdoc) && document.querySelector('.mc-items li .mc-i-n'));
       await p.screenshot({ path: `${OUT}/27b-menucard-picker.png` });
       await p.click('#mc-save'); await p.waitForSelector('.toast:has-text("Menu cards saved")');
       const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'menu_cards').value.cards[0]);

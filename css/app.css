@@ -1426,3 +1426,17 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .mc-items li > label.check { line-height: 1.3; }
 .mc-i-tools .link-btn { min-width: 32px; min-height: 32px; display: inline-grid; place-items: center; text-decoration: none; }
 .mc-form input[type=checkbox] { width: 18px !important; height: 18px; flex: none; margin: 0; }
+/* card editor: one tidy row per dish */
+.mc-items li { display: flex; align-items: center; gap: 8px; padding: 7px 0; }
+.mc-i-name { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mc-i-n { font-weight: 600; }
+.mc-i-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.mc-i-tags .tag { font-size: .68rem; padding: 2px 6px; }
+.mc-i-tools { display: flex; gap: 2px; flex: none; }
+.mc-ib { width: 32px; height: 32px; min-height: 0; min-width: 0; padding: 0; display: inline-grid; place-items: center; border: 0; background: transparent; color: var(--ink-2); border-radius: 8px; cursor: pointer; font-size: .8rem; }
+.mc-ib:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.mc-ib:disabled { opacity: .25; cursor: default; }
+.mc-ib .ic { width: 15px; height: 15px; background: currentColor; }
+.mc-ib.mc-rm:hover { color: var(--bad); }
+.mc-empty { padding: 10px 0; }
+.mc-off { margin: 4px 0 8px; }

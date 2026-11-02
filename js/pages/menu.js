@@ -241,6 +241,8 @@ async function uploadPhoto(file) {
   return sb.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+// also used from the menu card editor: edit a dish there and the card follows
+export function editDish(m, onDone) { return openEditor(m, onDone); }
 function openEditor(m, onDone = renderMenu) {
   const fields = [
     { name: 'group_type', label: t('menu_group'), type: 'select', options: [{ value: 'food', label: t('group_food') }, { value: 'beverage', label: t('group_beverage') }] },
