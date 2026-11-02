@@ -10,4 +10,9 @@ let html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
 html = html.replace(/<script type="importmap" id="versions">.*?<\/script>\n?\s*/s, '');
 html = html.replace(/(\s*)<script type="module" src="js\/app\.js\?v=[^"]*"><\/script>/, `$1${tag}$1<script type="module" src="js/app.js?v=${v}"></script>`);
 fs.writeFileSync(path.join(dir, 'index.html'), html);
+// the app checks this file (never cached) and loads a newer build by itself
+fs.writeFileSync(path.join(dir, 'version.json'), JSON.stringify({ build: v }) + '\n');
+// the build name in the app itself
+const cfg = path.join(dir, 'js', 'config.js');
+if (fs.existsSync(cfg)) fs.writeFileSync(cfg, fs.readFileSync(cfg, 'utf8').replace(/export const BUILD = '[^']*'/, `export const BUILD = '${v}'`));
 console.log(files.length, 'scripts at', v);

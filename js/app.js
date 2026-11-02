@@ -24,6 +24,25 @@ import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
 
 console.log(`Wintertuin Team, build ${BUILD}`);
+// Always the newest version: version.json is never cached. When it names a newer build, the app loads it:
+// at once when the app opens, or with a bar to tap when you come back to an open app (so nothing you type is lost).
+async function checkUpdate(atStart) {
+  if (window.__NO_UPDATE_CHECK) return;
+  try {
+    const r = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' }); if (!r.ok) return;
+    const { build } = await r.json(); if (!build || build === BUILD) return;
+    const go = () => location.replace(`${location.pathname}?v=${encodeURIComponent(build)}${location.hash}`);
+    if (new URLSearchParams(location.search).get('v') === build) return; // already tried this build: never loop
+    if (atStart) return go();
+    if (document.getElementById('upd-bar')) return;
+    const bar = document.createElement('div'); bar.id = 'upd-bar'; bar.className = 'upd-bar'; bar.setAttribute('role', 'status');
+    bar.innerHTML = `<span>${document.documentElement.lang === 'en' ? 'A new version of the app is ready.' : 'Er is een nieuwe versie van de app.'}</span><button type="button" class="btn-sm">${document.documentElement.lang === 'en' ? 'Update' : 'Bijwerken'}</button>`;
+    bar.querySelector('button').onclick = go; document.body.appendChild(bar);
+  } catch { /* offline: try again later */ }
+}
+checkUpdate(true);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(false); });
+setInterval(() => checkUpdate(false), 10 * 60 * 1000);
 window.addEventListener('nav-order-changed', () => renderShell());
 // One tab per app: the switch button in the other app targets this name and reuses this tab
 try { window.name = 'wintertuin-team'; } catch { /* ignore */ }

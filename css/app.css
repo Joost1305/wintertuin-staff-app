@@ -1475,3 +1475,8 @@ html.touch-nav .db-bar { bottom: calc(84px + env(safe-area-inset-bottom)); }
 .nl-ph { width: 72px; height: 72px; }
 .nl-hl { border-top: 0; }
 @media (max-width: 480px) { .nl-edit-cue { font-size: 0; } .nl-edit-cue .sop-chev { font-size: .9rem; } }
+/* new version ready */
+.upd-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 950; display: flex; align-items: center; gap: 12px;
+  background: var(--ink); color: #fff; padding: 10px 12px 10px 16px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: .92rem; max-width: calc(100% - 24px); }
+.upd-bar .btn-sm { background: #fff; color: var(--ink); border: 0; font-weight: 700; }
+html.touch-nav .upd-bar { bottom: calc(86px + env(safe-area-inset-bottom)); }
