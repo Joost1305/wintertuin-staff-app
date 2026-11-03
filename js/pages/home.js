@@ -93,21 +93,21 @@ export async function renderHome() {
 
     <div class="home-cols">
       <section class="card home-card">
-        <div class="hc-head"><h2>${L({ en: 'Checklists today', nl: 'Checklists vandaag' })}</h2><a href="#/sops" class="small">${L({ en: 'All SOPs', nl: "Alle SOP's" })}</a></div>
-        ${lists.length ? `<ul class="prog-list">${lists.map((x) => `<li><a href="#/sops" data-sop="${x.id}">
-            <span class="pl-name">${esc(x.v.title)}<span class="pl-cat">${esc(x.v.category)}</span></span>
-            <span class="pl-bar"><span style="width:${Math.round((x.done / x.n) * 100)}%"></span></span>
-            <span class="pl-num ${x.done === x.n ? 'full' : ''}">${x.done === x.n ? '<i class="ic ic-check" aria-hidden="true"></i>' : `${x.done}/${x.n}`}</span></a></li>`).join('')}</ul>`
-          : `<p class="muted">${L({ en: 'No checklists yet.', nl: 'Nog geen checklists.' })}</p>`}
-      </section>
-
-      <section class="card home-card">
         <div class="hc-head"><h2>${L({ en: 'Working today', nl: 'Vandaag aan het werk' })}</h2><a href="#/roster" class="small">${L({ en: 'Roster', nl: 'Rooster' })}</a></div>
         ${(todayShifts || []).length ? `<ul class="who-list">${todayShifts.map((s) => `<li class="${s.staff_id === state.me.id ? 'me' : ''}">
             <span class="av ${sectionClass(s.section)}">${esc(initials(s.profiles && s.profiles.full_name))}</span>
             <span class="who">${esc(s.profiles ? s.profiles.full_name : '')}${s.section ? `<span class="small muted">${esc(s.section)}</span>` : ''}</span>
             <span class="tm">${esc(fmt.time(s.start_time))}–${esc(fmt.time(s.end_time))}</span></li>`).join('')}</ul>`
           : `<p class="muted">${L({ en: 'Nobody is on the roster today.', nl: 'Vandaag staat niemand op het rooster.' })}</p>`}
+      </section>
+
+      <section class="card home-card">
+        <div class="hc-head"><h2>${L({ en: 'Checklists today', nl: 'Checklists vandaag' })}</h2><a href="#/sops" class="small">${L({ en: 'All SOPs', nl: "Alle SOP's" })}</a></div>
+        ${lists.length ? `<ul class="prog-list">${lists.map((x) => `<li><a href="#/sops" data-sop="${x.id}">
+            <span class="pl-name">${esc(x.v.title)}<span class="pl-cat">${esc(x.v.category)}</span></span>
+            <span class="pl-bar"><span style="width:${Math.round((x.done / x.n) * 100)}%"></span></span>
+            <span class="pl-num ${x.done === x.n ? 'full' : ''}">${x.done === x.n ? '<i class="ic ic-check" aria-hidden="true"></i>' : `${x.done}/${x.n}`}</span></a></li>`).join('')}</ul>`
+          : `<p class="muted">${L({ en: 'No checklists yet.', nl: 'Nog geen checklists.' })}</p>`}
       </section>
     </div>
 
