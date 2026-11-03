@@ -79,19 +79,17 @@ export async function renderHome() {
       ? L({ en: `${swaps} shift swap${swaps > 1 ? 's' : ''} waiting for your approval`, nl: swaps > 1 ? `${swaps} ruilverzoeken wachten op je akkoord` : '1 ruilverzoek wacht op je akkoord' })
       : L({ en: `${swaps} shift swap update${swaps > 1 ? 's' : ''}`, nl: `Nieuws over ${swaps > 1 ? `${swaps} ruilverzoeken` : 'je ruilverzoek'}` })}</span><i class="ic ic-next" aria-hidden="true"></i></a>` : ''}
 
-    <section class="card home-card home-events">
-      <div class="hc-head"><h2>${L({ en: 'Events', nl: 'Events' })}</h2><a href="#/events" class="small">${L({ en: 'All events', nl: 'Alle events' })}</a></div>
-      <div class="he-day"><div class="he-label">${L({ en: 'Today', nl: 'Vandaag' })}</div>
-        ${evToday.length ? evToday.map((e) => `<a class="home-ev ${e.status === 'option' ? 'is-option' : ''}" href="#/events/${e.id}"><span class="he-time">${e.start_time ? esc(fmt.time(e.start_time)) : '–'}</span>
-            <span class="he-main"><strong>${esc(e.title)}</strong><span class="small muted">${[guests(e) ? `${guests(e)} ${L({ en: 'guests', nl: 'gasten' })}` : '', e.area || ''].filter(Boolean).map(esc).join(' · ')}</span></span>
-            <span class="tag ev-${esc(e.status)}">${t('evs_' + e.status)}</span></a>`).join('') : `<p class="muted small he-none">${L({ en: 'No events today.', nl: 'Vandaag geen events.' })}</p>`}</div>
-      ${nextDay ? `<div class="he-day"><div class="he-label">${esc(relDay(nextDay))}${relDay(nextDay) === fmt.date(nextDay) ? '' : ` <span class="muted">${esc(fmt.date(nextDay))}</span>`}</div>
-        ${evNext.map((e) => `<a class="home-ev ${e.status === 'option' ? 'is-option' : ''}" href="#/events/${e.id}"><span class="he-time">${e.start_time ? esc(fmt.time(e.start_time)) : '–'}</span>
-            <span class="he-main"><strong>${esc(e.title)}</strong><span class="small muted">${[guests(e) ? `${guests(e)} ${L({ en: 'guests', nl: 'gasten' })}` : '', e.area || ''].filter(Boolean).map(esc).join(' · ')}</span></span>
-            <span class="tag ev-${esc(e.status)}">${t('evs_' + e.status)}</span></a>`).join('')}</div>`
-        : `<p class="muted small">${L({ en: 'No events coming up.', nl: 'Geen events gepland.' })} <a href="#/events/new">${L({ en: 'New event', nl: 'Nieuw event' })}</a></p>`}
-      ${evLater.length ? `<div class="he-later small"><span class="muted">${L({ en: 'After that', nl: 'Daarna' })}:</span> ${evLater.map((e) => `<a href="#/events/${e.id}">${esc(fmt.date(e.event_date))} ${esc(e.title)}</a>`).join(', ')}</div>` : ''}
-    </section>
+    ${(() => {
+      // a small nudge, no card: today's events, otherwise the next one; one tap opens it
+      const list = evToday.length ? evToday : evNext.slice(0, 1);
+      if (!list.length) return '';
+      const e = list[0];
+      const when = evToday.length ? L({ en: 'Today', nl: 'Vandaag' }) : relDay(e.event_date);
+      const more = evToday.length > 1 ? ` <span class="hn-more">+${evToday.length - 1}</span>` : '';
+      const href = evToday.length > 1 ? '#/events' : `#/events/${e.id}`;
+      return `<a class="home-nudge ${evToday.length ? 'is-today' : ''}" href="${href}"><i class="ic ic-party" aria-hidden="true"></i>
+        <span class="hn-txt"><strong>${esc(when)}${e.start_time ? ` ${esc(fmt.time(e.start_time))}` : ''}</strong> ${esc(e.title)}${guests(e) ? ` <span class="hn-g">· ${guests(e)}</span>` : ''}</span>${more}<i class="ic ic-next" aria-hidden="true"></i></a>`;
+    })()}
 
     <div class="home-cols">
       <section class="card home-card">

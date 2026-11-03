@@ -1534,3 +1534,11 @@ html.touch-nav .upd-bar { bottom: calc(86px + env(safe-area-inset-bottom)); }
 .he-none { margin: 0 0 4px; }
 .he-later { margin-top: 8px; }
 .he-main strong { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+/* Today: one small line for events */
+.home-nudge { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 0 0 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: .92rem; }
+.home-nudge.is-today { background: var(--primary-soft); border-color: transparent; }
+.home-nudge .ic { width: 18px; height: 18px; background: var(--primary); flex: none; }
+.home-nudge .ic-next { background: var(--ink-3); width: 16px; height: 16px; }
+.hn-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hn-g { color: var(--ink-3); }
+.hn-more { font-size: .78rem; font-weight: 700; background: var(--primary); color: #fff; border-radius: 999px; padding: 2px 7px; flex: none; }
