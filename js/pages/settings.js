@@ -11,10 +11,14 @@ import { SAMPLE_MENU, SAMPLE_PDFS } from '../sample-menu.js';
 import { loadOwnMenu } from '../menu-upgrade.js'; // SAMPLE_PDFS: older versions registered these; Remove still clears them
 import { loadDishOfMonth, saveDishOfMonth } from './menu.js';
 import { lang } from '../i18n.js';
+import { renderCompanySettings } from '../uvh.js';
+import { renderStartList } from './startlist.js';
 const L = (o) => o[lang()] || o.en;
 
 const SECTIONS = [
+  { id: 'start', label: 'set_start' },
   { id: 'team', label: 'set_team' },
+  { id: 'company', label: 'set_company' },
   { id: 'templates', label: 'set_templates' },
   { id: 'menuorder', label: 'set_menu_order' },
   { id: 'haccp', label: 'set_haccp' },
@@ -37,7 +41,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ team, templates, menuorder, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

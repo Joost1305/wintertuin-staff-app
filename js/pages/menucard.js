@@ -398,6 +398,7 @@ function draw() {
 
 function preview() {
   const f = $('#mc-frame');
+  if (!f) return; // you already left the page
   // iPhone Safari enlarges small text in a frame on its own (text autosizing): switched off, and the A4 pages are
   // scaled with a transform instead of zoom, so the preview is an exact small copy of the printed card
   f.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base href="${location.href.split('#')[0]}">

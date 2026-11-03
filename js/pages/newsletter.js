@@ -151,7 +151,7 @@ function draw() {
       </div>
       <div class="nl-preview"><div class="nl-device"><iframe id="nl-frame" title="${L({ en: 'Preview', nl: 'Voorbeeld' })}"></iframe></div></div>
     </div>`;
-  const refresh = () => { $('#nl-frame').srcdoc = html(); };
+  const refresh = () => { const f = $('#nl-frame'); if (f) f.srcdoc = html(); };
   refresh();
   let timer;
   const later = () => { clearTimeout(timer); timer = setTimeout(refresh, 250); };

@@ -214,14 +214,18 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('[data-addrow=timeline]'); await p.fill('#rows-timeline [name=tl_time]', '17:00'); await p.fill('#rows-timeline [name=tl_what]', 'Guests arrive, welcome drink');
       await p.click('[data-addrow=menu]'); await p.fill('#rows-menu [name=mn_course]', 'Starter');
       await p.selectOption('#rows-menu [name=mn_item]', { label: 'Sourdough' }); await p.waitForSelector('#rows-menu .tag.allergen');
-      await p.fill('[name=price_per_person]', '85'); await p.fill('[name=notes_kitchen]', 'Bread warm from the oven');
+      await p.click('.ev-ct label:has-text("Business")');
+      await p.click('[data-addprice^="Diner p.p."]'); await p.fill('#rows-price [name=pr_price]', '85'); await p.waitForSelector('#price-total:has-text("5,100")');
+      await p.click('[data-addprice^="Wijnarrangement"]'); await p.fill('#rows-price [data-i="1"] [name=pr_price]', '20');
+      await p.fill('[name=notes_kitchen]', 'Bread warm from the oven');
       await p.screenshot({ path: `${OUT}/15-event-form.png`, fullPage: true });
       await p.click('#ev-form button[type=submit]'); await p.waitForSelector('h1:has-text("Wedding Jansen")');
       const ev = await p.evaluate(() => window.__mockdb.events[0]);
       if (ev.menu[0].course !== 'course_starter' || ev.menu[0].allergens[0] !== 'gluten') throw new Error(JSON.stringify(ev.menu));
       if (ev.dietary[0].type !== 'diet_vegetarian' || ev.dietary[0].count !== 3) throw new Error(JSON.stringify(ev.dietary));
-      if (ev.guests_expected !== 60 || ev.price_per_person !== 85) throw new Error('numbers');
-      if (!/€5,100/.test(await p.textContent('.ev-kpis'))) throw new Error('expected revenue');
+      if (ev.guests_expected !== 60 || ev.client_type !== 'business' || ev.price_lines.length !== 2 || ev.price_lines[0].price !== 85 || ev.price_lines[1].vat !== 0.21) throw new Error('numbers ' + JSON.stringify(ev.price_lines));
+      if (!/€6,300/.test(await p.textContent('.ev-kpis'))) throw new Error('expected revenue');
+      if (!(await p.$('.ev-uvh-note a[href="#/settings/company"]'))) throw new Error('no warning about company details');
       await p.screenshot({ path: `${OUT}/16-event-view.png`, fullPage: true }); });
     await step('events: change makes a new version with history', async () => {
       await p.click('a:has-text("Edit")'); await p.waitForSelector('#ev-form');
@@ -236,11 +240,42 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       let html = await p.evaluate(() => window.__printed);
-      if (!/Bevestiging evenement/.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
+      if (!/>Bevestiging</.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
+      if (!/Uniforme Voorwaarden Horeca/.test(html) || !/ontvangst van de Uniforme Voorwaarden Horeca/.test(html)) throw new Error('no UVH on the confirmation');
+      if (!/Btw 9% over/.test(html) || !/Btw 21% over/.test(html) || !/7\.560,00/.test(html)) throw new Error('VAT per rate');
+      if (!/van de reserveringswaarde/.test(html) || !/sporen van andere ingrediënten/.test(html)) throw new Error('cancellation or allergens');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
       if (!/Gluten/i.test(html) || !/Bread warm/.test(html) || !/Vegetarian/.test(html)) throw new Error('kitchen sheet'); });
+    await step('settings: company details on the quote; a private client gets UVH art. 14 instead of percentages', async () => {
+      await p.goto(BASE + '#/settings/company'); await p.waitForSelector('#co-f');
+      await p.fill('#co-legal_name', 'Wintertuin B.V. i.o.'); await p.fill('#co-address', 'Cantonspark 1'); await p.fill('#co-postcode_city', '3741 AA Baarn');
+      await p.fill('#co-kvk', '12345678'); await p.fill('#co-vat_id', 'NL123456789B01'); await p.fill('#co-iban', 'NL00TEST0123456789');
+      await p.setInputFiles('#co-uvh', { name: 'uvh.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') }); await p.waitForSelector('.toast:has-text("UVH saved")');
+      await p.screenshot({ path: `${OUT}/18a-company.png`, fullPage: true });
+      const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
+      if (await p.$('.ev-uvh-note')) throw new Error('warning stays after filling in');
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('#ev-form'); await p.click('.ev-ct label:has-text("Private person")'); await p.selectOption('[name=status]', 'option');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")');
+      await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
+      const html = await p.evaluate(() => window.__printed);
+      if (!/>Offerte</.test(html) || !/KVK 12345678/.test(html) || !/NL123456789B01/.test(html) || !/UVH art\. 14\.2/.test(html) || /van de reserveringswaarde/.test(html)) throw new Error('private quote');
+      await p.evaluate((h) => { document.body.insertAdjacentHTML('beforeend', `<div id="pv" style="position:fixed;inset:0;background:#fff;overflow:auto;z-index:9999;padding:20px">${h}</div>`); }, html);
+      await p.screenshot({ path: `${OUT}/18b-quote.png`, fullPage: false }); await p.evaluate(() => document.getElementById('pv').remove());
+      // back to a business confirmation for the next steps
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('#ev-form'); await p.click('.ev-ct label:has-text("Business")'); await p.selectOption('[name=status]', 'confirmed');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")');
+      await p.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed = (window.__printed || 0) + 1; }; }); });
+    await step('settings: next steps tick themselves for company and UVH; a manager ticks KHN', async () => {
+      await p.goto(BASE + '#/settings/start'); await p.waitForSelector('.sl-list');
+      if ((await p.$$('.sl-list li.ok .sl-auto')).length < 2) throw new Error('company and UVH not ticked by the app');
+      await p.check('[data-todo=khn]'); await p.waitForSelector('.toast:has-text("Ticked off")');
+      const d = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'setup_todo').value.done);
+      if (!d.khn) throw new Error('KHN not saved');
+      await p.screenshot({ path: `${OUT}/18c-next-steps.png`, fullPage: true }); });
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });

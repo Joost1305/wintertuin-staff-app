@@ -7,6 +7,7 @@ import { state, isManager, app, esc, fmt, toast, toastError, todayIso, nameOf, $
 import { t, tIn, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { ALLERGENS } from './menu.js';
+import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKind, KIND_LABEL, uvhL, VAT_RATES } from '../uvh.js';
 
 const STATUSES = ['option', 'confirmed', 'cancelled', 'done'];
 const DRAFT = 'wintertuinEventDraft_';
@@ -27,10 +28,12 @@ const SIMPLE = [
   ['price_per_person', 'ev_price_pp'], ['room_hire', 'ev_room_hire'], ['min_spend', 'ev_min_spend'], ['prices_incl_vat', 'ev_incl_vat'],
   ['deposit', 'ev_deposit'], ['deposit_due', 'ev_deposit_due'], ['deposit_paid', 'ev_deposit_paid'],
   ['payment_terms', 'ev_payment_terms'], ['cancellation_terms', 'ev_cancellation_terms'],
+  ['client_type', 'ev_client_type'], ['agreement_kind', 'ev_agreement_kind'], ['quote_valid_until', 'ev_quote_valid_until'], ['corkage', 'ev_corkage'],
+  ['deviations', 'ev_deviations'], ['uvh_sent_at', 'ev_uvh_sent_at'], ['uvh_received_at', 'ev_uvh_received_at'],
   ['notes_kitchen', 'ev_notes_kitchen'], ['notes_bar', 'ev_notes_bar'], ['notes_service', 'ev_notes_service'], ['notes_cleaning', 'ev_notes_cleaning'],
   ['notes_internal', 'ev_notes_internal'], ['client_confirmed_at', 'ev_confirmed_at'], ['client_confirmed_by', 'ev_confirmed_by'],
 ];
-const LABEL = Object.fromEntries(SIMPLE.concat([['menu', 'ev_menu'], ['dietary', 'ev_dietary'], ['timeline', 'ev_timeline']]));
+const LABEL = Object.fromEntries(SIMPLE.concat([['menu', 'ev_menu'], ['dietary', 'ev_dietary'], ['timeline', 'ev_timeline'], ['price_lines', 'ev_price_lines']]));
 const NUM = new Set(['guests_expected', 'guests_guaranteed', 'guests_final', 'children', 'staff_needed']);
 const MONEY = new Set(['price_per_person', 'room_hire', 'min_spend', 'deposit']);
 const BOOL = new Set(['exclusive', 'deposit_paid', 'prices_incl_vat', 'newsletter_ok']);
@@ -41,7 +44,16 @@ async function newsletterColumn() {
   try { const { error } = await sb.from('events').select('newsletter_ok').limit(1); hasNewsletterCol = !error; } catch { hasNewsletterCol = false; }
   return hasNewsletterCol;
 }
-const DATE = new Set(['event_date', 'option_until', 'guarantee_deadline', 'deposit_due', 'client_confirmed_at']);
+const DATE = new Set(['event_date', 'option_until', 'guarantee_deadline', 'deposit_due', 'client_confirmed_at', 'quote_valid_until', 'uvh_sent_at', 'uvh_received_at']);
+// The UVH fields need database update 014; until then they are left out so saving keeps working
+let hasUvhCols = null;
+async function uvhColumns() {
+  if (hasUvhCols !== null) return hasUvhCols;
+  try { const { error } = await sb.from('events').select('client_type, price_lines').limit(1); hasUvhCols = !error; } catch { hasUvhCols = false; }
+  return hasUvhCols;
+}
+const UVH_KEYS = ['client_type', 'agreement_kind', 'quote_valid_until', 'corkage', 'deviations', 'uvh_sent_at', 'uvh_received_at', 'price_lines'];
+let company = {};
 
 let menuItems = [];
 const guestsOf = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
@@ -53,7 +65,7 @@ function saveDraft(k, d) { try { localStorage.setItem(DRAFT + k, JSON.stringify(
 function clearDraft(k) { try { localStorage.removeItem(DRAFT + k); } catch { /* private mode */ } }
 
 export async function renderEvents(args = []) {
-  await newsletterColumn();
+  await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; })]);
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active').order('group_type').order('category').order('sort_order')) || [];
   const [id, sub] = args;
@@ -182,22 +194,24 @@ async function renderView(ev) {
           <a href="#/events/${ev.id}/history" class="small" style="margin-left:6px">v${ev.version} · ${t('ev_history')}</a></div></div>
       <div class="page-actions">
         <a class="btn btn-primary btn-sm" href="#/events/${ev.id}/edit">${t('edit')}</a>
+        ${ev.client_email ? `<button type="button" class="btn-sm" id="ev-mail"><i class="ic ic-share" aria-hidden="true"></i> ${L2(`${docName(ev, 'nl')} mailen`, `E-mail the ${docName(ev, 'en').toLowerCase()}`)}</button>` : ''}
         <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:240px;padding:10px">
-            <button type="button" class="btn-sm" data-print="client-en">${t('ev_print_client')} (EN)</button>
-            <button type="button" class="btn-sm" data-print="client-nl">${t('ev_print_client')} (NL)</button>
+            <button type="button" class="btn-sm" data-print="client-nl">${docName(ev, 'nl')} (NL)</button>
+            <button type="button" class="btn-sm" data-print="client-en">${docName(ev, 'en')} (EN)</button>
             <button type="button" class="btn-sm" data-print="kitchen">${t('ev_print_kitchen')}</button>
             <button type="button" class="btn-sm" data-print="service">${t('ev_print_service')}</button>
           </div></details>
         ${isManager() ? `<button type="button" class="btn-sm btn-ghost btn-danger" id="del">${t('delete')}</button>` : ''}</div></div>
     ${ev.status === 'option' && ev.option_until ? `<div class="note" style="margin:0 0 12px">${t('ev_option_note', { d: esc(fmt.dateLong(ev.option_until)) })}</div>` : ''}
+    ${uvhWarnings(ev)}
     ${ev.guarantee_deadline && !ev.guests_final && ev.status !== 'cancelled' ? `<div class="note" style="margin:0 0 12px">${t('ev_guarantee_note', { d: esc(fmt.dateLong(ev.guarantee_deadline)) })}</div>` : ''}
     <div class="ev-kpis">
       <div class="card kpi"><div class="label">${t('ev_guests')}</div><div class="value">${g ?? '–'}</div>
         <div class="tiny muted">${[ev.guests_expected != null ? `${t('ev_g_exp')} ${ev.guests_expected}` : '', ev.guests_guaranteed != null ? `${t('ev_g_guar')} ${ev.guests_guaranteed}` : '', ev.guests_final != null ? `${t('ev_g_final')} ${ev.guests_final}` : ''].filter(Boolean).join(' · ')}</div></div>
       <div class="card kpi"><div class="label">${t('ev_dietary')}</div><div class="value">${(ev.dietary || []).reduce((a, d) => a + (Number(d.count) || 0), 0)}</div><div class="tiny muted">${t('ev_special_requests')}</div></div>
       <div class="card kpi"><div class="label">${t('ev_staff_rostered')}</div><div class="value ${staffWarn ? 'txt-red' : ''}">${shifts.length}${ev.staff_needed ? ` / ${ev.staff_needed}` : ''}</div><div class="tiny muted">${staffWarn ? t('ev_staff_short') : t('ev_from_roster')}</div></div>
-      <div class="card kpi"><div class="label">${t('ev_expected_revenue')}</div><div class="value">${fmt.money(expectedRevenue(ev)) || '–'}</div><div class="tiny muted">${t(ev.prices_incl_vat ? 'ev_incl_vat_short' : 'ev_excl_vat_short')}</div></div>
+      <div class="card kpi"><div class="label">${t('ev_expected_revenue')}</div><div class="value">${fmt.money(expectedRevenue(ev)) || '–'}</div><div class="tiny muted">${t('ev_incl_vat_short')}</div></div>
     </div>
     <div class="grid grid-2 ev-grid">
       ${block(t('ev_sec_event'), ['event_type', 'area', 'exclusive', 'service_style', 'option_until', 'sold_by'].map(row).join(''))}
@@ -209,7 +223,8 @@ async function renderView(ev) {
       ${block(t('ev_dietary'), (ev.dietary || []).length ? `<table class="ev-table">${ev.dietary.map((d) => `<tr><td class="ev-time">${esc(String(d.count ?? ''))}×</td><td><strong>${esc(labelOf(d.type))}</strong>${d.who ? ` <span class="muted">· ${esc(d.who)}</span>` : ''}</td></tr>`).join('')}</table>` : '')}
       ${block(t('ev_sec_setup'), ['setup', 'drinks', 'extras'].map(row).join(''))}
       ${block(t('ev_sec_staff'), `${row('staff_needed')}${row('staffing')}${shifts.length ? `<table class="ev-table" style="margin-top:6px">${shifts.map((s) => `<tr><td class="ev-time">${fmt.time(s.start_time)}–${fmt.time(s.end_time)}</td><td>${esc(s.profiles ? s.profiles.full_name : '')}${s.section ? ` <span class="muted">· ${esc(s.section)}</span>` : ''}</td></tr>`).join('')}</table>` : `<div class="small muted">${t('ev_no_shifts')} <a href="#/roster">${t('nav_roster')}</a></div>`}`)}
-      ${block(t('ev_sec_money'), ['price_per_person', 'room_hire', 'min_spend', 'prices_incl_vat', 'deposit', 'deposit_due', 'deposit_paid', 'payment_terms', 'cancellation_terms'].map(row).join(''))}
+      ${block(t('ev_sec_money'), moneyBlock(ev) + ['client_type', 'min_spend', 'deposit', 'deposit_due', 'deposit_paid', 'quote_valid_until', 'corkage', 'payment_terms', 'deviations', 'cancellation_terms', 'uvh_sent_at', 'uvh_received_at'].map(row).join(''))}
+      ${block(L2('Annuleren volgens de UVH', 'Cancellation under the UVH'), scheduleHtml(ev))}
       ${block(t('ev_sec_departments'), ['notes_kitchen', 'notes_bar', 'notes_service', 'notes_cleaning'].map(row).join(''))}
       ${block(t('ev_sec_internal'), ['notes_internal', 'client_confirmed_at', 'client_confirmed_by'].map(row).join(''))}
     </div>
@@ -221,6 +236,7 @@ async function renderView(ev) {
     else if (k === 'kitchen') printKitchen(ev);
     else printService(ev, shifts);
   }));
+  const mail = $('#ev-mail'); if (mail) mail.onclick = () => mailQuote(ev);
   const del = $('#del');
   if (del) del.onclick = async () => {
     if (!(await confirmDialog(t('ev_confirm_delete'), t('delete')))) return;
@@ -228,12 +244,50 @@ async function renderView(ev) {
   };
 }
 
-function expectedRevenue(ev) {
-  const g = guestsOf(ev);
-  const pp = ev.price_per_person != null && g ? Number(ev.price_per_person) * g : 0;
-  const total = pp + Number(ev.room_hire || 0);
-  const min = Number(ev.min_spend || 0);
-  return total || min ? Math.max(total, min) : null;
+// Reservation value (UVH art. 1.6): the expected revenue including VAT, at least the minimum spend
+function expectedRevenue(ev) { return priceSummary(ev, guestsOf(ev)).value; }
+
+const L2 = (nl, en) => (lang() === 'nl' ? nl : en);
+const docName = (ev, l) => (ev.status === 'option' ? (l === 'nl' ? 'Offerte' : 'Quote') : (l === 'nl' ? 'Bevestiging' : 'Confirmation'));
+const euro = (n, l) => new Intl.NumberFormat((l || lang()) === 'nl' ? 'nl-NL' : 'en-GB', { style: 'currency', currency: 'EUR' }).format(Number(n || 0));
+// What is still missing before this can go to the client
+function uvhWarnings(ev) {
+  if (ev.status === 'cancelled' || ev.status === 'done') return '';
+  const w = [];
+  if (hasUvhCols && !ev.client_type) w.push(L2('kies zakelijk of particulier', 'choose business or private'));
+  if (companyGaps(company).length) w.push(`<a href="#/settings/company">${L2('bedrijfsgegevens invullen', 'fill in the company details')}</a>`);
+  if (!company.uvh_url) w.push(`<a href="#/settings/company">${L2('UVH-pdf toevoegen', 'add the UVH PDF')}</a>`);
+  if (!priceSummary(ev, guestsOf(ev)).lines.length) w.push(L2('prijsregels invullen', 'add price lines'));
+  return w.length ? `<div class="note ev-uvh-note" style="margin:0 0 12px"><strong>${L2('Voor de offerte nog', 'Before the quote')}:</strong> ${w.join(', ')}.</div>` : '';
+}
+function moneyBlock(ev) {
+  const ps = priceSummary(ev, guestsOf(ev));
+  if (!ps.lines.length) return '';
+  return `<table class="ev-table ev-price">${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? t('ev_room_hire') : t('ev_price_pp')))}</td><td class="num">${x.per === 'pp' ? `${x.qty} × ` : x.qty !== 1 ? `${x.qty} × ` : ''}${euro(x.price)}</td><td class="num muted">${Math.round(x.vat * 100)}%</td><td class="num">${euro(x.total)}</td></tr>`).join('')}
+    <tr class="tot"><td colspan="3">${L2('Totaal incl. btw', 'Total incl. VAT')}${ps.byRate.length ? `<div class="tiny muted">${ps.byRate.map((r) => `${L2('btw', 'VAT')} ${Math.round(r.rate * 100)}%: ${euro(r.vat)}`).join(' · ')}</div>` : ''}</td><td class="num">${euro(ps.total)}</td></tr></table>
+    ${ps.minApplies ? `<div class="tiny muted">${L2('De minimale besteding is hoger: die geldt.', 'The minimum spend is higher: that applies.')}</div>` : ''}`;
+}
+function scheduleHtml(ev, l) {
+  if (!hasUvhCols) return '';
+  const sch = cancellationSchedule(ev, expectedRevenue(ev), l || lang());
+  if (!sch) return '';
+  if (sch.kind === 'private') return `<p class="small">${esc(sch.text)}</p>`;
+  return `<div class="tiny muted">${esc(uvhL(KIND_LABEL[sch.kind], l || lang()))}</div><table class="ev-table">${sch.rows.map((r) => `<tr><td>${esc(r.when)}</td><td class="num">${r.pct ? `${r.pct}%` : L2('kosteloos', 'free')}</td><td class="num">${esc(r.amountText)}</td></tr>`).join('')}</table>
+    ${(sch.rules || []).map((x) => `<p class="tiny muted" style="margin:6px 0 0">${esc(x)}</p>`).join('')}`;
+}
+// Open the mail program with the quote text and the UVH link; the PDF of the quote you attach yourself
+async function mailQuote(ev) {
+  const name = docName(ev, 'nl');
+  const lines = [
+    `Beste ${ev.client_name || ''},`.trim(), '',
+    `Hierbij ${name === 'Offerte' ? 'de offerte' : 'de bevestiging'} voor ${ev.title} op ${dateIn(ev.event_date, 'nl')}. Je vindt hem als pdf in de bijlage.`,
+    ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, 'nl')}.` : '',
+    '', 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing.' + (company.uvh_url ? ` Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : ' We sturen ze mee als bijlage.'),
+    '', 'Laat je ons weten of alles klopt? Dan zetten we het vast.', '', 'Hartelijke groet,', state.me.full_name || '', company.trade_name || 'Wintertuin',
+  ].filter((x, i, a) => !(x === '' && a[i - 1] === ''));
+  const href = `mailto:${encodeURIComponent(ev.client_email)}?subject=${encodeURIComponent(`${name} ${ev.title}, ${dateIn(ev.event_date, 'nl')}`)}&body=${encodeURIComponent(lines.join('\n'))}`;
+  location.href = href;
+  if (hasUvhCols && !ev.uvh_sent_at) { try { check(await sb.from('events').update({ uvh_sent_at: todayIso() }).eq('id', ev.id)); } catch { /* the mail still opens */ } }
 }
 
 // One value, readable (screen and history)
@@ -244,6 +298,9 @@ function display(k, val, l) {
   if (MONEY.has(k)) return esc(new Intl.NumberFormat(l === 'nl' || (!l && lang() === 'nl') ? 'nl-NL' : 'en-GB', { style: 'currency', currency: 'EUR' }).format(Number(val)));
   if (DATE.has(k)) return esc(dateIn(val, l));
   if (k === 'status') return tt('evs_' + val);
+  if (k === 'client_type') return tt(val === 'private' ? 'ev_ct_private' : 'ev_ct_business');
+  if (k === 'agreement_kind') return esc(uvhL(KIND_LABEL[val] || { en: val }, l || lang()));
+  if (k === 'price_lines') return esc((val || []).map((x) => `${x.label || ''} ${x.per === 'pp' ? 'p.p.' : `${x.qty || 1}×`} € ${x.price ?? ''} (${Math.round(Number(x.vat) * 100)}%)`).join('; '));
   if (k === 'sold_by') return esc(nameOf(val));
   if (k === 'start_time' || k === 'end_time') return esc(fmt.time(val));
   if (k === 'service_style') return esc(l ? (/^style_/.test(val) ? tIn(l, val) : val) : labelOf(val));
@@ -265,6 +322,8 @@ function renderEditor(ev, date = null) {
   const v = draft ? { ...base, ...draft } : base;
   if (date) v.event_date = date; // started from a day in the calendar
   const nlCol = hasNewsletterCol === true || !!(ev && 'newsletter_ok' in ev);
+  const uvhOn = hasUvhCols === true || !!(ev && 'price_lines' in ev);
+  if (uvhOn && !ev && !v.quote_valid_until) { const d = new Date(); d.setDate(d.getDate() + (Number(company.quote_days) || 14)); v.quote_valid_until = d.toISOString().slice(0, 10); }
   const people = state.profiles.filter((p) => p.active !== false || p.id === v.sold_by);
   const inp = (k, type = 'text', extra = '') => {
     const val = v[k] == null ? '' : (type === 'time' ? fmt.time(v[k]) : v[k]);
@@ -300,7 +359,23 @@ function renderEditor(ev, date = null) {
       ${sec(t('ev_menu'), `<div id="rows-menu"></div><button type="button" class="btn-sm" data-addrow="menu">+ ${t('ev_add_course')}</button>`, t('ev_menu_hint'))}
       ${sec(t('ev_sec_drinks_extras'), area('drinks', 3, t('ev_drinks_ph')) + area('extras', 3, t('ev_extras_ph')))}
       ${sec(t('ev_sec_staff'), grid(inp('staff_needed', 'number')) + area('staffing', 2, t('ev_staffing_ph')), t('ev_staff_hint'))}
-      ${sec(t('ev_sec_money'), grid(inp('price_per_person', 'money'), inp('room_hire', 'money'), inp('min_spend', 'money'), inp('deposit', 'money'), inp('deposit_due', 'date'))
+      ${uvhOn ? sec(t('ev_sec_money'), `
+        <div class="field"><span class="lbl-like">${t('ev_client_type')}</span><div class="ro-views ev-ct">${['business', 'private'].map((k) => `<label class="${v.client_type === k ? 'on' : ''}"><input type="radio" name="client_type" value="${k}" ${v.client_type === k ? 'checked' : ''}> ${t(k === 'private' ? 'ev_ct_private' : 'ev_ct_business')}</label>`).join('')}</div>
+          <div class="hint">${L2('Bepaalt de btw-weergave en de annuleringsregels (UVH art. 13 of 14).', 'Sets how VAT is shown and the cancellation rules (UVH art. 13 or 14).')}</div></div>
+        <div class="field"><span class="lbl-like">${t('ev_price_lines')}</span><div id="rows-price"></div>
+          <div class="ev-quick">${[['Diner p.p.', 'pp', 0.09], ['Lunch p.p.', 'pp', 0.09], ['Drankarrangement alcoholvrij p.p.', 'pp', 0.09], ['Wijnarrangement p.p.', 'pp', 0.21], ['Zaalhuur', 'fixed', 0.21]].map(([lab, per, vat]) => `<button type="button" class="btn-sm" data-addprice="${esc(lab)}|${per}|${vat}">+ ${esc(lab)} ${Math.round(vat * 100)}%</button>`).join('')}
+            <button type="button" class="btn-sm" data-addprice="|pp|0.09">+ ${L2('Andere regel', 'Other line')}</button></div>
+          <div class="hint">${L2('Prijzen inclusief btw. Eten en alcoholvrij 9%, alcohol en zaalhuur 21%. Per persoon rekent met het aantal gasten.', 'Prices including VAT. Food and soft drinks 9%, alcohol and room hire 21%. Per person uses the number of guests.')}</div>
+          <div id="price-total" class="ev-price-total"></div></div>
+        ${grid(inp('min_spend', 'money'), inp('deposit', 'money'), inp('deposit_due', 'date'), inp('quote_valid_until', 'date'))}
+        ${chk('deposit_paid')}
+        <div class="field"><label for="f-agreement_kind">${t('ev_agreement_kind')}</label><select id="f-agreement_kind" name="agreement_kind"><option value="">${L2('Automatisch', 'Automatic')}: ${esc(uvhL(KIND_LABEL[suggestKind(v)]))}</option>${Object.keys(KIND_LABEL).map((k) => `<option value="${k}" ${v.agreement_kind === k ? 'selected' : ''}>${esc(uvhL(KIND_LABEL[k]))}</option>`).join('')}</select>
+          <div class="hint">${L2('Alleen voor zakelijke klanten; voor particulieren geldt UVH art. 14.', 'Business clients only; private clients fall under UVH art. 14.')}</div></div>
+        ${inp('corkage', 'text', `placeholder="${esc(L2('Bijvoorbeeld: eigen taart € 2,50 p.p.', 'For example: own cake € 2.50 p.p.'))}"`)}
+        ${area('deviations', 2, L2('Alleen als je iets anders afspreekt dan de UVH, bijvoorbeeld een andere annuleringsregeling.', 'Only when you agree something other than the UVH, such as a different cancellation rule.'))}
+        ${area('payment_terms', 2)}${v.cancellation_terms ? area('cancellation_terms', 2) : ''}
+        ${grid(inp('uvh_sent_at', 'date'), inp('uvh_received_at', 'date'))}`, L2('De offerte rekent btw per tarief en het annuleringsschema uit de UVH zelf uit.', 'The quote works out VAT per rate and the UVH cancellation schedule by itself.'))
+      : sec(t('ev_sec_money'), grid(inp('price_per_person', 'money'), inp('room_hire', 'money'), inp('min_spend', 'money'), inp('deposit', 'money'), inp('deposit_due', 'date'))
         + chk('prices_incl_vat') + chk('deposit_paid') + area('payment_terms', 2) + area('cancellation_terms', 2))}
       ${sec(t('ev_sec_departments'), area('notes_kitchen') + area('notes_bar') + area('notes_service') + area('notes_cleaning'), t('ev_departments_hint'))}
       ${sec(t('ev_sec_internal'), area('notes_internal', 3) + grid(inp('client_confirmed_at', 'date'), inp('client_confirmed_by')), t('ev_internal_hint'))}
@@ -308,7 +383,9 @@ function renderEditor(ev, date = null) {
         <button class="btn-primary" type="submit">${t('save')}</button></div>
     </form>`;
 
-  const lists = { menu: [...(v.menu || [])], dietary: [...(v.dietary || [])], timeline: [...(v.timeline || [])] };
+  // older events: price per person and room hire become price lines the first time you edit them
+  const startPrices = (v.price_lines || []).length ? v.price_lines : priceSummary(v, guestsOf(v)).lines.map((x) => ({ label: x.room ? 'Zaalhuur' : 'Prijs p.p.', per: x.per, qty: x.per === 'pp' ? null : x.qty, price: x.price, vat: x.vat }));
+  const lists = { menu: [...(v.menu || [])], dietary: [...(v.dietary || [])], timeline: [...(v.timeline || [])], price: startPrices.map((x) => ({ ...x })) };
   const drawRows = () => {
     $('#rows-timeline').innerHTML = lists.timeline.map((x, i) => `<div class="ev-line" data-i="${i}">
       <input name="tl_time" value="${esc(x.time || '')}" placeholder="18:00" style="max-width:90px" aria-label="${t('time')}">
@@ -325,6 +402,17 @@ function renderEditor(ev, date = null) {
       <input name="mn_name" value="${esc(m.name || '')}" placeholder="${esc(t('ev_dish_ph'))}" aria-label="${t('ev_dish')}">
       <button type="button" class="btn-sm btn-ghost" data-del="menu|${i}" aria-label="${t('delete')}">&#10005;</button>
       <div class="ev-al">${(m.allergens || []).map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('') || (m.name ? `<span class="tiny muted">${t(m.item_id ? 'ev_no_allergens' : 'ev_check_allergens')}</span>` : '')}</div></div>`).join('');
+    if ($('#rows-price')) {
+      $('#rows-price').innerHTML = lists.price.map((x, i) => `<div class="ev-line ev-price-line" data-i="${i}">
+        <input name="pr_label" value="${esc(x.label || '')}" placeholder="${esc(L2('Omschrijving', 'Description'))}" aria-label="${esc(L2('Omschrijving', 'Description'))}">
+        <select name="pr_per" aria-label="${esc(L2('Per', 'Per'))}"><option value="pp" ${x.per === 'pp' ? 'selected' : ''}>p.p.</option><option value="fixed" ${x.per !== 'pp' ? 'selected' : ''}>${L2('vast', 'fixed')}</option></select>
+        <input name="pr_qty" value="${x.per === 'pp' ? '' : esc(String(x.qty ?? 1))}" ${x.per === 'pp' ? 'disabled' : ''} inputmode="decimal" placeholder="${x.per === 'pp' ? esc(L2('gasten', 'guests')) : '1'}" style="max-width:70px" aria-label="${esc(L2('Aantal', 'Quantity'))}">
+        <input name="pr_price" value="${x.price != null ? esc(String(x.price).replace('.', ',')) : ''}" inputmode="decimal" placeholder="€ incl." style="max-width:96px" aria-label="${esc(L2('Prijs incl. btw', 'Price incl. VAT'))}">
+        <select name="pr_vat" aria-label="${L2('Btw', 'VAT')}">${VAT_RATES.map((r) => `<option value="${r}" ${Number(x.vat) === r ? 'selected' : ''}>${Math.round(r * 100)}%</option>`).join('')}</select>
+        <button type="button" class="btn-sm btn-ghost" data-del="price|${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('');
+      $$('[name=pr_per]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
+      showTotal();
+    }
     $$('[data-del]').forEach((b) => (b.onclick = () => { const [l, i] = b.dataset.del.split('|'); readRows(); lists[l].splice(Number(i), 1); drawRows(); persist(); }));
     $$('[name=mn_item]').forEach((s) => (s.onchange = () => {
       readRows();
@@ -333,7 +421,17 @@ function renderEditor(ev, date = null) {
       drawRows(); persist();
     }));
   };
+  const showTotal = () => {
+    const el = $('#price-total'); if (!el) return;
+    const f = $('#ev-form'); const g = ['guests_final', 'guests_guaranteed', 'guests_expected'].map((k) => parseNum(f.elements[k] && f.elements[k].value)).find((x) => x != null);
+    const ps = priceSummary({ price_lines: lists.price, min_spend: parseNum(f.elements.min_spend && f.elements.min_spend.value) }, g);
+    el.innerHTML = ps.lines.length ? `${L2('Totaal', 'Total')} <strong>${euro(ps.total)}</strong> ${L2('incl. btw', 'incl. VAT')}${g ? ` (${g} ${L2('gasten', 'guests')})` : ''}${ps.byRate.length ? ` · ${ps.byRate.map((r) => `${Math.round(r.rate * 100)}%: ${euro(r.ex)} + ${euro(r.vat)}`).join(' · ')}` : ''}` : '';
+  };
   const readRows = () => {
+    if ($('#rows-price')) lists.price = $$('#rows-price [data-i]').map((r) => {
+      const per = r.querySelector('[name=pr_per]').value;
+      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value) };
+    });
     lists.timeline = $$('#rows-timeline [data-i]').map((r) => ({ time: r.querySelector('[name=tl_time]').value.trim(), what: r.querySelector('[name=tl_what]').value.trim() }));
     lists.dietary = $$('#rows-dietary [data-i]').map((r) => ({ count: parseNum(r.querySelector('[name=di_count]').value), type: r.querySelector('[name=di_type]').value.trim(), who: r.querySelector('[name=di_who]').value.trim() }));
     lists.menu = $$('#rows-menu [data-i]').map((r, i) => {
@@ -355,6 +453,11 @@ function renderEditor(ev, date = null) {
       else out[k] = el.value.trim() === '' ? null : el.value.trim();
     }
     out.service_style = out.service_style ? toCode(out.service_style, STYLES) : null;
+    if (uvhOn) {
+      const ct = f.querySelector('[name=client_type]:checked'); out.client_type = ct ? ct.value : null;
+      out.price_lines = lists.price.filter((x) => x.label || x.price != null);
+      out.agreement_kind = out.agreement_kind || null;
+    } else UVH_KEYS.forEach((k) => delete out[k]);
     out.timeline = lists.timeline.filter((x) => x.time || x.what).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     out.dietary = lists.dietary.filter((d) => d.type || d.count).map((d) => ({ ...d, type: toCode(d.type, DIETS) }));
     out.menu = lists.menu.filter((m) => m.name || m.item_id).map((m) => ({ ...m, course: toCode(m.course, COURSES) }));
@@ -362,6 +465,12 @@ function renderEditor(ev, date = null) {
   };
   const persist = () => saveDraft(key, collect());
   drawRows();
+  $$('[data-addprice]').forEach((b) => (b.onclick = () => {
+    readRows(); const [label, per, vat] = b.dataset.addprice.split('|');
+    lists.price.push({ label, per, qty: per === 'pp' ? null : 1, price: null, vat: Number(vat) }); drawRows(); persist();
+    const rows = $$('#rows-price [data-i]'); const last = rows[rows.length - 1]; if (last) last.querySelector(label ? '[name=pr_price]' : '[name=pr_label]').focus();
+  }));
+  $$('.ev-ct input').forEach((r) => (r.onchange = () => { $$('.ev-ct label').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked)); }));
   $$('[data-addrow]').forEach((b) => (b.onclick = () => {
     readRows();
     const l = b.dataset.addrow;
@@ -369,7 +478,7 @@ function renderEditor(ev, date = null) {
     drawRows();
     const rows = $$(`#rows-${l} [data-i]`); const last = rows[rows.length - 1]; if (last) last.querySelector('input').focus();
   }));
-  $('#ev-form').oninput = persist;
+  $('#ev-form').oninput = () => { persist(); if ($('#rows-price')) { readRows(); showTotal(); } };
   $('#cancel').onclick = () => clearDraft(key);
   const dd = $('#drop-draft'); if (dd) dd.onclick = () => { clearDraft(key); renderEditor(ev); };
   $('#ev-form').onsubmit = async (e) => {
@@ -436,34 +545,71 @@ const timelineHtml = (ev) => ((ev.timeline || []).length ? `<table>${ev.timeline
 
 function printClient(ev, l) {
   const tt = (k, vars) => tIn(l, k, vars);
+  const T = (nl, en) => (l === 'nl' ? nl : en);
   const money = (n) => (n == null ? '' : new Intl.NumberFormat(l === 'nl' ? 'nl-NL' : 'en-GB', { style: 'currency', currency: 'EUR' }).format(Number(n)));
   const g = guestsOf(ev);
-  const pp = ev.price_per_person != null && g ? Number(ev.price_per_person) * g : null;
-  const vatNote = tt(ev.prices_incl_vat ? 'ev_prices_incl' : 'ev_prices_excl');
-  const courseOf = (c) => (/^course_/.test(c || '') ? tIn(l, c) : c || '');
-  const dietOf = (c) => (/^diet_/.test(c || '') ? tIn(l, c) : c || '');
-  printHtml(`${sheetCss}<div class="beo">
-    <div class="top"><div><div class="brand">Wintertuin</div><div class="small">Cantonspark, Baarn</div></div>
-      <div style="text-align:right"><div class="small">${tt('ev_client_doc')}</div><div class="small">${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}</div><div class="small">${esc(dateIn(todayIso(), l))}</div></div></div>
+  const business = ev.client_type !== 'private';
+  const ps = priceSummary(ev, g);
+  const isQuote = ev.status === 'option';
+  const docTitle = docName(ev, l);
+  const c = company || {};
+  const courseOf = (x) => (/^course_/.test(x || '') ? tIn(l, x) : x || '');
+  const dietOf = (x) => (/^diet_/.test(x || '') ? tIn(l, x) : x || '');
+  const pct = (r) => `${Math.round(r * 100)}%`;
+  // our details: on every quote, and required on an invoice
+  const us = [c.legal_name || c.trade_name || 'Wintertuin', c.address, c.postcode_city].filter(Boolean).map(esc).join('<br>');
+  const ids = [c.kvk ? `KVK ${esc(c.kvk)}` : '', c.vat_id ? `${T('Btw', 'VAT')} ${esc(c.vat_id)}` : '', c.iban ? `IBAN ${esc(c.iban)}` : '', [c.email, c.phone].filter(Boolean).map(esc).join(' · ')].filter(Boolean).join('<br>');
+  // price table: business clients see amounts excluding VAT plus VAT per rate, private clients amounts including VAT
+  const priceTable = ps.lines.length ? `<table class="pt"><tr><th>${T('Omschrijving', 'Description')}</th><th class="n">${T('Aantal', 'Qty')}</th><th class="n">${business ? T('Prijs excl.', 'Price excl.') : T('Prijs', 'Price')}</th><th class="n">${T('Btw', 'VAT')}</th><th class="n">${business ? T('Totaal excl.', 'Total excl.') : T('Totaal', 'Total')}</th></tr>
+      ${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? tt('ev_room_hire') : tt('ev_price_pp')))}${x.per === 'pp' && !/p\.p\.|per pers/i.test(x.label || '') ? ` <span class="small">(${T('per persoon', 'per person')})</span>` : ''}</td><td class="n">${x.qty}</td><td class="n">${money(business ? x.priceEx : x.price)}</td><td class="n">${pct(x.vat)}</td><td class="n">${money(business ? x.ex : x.total)}</td></tr>`).join('')}
+      ${business ? ps.byRate.map((r) => `<tr class="sub"><td colspan="4">${T('Btw', 'VAT')} ${pct(r.rate)} ${T('over', 'on')} ${money(r.ex)}</td><td class="n">${money(r.vat)}</td></tr>`).join('') : ''}
+      <tr class="tot"><td colspan="4">${T('Totaal inclusief btw', 'Total including VAT')}</td><td class="n">${money(ps.total)}</td></tr>
+      ${!business && ps.byRate.length ? `<tr class="sub"><td colspan="5">${T('Waarvan btw', 'Of which VAT')}: ${ps.byRate.map((r) => `${pct(r.rate)} ${money(r.vat)}`).join(', ')}</td></tr>` : ''}</table>` : '';
+  const sch = cancellationSchedule(ev, ps.value, l);
+  const schHtml = !sch ? '' : sch.kind === 'private' ? `<p class="small">${esc(sch.text)}</p>`
+    : `<table>${sch.rows.map((r) => `<tr><td class="k" style="width:58%">${esc(r.when)}</td><td>${r.pct ? `${r.pct}% ${T('van de reserveringswaarde', 'of the booking value')}${r.amountText ? ` (${esc(r.amountText)})` : ''}` : T('kosteloos', 'free of charge')}</td></tr>`).join('')}</table>
+      ${(sch.rules || []).map((x) => `<p class="small" style="margin:3px 0 0">${esc(x)}</p>`).join('')}`;
+  const payDays = Number(c.pay_days) || 14;
+  printHtml(`${sheetCss}<style>
+    .beo .pt { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .beo .pt th { text-align: left; font-size: 8pt; color: #666; font-weight: 600; border-bottom: 1px solid #999 !important; padding: 3px 6px; }
+    .beo .pt td { padding: 3px 6px; border-bottom: 1px solid #e3e3e3 !important; }
+    .beo .pt .n { text-align: right; white-space: nowrap; }
+    .beo .pt tr.sub td { color: #555; font-size: 9pt; border-bottom: 0 !important; }
+    .beo .pt tr.tot td { font-weight: 700; border-top: 1.5px solid #333 !important; border-bottom: 0 !important; }
+    .beo .us { font-size: 8.5pt; line-height: 1.35; color: #444; text-align: right; }
+    .beo .uvh { border: 1px solid #bbb; border-radius: 6px; padding: 7px 10px; margin-top: 10px; font-size: 9pt; }
+    .beo .doc { font-size: 15pt; font-weight: 700; }
+  </style><div class="beo">
+    <div class="top"><div><div class="brand">${esc(c.trade_name || 'Wintertuin')}</div><div class="small">${us}</div></div>
+      <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
-    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
-        [tt('ev_day_contact'), esc([ev.day_contact_name, ev.day_contact_phone].filter(Boolean).join(', '))], [tt('ev_reference'), esc(ev.reference || '')]])}</div>
+    ${isQuote ? `<p class="small">${ev.quote_valid_until ? T(`Deze offerte is geldig tot en met ${esc(dateIn(ev.quote_valid_until, l))}.`, `This quote is valid until ${esc(dateIn(ev.quote_valid_until, l))}.`) : ''} ${T('Het aanbod is vrijblijvend en onder voorbehoud van beschikbaarheid (UVH art. 3.2).', 'The offer is without obligation and subject to availability (UVH art. 3.2).')}
+      ${ev.option_until ? T(` Je hebt een optie op deze datum tot en met ${esc(dateIn(ev.option_until, l))}. Wil een andere klant dezelfde datum boeken, dan vragen we je eerst om een besluit (UVH art. 4).`, ` You hold an option on this date until ${esc(dateIn(ev.option_until, l))}. If another client wants the same date, we will first ask you to decide (UVH art. 4).`) : ''}</p>` : ''}
+    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [T('Soort klant', 'Client type'), ev.client_type ? tt(business ? 'ev_ct_business' : 'ev_ct_private') : ''], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
+        [tt('ev_day_contact'), esc([ev.day_contact_name, ev.day_contact_phone].filter(Boolean).join(', '))], [tt('ev_reference'), esc(ev.reference || '')], [tt('ev_invoice'), ev.invoice_details ? `<span class="pre">${esc(ev.invoice_details)}</span>` : '']])}</div>
       <div><h2>${tt('ev_sec_event')}</h2>${kv([[tt('ev_type'), esc(ev.event_type || '')], [tt('ev_area'), esc(ev.area || '')], [tt('ev_exclusive'), ev.exclusive ? tt('yes') : ''],
         [tt('ev_service_style'), esc(/^style_/.test(ev.service_style || '') ? tIn(l, ev.service_style) : ev.service_style || '')],
         [tt('ev_guests'), g != null ? `${g}${ev.children ? ` (${tt('ev_children')}: ${ev.children})` : ''}` : ''],
         [tt('ev_guarantee_deadline'), ev.guarantee_deadline ? esc(dateIn(ev.guarantee_deadline, l)) : '']])}</div></div>
     ${(ev.timeline || []).length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml(ev)}` : ''}
     ${(ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
-    ${(ev.dietary || []).length ? `<h2>${tt('ev_dietary')}</h2><table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
+    <h2>${tt('ev_dietary')}</h2>${(ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
+    <p class="small">${T('Geef allergieën en dieetwensen tijdig en volledig door. We houden er zoveel mogelijk rekening mee, maar sporen van andere ingrediënten kunnen we niet uitsluiten (UVH art. 16.10 en 16.11).', 'Please tell us about allergies and dietary needs in good time and in full. We take them into account as far as we can, but cannot rule out traces of other ingredients (UVH art. 16.10 and 16.11).')}</p>
     ${ev.setup || ev.drinks || ev.extras ? `<h2>${tt('ev_sec_setup')}</h2>${kv([[tt('ev_setup'), ev.setup ? `<span class="pre">${esc(ev.setup)}</span>` : ''], [tt('ev_drinks'), ev.drinks ? `<span class="pre">${esc(ev.drinks)}</span>` : ''], [tt('ev_extras'), ev.extras ? `<span class="pre">${esc(ev.extras)}</span>` : '']])}` : ''}
-    <h2>${tt('ev_sec_money')}</h2>${kv([
-      [tt('ev_price_pp'), ev.price_per_person != null ? `${money(ev.price_per_person)}${g ? ` × ${g} = <strong>${money(pp)}</strong>` : ''}` : ''],
-      [tt('ev_room_hire'), ev.room_hire != null ? money(ev.room_hire) : ''], [tt('ev_min_spend'), ev.min_spend != null ? money(ev.min_spend) : ''],
-      [tt('ev_deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}` : ''],
-      [tt('ev_payment_terms'), ev.payment_terms ? `<span class="pre">${esc(ev.payment_terms)}</span>` : ''], [tt('ev_cancellation_terms'), ev.cancellation_terms ? `<span class="pre">${esc(ev.cancellation_terms)}</span>` : '']])}
-    <div class="small" style="margin-top:4px">${vatNote} ${tt('ev_final_count_note')}</div>
+    <h2>${tt('ev_sec_money')}</h2>${priceTable}
+    ${kv([
+      [tt('ev_min_spend'), ev.min_spend != null ? `${money(ev.min_spend)} ${T('inclusief btw', 'including VAT')}${ps.minApplies ? ` (${T('geldt', 'applies')})` : ''}` : ''],
+      [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur (UVH art. 12).', 'Deducted from the final invoice (UVH art. 12).')}` : ''],
+      [tt('ev_corkage'), ev.corkage ? esc(ev.corkage) : ''],
+      [T('Betaling', 'Payment'), `${T(`Binnen ${payDays} dagen na factuurdatum`, `Within ${payDays} days of the invoice date`)}${c.iban ? ` ${T('op', 'to')} ${esc(c.iban)}` : ''}.${ev.payment_terms ? ` <span class="pre">${esc(ev.payment_terms)}</span>` : ''}`]])}
+    <div class="small" style="margin-top:4px">${tt('ev_final_count_note')}</div>
+    <h2>${T('Annuleren', 'Cancellation')}</h2>${schHtml}
+    ${ev.deviations || ev.cancellation_terms ? `<h2>${T('In afwijking van de UVH geldt', 'Deviating from the UVH')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
+    <div class="uvh">${T('Op deze overeenkomst zijn de <strong>Uniforme Voorwaarden Horeca (UVH)</strong> van toepassing, gedeponeerd bij de Kamer van Koophandel. Je ontvangt ze bij deze', 'The <strong>Uniform Conditions for the Hospitality Industry (UVH)</strong> apply to this agreement, filed with the Chamber of Commerce. You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
     <p class="small consent">${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
+    <p class="small"><strong>${T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
 }
@@ -540,6 +686,7 @@ function printBlank(l) {
     <div class="fg3">${f('ev_start')}${f('ev_end')}${f('ev_area')}</div>
     <div class="fg">${f('ev_service_style')}<div class="opts">${tt('ev_exclusive')}: ${box('yes')}${box('no')}</div></div>
     <h2>${tt('ev_sec_client')}</h2>
+    <div class="opts">${tt('ev_client_type')}: ${box('ev_ct_business')}${box('ev_ct_private')}</div>
     <div class="fg">${f('ev_client_name')}${f('ev_client_company')}${f('ev_phone')}${f('ev_email')}${f('ev_day_contact')}${f('ev_day_contact_phone')}${f('ev_invoice', true)}${f('ev_reference')}</div>
     <h2>${tt('ev_guests')}</h2>
     <div class="fg">${f('ev_guests_expected')}${f('ev_guests_guaranteed')}${f('ev_guarantee_deadline')}${f('ev_children')}</div>
@@ -553,6 +700,7 @@ function printBlank(l) {
     <div class="lbl">${tt('ev_payment_terms')}</div>${lines(1)}<div class="lbl">${tt('ev_cancellation_terms')}</div>${lines(1)}
     <h2>${tt('ev_blank_notes')}</h2>${lines(2)}
     <div class="keep"><h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
+    <p class="small">${l === 'nl' ? 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing. Getekend voor akkoord en voor ontvangst van de UVH.' : 'The Uniform Conditions for the Hospitality Industry (UVH) apply to this agreement. Signed for agreement and for receipt of the UVH.'}</p>
     <p class="small consent">&#9744; ${tt('ev_newsletter_consent')}</p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
     <div class="office"><div class="small"><strong>${tt('ev_office')}</strong></div><div class="fg3">${f('ev_status')}${f('ev_sold_by')}${f('ev_entered')}</div></div></div>
