@@ -36,8 +36,8 @@ export async function renderHome() {
     safe(sb.from('checkins').select('*').eq('staff_id', state.me.id).is('check_out_at', null).order('check_in_at', { ascending: false }).limit(1).maybeSingle()),
     safe(sb.from('sops').select('*').order('category').order('sort_order')),
     safe(sb.from('sop_checks').select('*').eq('check_date', today)),
-    safe(sb.from('events').select('id, title, event_date, start_time, status, guests_expected, guests_guaranteed, guests_final')
-      .eq('event_date', today).neq('status', 'cancelled').order('start_time')),
+    safe(sb.from('events').select('id, title, event_date, start_time, end_time, status, area, guests_expected, guests_guaranteed, guests_final')
+      .gte('event_date', today).neq('status', 'cancelled').order('event_date').order('start_time').limit(20)),
     swapBadgeCount().catch(() => 0),
   ]);
   const ticked = new Set((checks || []).filter((c) => c.checked).map((c) => `${c.sop_id}_${c.item_index}`));
@@ -45,7 +45,12 @@ export async function renderHome() {
     .filter((x) => x.n > 0);
   const next = (mine || [])[0];
   const later = (mine || []).slice(1, 4);
-  const evs = events || [];
+  // events: today's, then always the next day that has events, then a short line with what comes after
+  const evs = (events || []).filter((e) => e.status !== 'done');
+  const evToday = evs.filter((e) => e.event_date === today);
+  const nextDay = (evs.find((e) => e.event_date > today) || {}).event_date;
+  const evNext = nextDay ? evs.filter((e) => e.event_date === nextDay) : [];
+  const evLater = evs.filter((e) => nextDay && e.event_date > nextDay).slice(0, 3);
   const guests = (e) => e.guests_final || e.guests_guaranteed || e.guests_expected;
 
   const shiftBlock = next ? `
@@ -74,6 +79,20 @@ export async function renderHome() {
       ? L({ en: `${swaps} shift swap${swaps > 1 ? 's' : ''} waiting for your approval`, nl: swaps > 1 ? `${swaps} ruilverzoeken wachten op je akkoord` : '1 ruilverzoek wacht op je akkoord' })
       : L({ en: `${swaps} shift swap update${swaps > 1 ? 's' : ''}`, nl: `Nieuws over ${swaps > 1 ? `${swaps} ruilverzoeken` : 'je ruilverzoek'}` })}</span><i class="ic ic-next" aria-hidden="true"></i></a>` : ''}
 
+    <section class="card home-card home-events">
+      <div class="hc-head"><h2>${L({ en: 'Events', nl: 'Events' })}</h2><a href="#/events" class="small">${L({ en: 'All events', nl: 'Alle events' })}</a></div>
+      <div class="he-day"><div class="he-label">${L({ en: 'Today', nl: 'Vandaag' })}</div>
+        ${evToday.length ? evToday.map((e) => `<a class="home-ev ${e.status === 'option' ? 'is-option' : ''}" href="#/events/${e.id}"><span class="he-time">${e.start_time ? esc(fmt.time(e.start_time)) : '–'}</span>
+            <span class="he-main"><strong>${esc(e.title)}</strong><span class="small muted">${[guests(e) ? `${guests(e)} ${L({ en: 'guests', nl: 'gasten' })}` : '', e.area || ''].filter(Boolean).map(esc).join(' · ')}</span></span>
+            <span class="tag ev-${esc(e.status)}">${t('evs_' + e.status)}</span></a>`).join('') : `<p class="muted small he-none">${L({ en: 'No events today.', nl: 'Vandaag geen events.' })}</p>`}</div>
+      ${nextDay ? `<div class="he-day"><div class="he-label">${esc(relDay(nextDay))}${relDay(nextDay) === fmt.date(nextDay) ? '' : ` <span class="muted">${esc(fmt.date(nextDay))}</span>`}</div>
+        ${evNext.map((e) => `<a class="home-ev ${e.status === 'option' ? 'is-option' : ''}" href="#/events/${e.id}"><span class="he-time">${e.start_time ? esc(fmt.time(e.start_time)) : '–'}</span>
+            <span class="he-main"><strong>${esc(e.title)}</strong><span class="small muted">${[guests(e) ? `${guests(e)} ${L({ en: 'guests', nl: 'gasten' })}` : '', e.area || ''].filter(Boolean).map(esc).join(' · ')}</span></span>
+            <span class="tag ev-${esc(e.status)}">${t('evs_' + e.status)}</span></a>`).join('')}</div>`
+        : `<p class="muted small">${L({ en: 'No events coming up.', nl: 'Geen events gepland.' })} <a href="#/events/new">${L({ en: 'New event', nl: 'Nieuw event' })}</a></p>`}
+      ${evLater.length ? `<div class="he-later small"><span class="muted">${L({ en: 'After that', nl: 'Daarna' })}:</span> ${evLater.map((e) => `<a href="#/events/${e.id}">${esc(fmt.date(e.event_date))} ${esc(e.title)}</a>`).join(', ')}</div>` : ''}
+    </section>
+
     <div class="home-cols">
       <section class="card home-card">
         <div class="hc-head"><h2>${L({ en: 'Checklists today', nl: 'Checklists vandaag' })}</h2><a href="#/sops" class="small">${L({ en: 'All SOPs', nl: "Alle SOP's" })}</a></div>
@@ -91,8 +110,6 @@ export async function renderHome() {
             <span class="who">${esc(s.profiles ? s.profiles.full_name : '')}${s.section ? `<span class="small muted">${esc(s.section)}</span>` : ''}</span>
             <span class="tm">${esc(fmt.time(s.start_time))}–${esc(fmt.time(s.end_time))}</span></li>`).join('')}</ul>`
           : `<p class="muted">${L({ en: 'Nobody is on the roster today.', nl: 'Vandaag staat niemand op het rooster.' })}</p>`}
-        ${evs.length ? `<div class="home-evs">${evs.map((e) => `<a class="home-ev" href="#/events/${e.id}"><i class="ic ic-party" aria-hidden="true"></i>
-            <span><strong>${esc(e.title)}</strong><span class="small muted">${[e.start_time ? fmt.time(e.start_time) : '', guests(e) ? `${guests(e)} ${L({ en: 'guests', nl: 'gasten' })}` : ''].filter(Boolean).join(', ')}</span></span></a>`).join('')}</div>` : ''}
       </section>
     </div>
 

@@ -276,6 +276,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const d = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'setup_todo').value.done);
       if (!d.khn) throw new Error('KHN not saved');
       await p.screenshot({ path: `${OUT}/18c-next-steps.png`, fullPage: true }); });
+    await step('today page: events of today and always the next day with events', async () => {
+      await p.evaluate(() => { const d = (n) => { const x = new Date(); x.setDate(x.getDate() + n); return x.toLocaleDateString('sv-SE'); };
+        window.__mockdb.events.push({ id: 'ev-later', title: 'Lunch Bakker', event_date: d(8), start_time: '12:30:00', status: 'option', guests_expected: 14, version: 1 }); });
+      await p.goto(BASE + '#/today'); await p.waitForSelector('.home-events');
+      const txt = await p.textContent('.home-events');
+      if (!/No events today/.test(txt) || !/Tomorrow/.test(txt) || !/Wedding Jansen/.test(txt) || !/Lunch Bakker/.test(txt)) throw new Error(txt);
+      await p.screenshot({ path: `${OUT}/02b-today-events.png`, fullPage: true }); });
     await step('events: list shows the event, confirmed', async () => {
       await p.goto(BASE + '#/events'); await p.waitForSelector('.ev-row'); if (!(await p.$('.tag.ev-confirmed'))) throw new Error('status');
       await p.screenshot({ path: `${OUT}/18-events.png`, fullPage: true }); });
