@@ -82,6 +82,18 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Apple pie');
       const pie = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Apple pie')); if (pie.price !== 4.5) throw new Error(pie.price);
       if (!pie.photo_url) throw new Error('photo not saved'); });
+    await step('dish editor: search a free photo and pick it', async () => {
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64');
+      await p.route(/api\.openverse\.org/, (r) => r.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ results: [{ id: 'a', title: 'Soup', url: 'https://img.example.org/soup.png', thumbnail: 'https://img.example.org/soup-t.png' }] }) }));
+      await p.route(/img\.example\.org/, (r) => r.fulfill({ contentType: 'image/png', headers: { 'access-control-allow-origin': '*' }, body: png }));
+      await p.click('#add'); await p.fill('.modal [name=name]', 'Lentil soup'); await p.click('.modal #dp-find');
+      await p.waitForSelector('.modal .dp-hit');
+      const g = await p.getAttribute('.modal #dp-google', 'href'); if (!/tbm=isch&q=Lentil%20soup/.test(g)) throw new Error(g);
+      await p.click('.modal .dp-hit'); await p.waitForSelector('.modal #dp-prev img');
+      await p.click('.modal button[type=submit]'); await p.waitForSelector('text=Lentil soup');
+      const s = await p.evaluate(() => window.__mockdb.menu_items.find((m) => m.name === 'Lentil soup'));
+      if (!s.photo_url) throw new Error('photo not saved'); });
     await step('settings: menu order by number changes the Menu page', async () => {
       await p.goto(BASE + '#/settings/menuorder'); await p.waitForSelector('#save-order');
       const pie = await p.$eval('.order-row:has-text("Apple pie") input', (i) => i.dataset.oid);

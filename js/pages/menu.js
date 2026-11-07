@@ -267,7 +267,15 @@ function openEditor(m, onDone = renderMenu) {
     <div class="dp-row"><div class="dp-prev" id="dp-prev">${m && m.photo_url ? `<img src="${esc(m.photo_url)}" alt="">` : '<i class="ic ic-image" aria-hidden="true"></i>'}</div>
       <div class="dp-btns"><label class="btn btn-sm" for="dp-pick"><i class="ic ic-upload" aria-hidden="true"></i> ${L({ en: 'Choose a photo', nl: 'Foto kiezen' })}</label>
         <label class="btn btn-sm dp-cam" for="dp-cam"><i class="ic ic-camera" aria-hidden="true"></i> ${L({ en: 'Take a photo', nl: 'Foto maken' })}</label>
+        <button type="button" class="btn btn-sm" id="dp-find"><i class="ic ic-search" aria-hidden="true"></i> ${L({ en: 'Search a photo', nl: 'Foto zoeken' })}</button>
         ${m && m.photo_url ? `<button type="button" class="link-btn small" id="dp-rm">${L({ en: 'Remove photo', nl: 'Foto weghalen' })}</button>` : ''}</div></div>
+    <div class="dp-find" id="dp-panel" hidden>
+      <div class="dp-q"><input type="search" id="dp-q" placeholder="${L({ en: 'e.g. lentil soup', nl: 'bijv. lentil soup' })}"><button type="button" class="btn btn-sm btn-primary" id="dp-go">${L({ en: 'Search', nl: 'Zoeken' })}</button></div>
+      <div class="tiny muted">${L({ en: 'Free photos (CC0 and public domain): you may use them on the menu and in the newsletter. English words give more results.', nl: "Vrije foto's (CC0 en publiek domein): die mag je gebruiken op de kaart en in de nieuwsbrief. Engelse woorden geven meer resultaat." })}</div>
+      <div class="dp-grid" id="dp-grid"></div>
+      <a class="small" id="dp-google" target="_blank" rel="noopener">${L({ en: 'Look on Google Images for inspiration', nl: 'Kijk op Google Afbeeldingen voor inspiratie' })}</a>
+      <div class="tiny muted">${L({ en: 'Photos from Google usually belong to someone else. Use them as an example only; for the menu take your own photo or ask permission.', nl: "Foto's van Google zijn meestal van iemand anders. Gebruik ze alleen als voorbeeld; maak voor de kaart zelf een foto of vraag toestemming." })}</div>
+    </div>
     <input type="file" id="dp-pick" accept="image/*" hidden><input type="file" id="dp-cam" accept="image/*" capture="environment" hidden></div>`;
   const before = fields.filter((f) => ['group_type', 'name', 'category', 'description'].includes(f.name));
   const after = fields.filter((f) => !before.includes(f));
@@ -281,6 +289,39 @@ function openEditor(m, onDone = renderMenu) {
     const showPhoto = (src) => { cardEl.querySelector('#dp-prev').innerHTML = src ? `<img src="${esc(src)}" alt="">` : '<i class="ic ic-image" aria-hidden="true"></i>'; };
     ['#dp-pick', '#dp-cam'].forEach((id) => { const inp = cardEl.querySelector(id); inp.onchange = () => { const f = inp.files && inp.files[0]; if (!f) return; newPhoto = f; dropPhoto = false; showPhoto(URL.createObjectURL(f)); }; });
     const rm = cardEl.querySelector('#dp-rm'); if (rm) rm.onclick = () => { newPhoto = null; dropPhoto = true; showPhoto(null); rm.remove(); };
+    // Search free photos (Openverse: CC0 and public domain only), plus a link to Google Images for ideas
+    const panel = cardEl.querySelector('#dp-panel'); const q = cardEl.querySelector('#dp-q'); const grid = cardEl.querySelector('#dp-grid');
+    const setGoogle = () => { cardEl.querySelector('#dp-google').href = `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q.value.trim() || 'gerecht')}`; };
+    const search = async () => {
+      const term = q.value.trim(); setGoogle(); if (!term) return;
+      grid.innerHTML = '<span class="spinner"></span>';
+      try {
+        const r = await fetch(`https://api.openverse.org/v1/images/?q=${encodeURIComponent(term)}&license=cc0,pdm&page_size=20&mature=false`);
+        if (!r.ok) throw new Error(r.status);
+        const res = ((await r.json()).results || []).filter((x) => x.url);
+        grid.innerHTML = res.length ? res.map((x, i) => `<button type="button" class="dp-hit" data-hit="${i}" title="${esc(x.title || '')}"><img src="${esc(x.thumbnail || x.url)}" alt="${esc(x.title || '')}" loading="lazy"></button>`).join('')
+          : `<p class="small muted">${L({ en: 'Nothing found. Try other (English) words.', nl: 'Niets gevonden. Probeer andere (Engelse) woorden.' })}</p>`;
+        grid.querySelectorAll('[data-hit]').forEach((b) => (b.onclick = async () => {
+          const x = res[Number(b.dataset.hit)];
+          grid.querySelectorAll('.dp-hit').forEach((y) => y.classList.toggle('on', y === b));
+          // keep our own copy, so the photo stays and works in the PDF; first the original, else the larger thumbnail
+          for (const src of [x.url, x.thumbnail]) {
+            try { const resp = await fetch(src); if (!resp.ok) continue; const blob = await resp.blob(); if (!blob.type.startsWith('image/')) continue;
+              newPhoto = new File([blob], `${term.replace(/[^a-z0-9]+/gi, '-').slice(0, 40) || 'foto'}.${(blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg')}`, { type: blob.type });
+              dropPhoto = false; showPhoto(URL.createObjectURL(blob)); toast(L({ en: 'Photo chosen; save to keep it', nl: 'Foto gekozen; sla op om hem te bewaren' })); return; } catch { /* next */ }
+          }
+          toastError(new Error(L({ en: 'This photo cannot be copied; pick another one.', nl: 'Deze foto is niet over te nemen; kies een andere.' })));
+        }));
+      } catch { grid.innerHTML = `<p class="small muted">${L({ en: 'Searching does not work right now. Try again later.', nl: 'Zoeken lukt nu niet. Probeer het later opnieuw.' })}</p>`; }
+    };
+    cardEl.querySelector('#dp-find').onclick = () => {
+      panel.hidden = !panel.hidden; if (panel.hidden) return;
+      if (!q.value) q.value = (cardEl.querySelector('[name=name]').value || '').trim();
+      setGoogle(); q.focus(); if (q.value && !grid.children.length) search();
+    };
+    cardEl.querySelector('#dp-go').onclick = search;
+    q.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); search(); } };
+    q.oninput = setGoogle;
     cardEl.querySelector('#f').onsubmit = async (e) => {
       e.preventDefault();
       const v = readForm(cardEl, fields);
