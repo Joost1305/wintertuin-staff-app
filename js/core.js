@@ -192,5 +192,23 @@ export function printHtml(html) {
     window.addEventListener('hashchange', clearOnLeave);
   }
   const run = window.__printHook || (() => window.print()); // tests swap in a counter
-  setTimeout(run, 60); // let the sheet lay out first
+  // iPhone and iPad ignore print() when it no longer follows a tap directly (for example after the data had to load first).
+  // Then a small bar asks for one more tap, which always works.
+  const late = window.__forcePrintBar || (navigator.userActivation && !navigator.userActivation.isActive);
+  if (late) { printBar(run); return; }
+  setTimeout(() => {
+    if (navigator.userActivation && !navigator.userActivation.isActive && !window.__printHook) printBar(run); else run();
+  }, 60); // let the sheet lay out first
+}
+function printBar(run) {
+  document.getElementById('print-go')?.remove();
+  const nl = document.documentElement.lang !== 'en';
+  const bar = document.createElement('div');
+  bar.id = 'print-go'; bar.className = 'print-go';
+  bar.innerHTML = `<span>${nl ? 'Klaar om te printen' : 'Ready to print'}</span><button type="button" class="btn-primary btn-sm">${nl ? 'Printen of PDF' : 'Print or PDF'}</button><button type="button" class="link-btn small" aria-label="${nl ? 'Sluiten' : 'Close'}">✕</button>`;
+  const [go, x] = bar.querySelectorAll('button');
+  go.onclick = () => { bar.remove(); run(); };
+  x.onclick = () => bar.remove();
+  document.body.appendChild(bar);
+  window.addEventListener('hashchange', () => bar.remove(), { once: true });
 }

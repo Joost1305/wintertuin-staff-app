@@ -332,7 +332,7 @@ async function renderOverview() {
         <span class="hc-tt"><strong>${esc(L(def.short))}</strong><span class="hc-freq">${esc(L(SHORT_FREQ[k]))}</span><span class="hc-st ${st.cls}">${esc(st.txt)}</span></span><span aria-hidden="true" class="hc-go"><i class="ic ic-next" aria-hidden="true"></i></span></a>`;
     }).join('')}</div>`;
   bindWeekNav(renderOverview);
-  $('#hc-print-all').onclick = () => printWeek(keys, week);
+  $('#hc-print-all').onclick = () => printWeek(keys, week).catch(toastError);
 }
 
 async function renderList(key) {
@@ -346,7 +346,7 @@ async function renderList(key) {
     <div class="card"><div class="table-wrap">${weekTable(key, entries, week, false)}</div>
       ${key !== 'suppliers' ? entryList(key, entries) : (isManager() ? `<p class="small"><a href="#/settings/haccp">${L({ nl: 'Leveranciers beheren in Instellingen, HACCP', en: 'Manage suppliers in Settings, HACCP' })}</a></p>` : '')}</div>`;
   if (key !== 'suppliers') { bindWeekNav(() => renderList(key)); drawForm(key, entries); }
-  $('#hc-print').onclick = () => printWeek([key], week);
+  $('#hc-print').onclick = () => printWeek([key], week).catch(toastError);
   bindEntryActions(key, entries);
 }
 
@@ -635,7 +635,7 @@ export async function renderHaccpSettings(el) {
   drawArchive();
   $('#arch-list', el).onchange = (e) => { archiveKey = e.target.value; drawArchive(); };
   $$('[data-awk]', el).forEach((b) => (b.onclick = () => { const n = Number(b.dataset.awk); archiveWeek = n ? addDays(archiveWeek, n) : mondayOf(todayIso()); renderHaccpSettings(el); }));
-  $('#arch-print', el).onclick = () => printWeek(archiveKey === 'all' ? keys : [archiveKey], archiveWeek);
+  $('#arch-print', el).onclick = () => printWeek(archiveKey === 'all' ? keys : [archiveKey], archiveWeek).catch(toastError);
 
   rowEditor($('#ed-equipment', el), 'equipment', cfg.equipment, [
     { k: 'name', label: { nl: 'Naam', en: 'Name' }, type: 'text', ph: { nl: 'bijv. Koelcel, Koeling bar', en: 'e.g. Walk-in fridge, Bar fridge' } },

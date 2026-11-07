@@ -344,6 +344,18 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForFunction((b) => (window.__printed || 0) > b, before);
       await p.waitForTimeout(2000); // Safari keeps scripts running while its print window is open
       if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('print sheet cleared while printing'); });
+    await step('haccp: print this week, also when the phone needs an extra tap', async () => {
+      await p.goto(BASE + '#/haccp'); await p.waitForSelector('#hc-print-all');
+      const n0 = await p.evaluate(() => window.__printed || 0);
+      await p.click('#hc-print-all'); await p.waitForTimeout(400);
+      if ((await p.evaluate(() => window.__printed || 0)) !== n0 + 1) throw new Error('not printed');
+      if (!(await p.evaluate(() => document.getElementById('printArea').innerHTML.length > 500))) throw new Error('empty sheet');
+      await p.evaluate(() => { window.__forcePrintBar = true; });
+      await p.click('#hc-print-all'); await p.waitForSelector('.print-go');
+      await p.click('.print-go .btn-primary'); await p.waitForTimeout(200);
+      await p.evaluate(() => { window.__forcePrintBar = false; });
+      if ((await p.evaluate(() => window.__printed || 0)) !== n0 + 2) throw new Error('bar did not print');
+      if (await p.$('.print-go')) throw new Error('bar stays'); });
     await step('HACCP: own menu item, 10 lists, temperature deviation needs a corrective action', async () => {
       const nav = await p.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (!nav.includes('#/haccp')) throw new Error('no HACCP in menu');
       await p.goto(BASE + '#/haccp'); await p.waitForSelector('.hc-tile'); if ((await p.$$('.hc-tile')).length !== 10) throw new Error('tiles');
