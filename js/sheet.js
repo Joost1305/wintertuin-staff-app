@@ -1,0 +1,166 @@
+// Every print in the app goes through here: the sheet opens full screen with three buttons.
+//   Delen     makes a PDF and opens the share sheet of the phone (WhatsApp, Mail, Bestanden, and on iPhone also Afdrukken)
+//   PDF       downloads the PDF
+//   Printen   the print dialog of the browser (hidden in the iPhone home-screen app, where printing is not possible)
+// The PDF is made as soon as the sheet opens, so a tap on Delen opens the share sheet straight away
+// (iPhone only allows sharing directly after a tap).
+import { esc, toast, toastError, todayIso } from './core.js';
+
+const nl = () => document.documentElement.lang !== 'en';
+const T = (n, e) => (nl() ? n : e);
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+export const canPrint = () => !(isIOS() && standalone());
+
+const BASE_CSS = `html,body{margin:0;background:#fff;color:#000;-webkit-text-size-adjust:none;text-size-adjust:none}
+  body{font:10.5pt/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h1{font-size:20pt;margin:0 0 8px} table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left}
+  @font-face{font-family:WTSerif;src:url(fonts/young-serif.woff2) format('woff2')}
+  @font-face{font-family:WTSans;src:url(fonts/inter-400.woff2) format('woff2');font-weight:400}
+  @font-face{font-family:WTSans;src:url(fonts/inter-600.woff2) format('woff2');font-weight:600}
+  @font-face{font-family:WTSans;src:url(fonts/inter-400-italic.woff2) format('woff2');font-style:italic}`;
+const MM = 96 / 25.4; // css pixels per millimetre
+
+function loadScript(src, glob) {
+  if (window[glob]) return Promise.resolve(window[glob]);
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = () => res(window[glob]); s.onerror = () => rej(new Error(`${src} did not load`)); document.head.appendChild(s); });
+}
+// html2canvas draws text in this window, so the fonts must be known here too
+function mainFonts() {
+  if (document.getElementById('sheet-fonts')) return;
+  const st = document.createElement('style'); st.id = 'sheet-fonts';
+  st.textContent = BASE_CSS.slice(BASE_CSS.indexOf('@font-face'));
+  document.head.appendChild(st);
+}
+
+const fileName = (html, name) => {
+  let n = name;
+  if (!n) { const d = document.createElement('div'); d.innerHTML = html; const h = d.querySelector('h1'); n = h ? h.textContent : 'Wintertuin'; }
+  n = String(n).trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').slice(0, 80) || 'Wintertuin';
+  return `${/wintertuin/i.test(n) ? '' : 'Wintertuin '}${n} ${todayIso()}.pdf`;
+};
+
+// Make a PDF of the sheet: drawn page by page, cut between rows and never through a row, a heading or a block that must stay whole
+export async function sheetPdf(html, name) {
+  await Promise.all([loadScript('vendor/html2canvas.min.js', 'html2canvas'), loadScript('vendor/jspdf.min.js', 'jspdf')]);
+  const full = /mc-page/.test(html); // the menu card has its own page size and margins
+  const margin = full ? 0 : 14;
+  const W = Math.round((210 - 2 * margin) * MM); const H = Math.floor((297 - 2 * margin) * MM);
+  const fr = document.createElement('iframe');
+  fr.setAttribute('aria-hidden', 'true'); fr.tabIndex = -1;
+  fr.style.cssText = `position:fixed;left:-10000px;top:0;width:${W}px;height:${H}px;border:0`;
+  document.body.appendChild(fr);
+  try {
+    await new Promise((r) => { fr.onload = r; fr.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}"><style>${BASE_CSS}</style></head><body>${html}</body></html>`; });
+    const d = fr.contentDocument; const w = fr.contentWindow;
+    try { await Promise.all([...d.fonts].map((f) => f.load().catch(() => null))); await d.fonts.ready; } catch { /* older browsers */ }
+    await Promise.all([...d.images].map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = r; im.onerror = r; }))));
+    mainFonts();
+    const body = d.body; const total = Math.ceil(body.scrollHeight);
+    const top = (el) => el.getBoundingClientRect().top + w.scrollY;
+    const els = [...body.querySelectorAll('*')];
+    const atomic = els.filter((el) => /^(TR|IMG|H1|H2|H3|H4|LI|P|svg)$/i.test(el.tagName) || w.getComputedStyle(el).breakInside === 'avoid' || w.getComputedStyle(el).pageBreakInside === 'avoid')
+      .map((el) => [top(el), top(el) + el.getBoundingClientRect().height]).filter(([a, b]) => b - a < H);
+    const forced = new Set();
+    els.forEach((el) => {
+      const cs = w.getComputedStyle(el);
+      if (cs.breakBefore === 'page' || cs.pageBreakBefore === 'always') forced.add(Math.round(top(el)));
+      if ((cs.breakAfter === 'page' || cs.pageBreakAfter === 'always') && el.nextElementSibling) forced.add(Math.round(top(el) + el.getBoundingClientRect().height));
+    });
+    const cuts = [...new Set(els.map((el) => Math.round(top(el) + el.getBoundingClientRect().height)).concat(els.map((el) => Math.round(top(el)))))].sort((a, b) => a - b);
+    const free = (y) => !atomic.some(([a, b]) => a < y - 1 && y + 1 < b);
+    const pages = []; let s = 0;
+    while (s < total - 2) {
+      const f = [...forced].filter((y) => y > s + 4 && y <= s + H).sort((a, b) => a - b)[0];
+      let e;
+      if (f) e = f;
+      else if (s + H >= total) e = total;
+      else e = cuts.filter((y) => y > s + H * 0.4 && y <= s + H && free(y)).pop() || s + H;
+      pages.push([s, e]); s = e;
+    }
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+    const bg = full ? '#FFFDF0' : '#ffffff';
+    for (let i = 0; i < pages.length; i++) {
+      const [a, b] = pages[i];
+      const cv = await window.html2canvas(body, { scale: 2, backgroundColor: bg, useCORS: true, logging: false, x: 0, y: a, width: W, height: b - a, windowWidth: W, windowHeight: Math.max(total, H), scrollX: 0, scrollY: 0 });
+      if (i) pdf.addPage();
+      if (full) { pdf.setFillColor(255, 253, 240); pdf.rect(0, 0, 210, 297, 'F'); }
+      pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, 210 - 2 * margin, (b - a) / MM);
+    }
+    return new File([pdf.output('blob')], fileName(html, name), { type: 'application/pdf' });
+  } finally { fr.remove(); }
+}
+
+function download(file) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+async function share(file) {
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: file.name.replace(/\.pdf$/, '') }); }
+    catch (e) {
+      if (e.name === 'AbortError') return;
+      if (e.name === 'NotAllowedError') return toast(T('De pdf is klaar. Tik nog een keer op Delen.', 'The PDF is ready. Tap Share again.'));
+      toastError(e);
+    }
+    return;
+  }
+  download(file);
+  toast(T('Deze browser kan geen bestanden delen, dus de pdf is gedownload. Stuur hem door vanuit je downloads.', 'This browser cannot share files, so the PDF was downloaded. Send it from your downloads.'));
+}
+
+// The full-screen view of a sheet. runPrint prints #printArea (filled by printHtml).
+export function openSheet(html, name, runPrint) {
+  document.getElementById('sheet-view')?.remove();
+  const full = /mc-page/.test(html);
+  const pageW = Math.round(210 * MM);
+  const v = document.createElement('div');
+  v.id = 'sheet-view'; v.className = 'sheet-view'; v.setAttribute('role', 'dialog'); v.setAttribute('aria-modal', 'true');
+  v.innerHTML = `<div class="sv-bar">
+      <button type="button" class="sv-x" aria-label="${T('Sluiten', 'Close')}"><i class="ic ic-x" aria-hidden="true"></i></button>
+      <div class="sv-btns">
+        <button type="button" class="btn-primary btn-sm" id="sv-share" disabled><i class="ic ic-share" aria-hidden="true"></i> <span>${T('Pdf maken…', 'Making PDF…')}</span></button>
+        <button type="button" class="btn btn-sm" id="sv-pdf" disabled><i class="ic ic-download" aria-hidden="true"></i> PDF</button>
+        ${canPrint() ? `<button type="button" class="btn btn-sm" id="sv-print"><i class="ic ic-printer" aria-hidden="true"></i> ${T('Printen', 'Print')}</button>` : ''}
+      </div></div>
+    <div class="sv-scroll"><div class="sv-page" style="--pw:${pageW}px"><iframe title="${esc(T('Voorbeeld', 'Preview'))}"></iframe></div></div>
+    ${canPrint() ? '' : `<p class="sv-tip">${T('Printen: tik op Delen en kies Afdrukken.', 'To print: tap Share and choose Print.')}</p>`}`;
+  document.body.appendChild(v);
+  document.body.classList.add('sheet-open');
+  const fr = v.querySelector('iframe'); const page = v.querySelector('.sv-page');
+  const fit = () => {
+    const avail = v.querySelector('.sv-scroll').clientWidth - 24;
+    const sc = Math.min(1, avail / pageW);
+    const h = fr.contentDocument && fr.contentDocument.body ? fr.contentDocument.documentElement.scrollHeight : 1000;
+    fr.style.width = `${pageW}px`; fr.style.height = `${h}px`; fr.style.transform = `scale(${sc})`;
+    page.style.width = `${pageW * sc}px`; page.style.height = `${h * sc}px`;
+  };
+  fr.onload = () => {
+    // show where a new page starts
+    const d = fr.contentDocument; const w = fr.contentWindow;
+    if (!full) [...d.body.querySelectorAll('*')].forEach((el) => { const cs = w.getComputedStyle(el); if (cs.breakBefore === 'page' || cs.pageBreakBefore === 'always') el.style.cssText += ';margin-top:36px;padding-top:28px;border-top:2px dashed #c8cdca'; });
+    fit(); setTimeout(fit, 300);
+  };
+  fr.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}"><style>${BASE_CSS}body{padding:${full ? 0 : Math.round(14 * MM)}px}</style></head><body>${html}</body></html>`;
+  window.addEventListener('resize', fit);
+
+  let file = null;
+  const shareBtn = v.querySelector('#sv-share'); const pdfBtn = v.querySelector('#sv-pdf');
+  const job = sheetPdf(html, name).then((f) => {
+    file = f; shareBtn.disabled = false; pdfBtn.disabled = false;
+    shareBtn.querySelector('span').textContent = T('Delen', 'Share');
+    return f;
+  }).catch((e) => { shareBtn.querySelector('span').textContent = T('Pdf lukt niet', 'PDF failed'); toastError(e); return null; });
+  shareBtn.onclick = async () => { const f = file || (await job); if (f) share(f); };
+  pdfBtn.onclick = async () => { const f = file || (await job); if (f) download(f); };
+  const pr = v.querySelector('#sv-print'); if (pr) pr.onclick = () => runPrint();
+
+  const close = () => { v.remove(); document.body.classList.remove('sheet-open'); window.removeEventListener('resize', fit); document.removeEventListener('keydown', esc_); window.removeEventListener('hashchange', close); };
+  const esc_ = (e) => { if (e.key === 'Escape') close(); };
+  v.querySelector('.sv-x').onclick = close;
+  document.addEventListener('keydown', esc_);
+  window.addEventListener('hashchange', close);
+  v.__job = job;
+  return v;
+}

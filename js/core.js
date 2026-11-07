@@ -1,6 +1,7 @@
 // Shared helpers: state, formatting, DOM, toast, modal, forms, language. Same patterns as Wintertuin Finance.
 import { t, lang, setLang, LANGS } from './i18n.js';
 import { setLanguage } from './data.js';
+import { openSheet } from './sheet.js';
 
 export const state = {
   me: null,        // own profiles row
@@ -183,7 +184,8 @@ export function download(text, filename, type = 'text/plain;charset=utf-8') {
 // again when you press Print or Save as PDF, so clearing (or printing from a frame) gave blank pages.
 // The sheet is removed when you move to another page, or replaced by the next print.
 let clearOnLeave = null;
-export function printHtml(html) {
+// opts.name: the PDF file name (else the first heading of the sheet)
+export function printHtml(html, opts = {}) {
   const area = document.getElementById('printArea');
   area.innerHTML = html;
   document.body.classList.add('printing');
@@ -192,23 +194,8 @@ export function printHtml(html) {
     window.addEventListener('hashchange', clearOnLeave);
   }
   const run = window.__printHook || (() => window.print()); // tests swap in a counter
-  // iPhone and iPad ignore print() when it no longer follows a tap directly (for example after the data had to load first).
-  // Then a small bar asks for one more tap, which always works.
-  const late = window.__forcePrintBar || (navigator.userActivation && !navigator.userActivation.isActive);
-  if (late) { printBar(run); return; }
-  setTimeout(() => {
-    if (navigator.userActivation && !navigator.userActivation.isActive && !window.__printHook) printBar(run); else run();
-  }, 60); // let the sheet lay out first
-}
-function printBar(run) {
-  document.getElementById('print-go')?.remove();
-  const nl = document.documentElement.lang !== 'en';
-  const bar = document.createElement('div');
-  bar.id = 'print-go'; bar.className = 'print-go';
-  bar.innerHTML = `<span>${nl ? 'Klaar om te printen' : 'Ready to print'}</span><button type="button" class="btn-primary btn-sm">${nl ? 'Printen of PDF' : 'Print or PDF'}</button><button type="button" class="link-btn small" aria-label="${nl ? 'Sluiten' : 'Close'}">✕</button>`;
-  const [go, x] = bar.querySelectorAll('button');
-  go.onclick = () => { bar.remove(); run(); };
-  x.onclick = () => bar.remove();
-  document.body.appendChild(bar);
-  window.addEventListener('hashchange', () => bar.remove(), { once: true });
+  // the sheet opens full screen: share as PDF (WhatsApp, mail), download, or print
+  const v = openSheet(html, opts.name, run);
+  if (window.__printHook) setTimeout(() => { run(); if (!window.__keepSheet) v.querySelector('.sv-x').click(); }, 60); // tests: act as if Print was tapped
+  return v;
 }

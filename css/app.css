@@ -1550,7 +1550,15 @@ html.touch-nav .upd-bar { bottom: calc(86px + env(safe-area-inset-bottom)); }
 .dp-hit img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .dp-hit.on { border-color: var(--primary); }
 .ic-search { --i: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E"); }
-/* "Ready to print" bar: the extra tap iPhone needs when the sheet took a moment to load */
-.print-go { position: fixed; left: 12px; right: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 300; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.15); max-width: 480px; margin: 0 auto; }
-.print-go span { flex: 1; font-weight: 600; }
-@media print { .print-go { display: none !important; } }
+/* Print sheet, full screen: share as PDF, download or print */
+.sheet-view { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; background: #5f6b66; }
+body.sheet-open { overflow: hidden; }
+.sv-bar { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.sv-x { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; flex: none; }
+.sv-btns { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+.sv-btns .btn-primary:disabled { opacity: .7; }
+.sv-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
+.sv-page { margin: 0 auto; background: #fff; box-shadow: 0 6px 24px rgba(0,0,0,.25); overflow: hidden; position: relative; }
+.sv-page iframe { border: 0; display: block; transform-origin: 0 0; background: #fff; padding: 0; }
+.sv-tip { margin: 0; padding: 8px 14px calc(8px + env(safe-area-inset-bottom)); background: var(--surface); text-align: center; font-size: .85rem; color: var(--ink-2); }
+@media print { .sheet-view { display: none !important; } }

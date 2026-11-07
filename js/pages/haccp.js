@@ -595,7 +595,7 @@ export async function printWeek(keys, mon) {
   printHtml(`${PRINT_CSS}${list.map((k) => { const def = LISTS[k];
     return `<div class="hcp">${head(def)}<h1>${esc(L(def.title))}</h1><p class="freq">${L({ nl: 'Invulfrequentie', en: 'Frequency' })}: ${esc(L(def.freq))}</p>
       ${weekTable(k, entries, mon, true)}
-      <div class="sign"><div>${L({ nl: 'Gecontroleerd door', en: 'Checked by' })}</div><div>${L({ nl: 'Datum', en: 'Date' })}</div><div>${L({ nl: 'Paraaf', en: 'Initials' })}</div></div></div>`; }).join('')}`);
+      <div class="sign"><div>${L({ nl: 'Gecontroleerd door', en: 'Checked by' })}</div><div>${L({ nl: 'Datum', en: 'Date' })}</div><div>${L({ nl: 'Paraaf', en: 'Initials' })}</div></div></div>`; }).join('')}`, { name: `HACCP ${list.length === 1 ? L(LISTS[list[0]].title) : ''} ${weekLabel(mon)}` });
 }
 
 // ------------------------------------------------------------------ Settings > HACCP (managers)
