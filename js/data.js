@@ -37,7 +37,7 @@ export async function loadMe() {
 // The morning system check signs in with its own test account; it is never shown as a team member
 export const SYSTEM_CHECK_EMAIL = 'system-check@wintertuin.app';
 export async function loadProfiles() {
-  return (check(await sb.from('profiles').select('*').order('sort_order').order('full_name')) || []).filter((p) => p.email !== SYSTEM_CHECK_EMAIL);
+  return (check(await sb.from('profiles').select('*').order('sort_order').order('full_name')) || []).filter((p) => p.email !== SYSTEM_CHECK_EMAIL && !p.archived_at); // archived accounts (deleted, history kept) stay out of every list
 }
 export async function setLanguage(id, l) { check(await sb.from('profiles').update({ language: l }).eq('id', id)); }
 

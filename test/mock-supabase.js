@@ -124,6 +124,9 @@
         const p = db.profiles.find((x) => x.id === args.p_staff); const open = db.checkins.find((c) => c.staff_id === args.p_staff && !c.check_out_at); const now = new Date().toISOString();
         if (open) { open.check_out_at = now; return { data: { ok: true, action: 'out', name: p.full_name, since: open.check_in_at, at: now }, error: null }; }
         db.checkins.push({ id: uid(), staff_id: args.p_staff, check_in_at: now, check_out_at: null }); return { data: { ok: true, action: 'in', name: p.full_name, at: now }, error: null }; }
+      if (name === 'delete_account') { const p = db.profiles.find((x) => x.id === args.target); if (!p) return { data: null, error: { message: 'not found' } };
+        if (db.shifts.some((x) => x.staff_id === p.id) || db.checkins.some((x) => x.staff_id === p.id)) { p.active = false; p.archived_at = new Date().toISOString(); return { data: 'archived', error: null }; }
+        db.profiles.splice(db.profiles.indexOf(p), 1); return { data: 'deleted', error: null }; }
       if (name === 'check_my_kiosk_pin') return { data: args.p_pin === '1234', error: null };
       if (name === 'has_kiosk_pin') return { data: !!db.__pinSet, error: null };
       if (name === 'set_my_kiosk_pin') { db.__pinSet = true; return { data: null, error: null }; }

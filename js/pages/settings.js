@@ -267,8 +267,18 @@ async function team(el) {
     const finEditable = fin && !self && !(fu && fu.role === 'super_admin');
     if (finEditable) fields.push({ name: 'fin_role', label: t('acc_fin_role'), type: 'select', options: finOptions });
     openModal(`<h2>${esc(p.email || p.full_name)}</h2><form id="f">${formHtml(fields, { ...p, active: p.active !== false, fin_role: finNow })}
-      <div class="modal-actions"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></form>`,
+      <div class="modal-actions">${!self && !(fu && fu.role === 'super_admin') ? `<button type="button" class="link-btn danger" id="acc-del" style="margin-right:auto">${t('acc_delete')}</button>` : ''}<button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></form>`,
     (card, close) => {
+      const del = card.querySelector('#acc-del');
+      if (del) del.onclick = async () => {
+        if (!(await confirmDialog(t('acc_delete_confirm', { n: p.full_name }), t('acc_delete')))) return;
+        try {
+          if (fu && fin) await finAdmin({ action: 'remove', organization_id: fin.org, id: fu.id }).catch(() => null);
+          const { data, error } = await sb.rpc('delete_account', { target: p.id });
+          if (error) throw error;
+          close(); toast(t(data === 'archived' ? 'acc_archived' : 'acc_deleted', { n: p.full_name })); team(el);
+        } catch (err) { toastError(err); }
+      };
       card.querySelector('#f').onsubmit = async (e) => {
         e.preventDefault();
         const { fin_role: finRole, ...v } = readForm(card, fields);

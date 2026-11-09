@@ -187,6 +187,22 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'New Person'); await p.fill('.modal [name=email]', 'new@example.test'); await p.click('.modal button[type=submit]');
       await p.waitForSelector('.pw-card code'); await p.screenshot({ path: `${OUT}/07-settings.png` }); await p.keyboard.press('Escape'); });
+    await step('settings: delete an account (no history: gone; with history: closed and out of the list)', async () => {
+      await p.goto(BASE + '#/settings/team'); await p.waitForSelector('text=New Person');
+      const id = await p.evaluate(() => window.__mockdb.profiles.find((x) => x.email === 'new@example.test').id);
+      await p.click(`[data-edit="${id}"]`); await p.click('.modal #acc-del'); await p.click('#cf-ok');
+      await p.waitForFunction((i) => !document.querySelector(`[data-edit="${i}"]`), id);
+      if (await p.evaluate((i) => window.__mockdb.profiles.some((x) => x.id === i), id)) throw new Error('not deleted');
+      const busy = await p.evaluate(() => { const s = window.__mockdb.shifts[0]; return s && s.staff_id; });
+      if (busy && busy !== (await p.evaluate(() => window.__mockdb.profiles.find((x) => x.role === 'manager').id))) {
+        await p.click(`[data-edit="${busy}"]`); await p.click('.modal #acc-del'); await p.click('#cf-ok');
+        await p.waitForTimeout(500);
+        const pr = await p.evaluate((i) => window.__mockdb.profiles.find((x) => x.id === i), busy);
+        if (!pr || !pr.archived_at || pr.active !== false) throw new Error('not archived ' + JSON.stringify(pr));
+        if (await p.$(`[data-edit="${busy}"]`)) throw new Error('archived still listed');
+      }
+      if (await p.evaluate(() => { const me = window.__mockdb.profiles.find((x) => x.role === 'manager'); return !!me; })) { /* own account has no delete button */ }
+    });
     await step('settings: one account for both apps, Finance access set from the Team app', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'Shared Login'); await p.fill('.modal [name=email]', 'shared@example.test');
