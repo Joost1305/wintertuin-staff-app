@@ -1571,3 +1571,9 @@ body.sheet-open { overflow: hidden; }
 .av.xl { width: 72px; height: 72px; font-size: 1.4rem; display: inline-grid; place-items: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); flex: none; }
 .team-av { display: inline-flex; align-items: center; gap: 10px; }
 .team-av .av { width: 32px; height: 32px; font-size: .75rem; display: inline-grid; place-items: center; border-radius: 50%; background: var(--primary-soft); color: var(--primary); flex: none; }
+/* Roster on a phone: photo before the name */
+.m-who { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.m-who strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-who .av.sm, .ro-tl-name .av.sm { width: 32px; height: 32px; font-size: .72rem; display: inline-grid; place-items: center; border-radius: 50%; flex: none; }
+.ro-tl-name { display: inline-flex; align-items: center; gap: 6px; }
+.ro-tl-name .av.sm { width: 22px; height: 22px; font-size: .6rem; }

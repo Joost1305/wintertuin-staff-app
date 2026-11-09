@@ -241,7 +241,7 @@ function mobileView(days, staff, mgr, today) {
     .sort((a, b) => toMin(dayShifts.find((s) => s.staff_id === a.id).start_time) - toMin(dayShifts.find((s) => s.staff_id === b.id).start_time));
   const off = staff.filter((p) => !working.includes(p));
   const row = (p) => { const here = dayShifts.filter((s) => s.staff_id === p.id);
-    return `<div class="m-row ${p.id === state.me.id ? 'me' : ''}"><strong>${esc(p.full_name)}</strong>
+    return `<div class="m-row ${p.id === state.me.id ? 'me' : ''}"><span class="m-who">${avatar(p.full_name, p.photo_url, 'sm')}<strong>${esc(p.full_name)}</strong></span>
       <div class="m-shifts">${here.map(chip).join('')}${mgr ? `<button type="button" class="add-shift" data-add="${p.id}|${ds}" aria-label="${t('roster_add')}">+</button>` : ''}</div></div>`; };
   return `<div class="roster-m">
     <div class="day-tabs">${tabs}</div>
@@ -276,7 +276,7 @@ function hoursOverview(staff, allCheckins, days) {
     ${list.map((p) => {
       const planned = shifts.filter((s) => s.staff_id === p.id).reduce((a, s) => a + shiftHours(s), 0);
       const worked = checkins.filter((c) => c.staff_id === p.id && c.check_out_at).reduce((a, c) => a + (new Date(c.check_out_at) - new Date(c.check_in_at)) / 3600000, 0);
-      return `<tr><td>${esc(p.full_name)}</td><td>${fmt.num(planned, 1)} ${t('h')}</td><td>${fmt.num(worked, 1)} ${t('h')}</td></tr>`;
+      return `<tr><td><span class="m-who">${avatar(p.full_name, p.photo_url, 'sm')}${esc(p.full_name)}</span></td><td>${fmt.num(planned, 1)} ${t('h')}</td><td>${fmt.num(worked, 1)} ${t('h')}</td></tr>`;
     }).join('')}</tbody></table></div></div>`;
 }
 
@@ -293,7 +293,7 @@ function dayView(days, staff, mgr, today) {
   const hours = []; for (let m = lo; m <= hi; m += span > 12 * 60 ? 120 : 60) hours.push(m);
   const tl = dayShifts.length ? `<div class="ro-tl" aria-hidden="true"><div class="ro-tl-scale">${hours.map((m) => `<span style="left:${pct(m)}">${toTime(m).slice(0, 2)}</span>`).join('')}</div>
     ${staff.filter((p) => dayShifts.some((s) => s.staff_id === p.id)).sort((a, b) => toMin(dayShifts.find((s) => s.staff_id === a.id).start_time) - toMin(dayShifts.find((s) => s.staff_id === b.id).start_time))
-      .map((p) => `<div class="ro-tl-row ${p.id === state.me.id ? 'me' : ''}"><span class="ro-tl-name">${esc(firstName(p.full_name))}</span><span class="ro-tl-track">${hours.map((m) => `<i style="left:${pct(m)}"></i>`).join('')}
+      .map((p) => `<div class="ro-tl-row ${p.id === state.me.id ? 'me' : ''}"><span class="ro-tl-name">${avatar(p.full_name, p.photo_url, 'sm')}${esc(firstName(p.full_name))}</span><span class="ro-tl-track">${hours.map((m) => `<i style="left:${pct(m)}"></i>`).join('')}
         ${dayShifts.filter((s) => s.staff_id === p.id).map((s) => `<b class="${sectionClass(s.section)}" style="left:${pct(toMin(s.start_time))};width:calc(${pct(toMin(s.end_time))} - ${pct(toMin(s.start_time))})"></b>`).join('')}</span></div>`).join('')}
     </div>` : '';
   return `<div class="roster-m ro-day">${mobileView(days, staff, mgr, today).replace('<div class="roster-m">', '').replace(/<\/div>\s*$/, '')}${tl}</div>`;

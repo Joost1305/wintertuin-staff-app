@@ -210,7 +210,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click(`[data-edit="${id}"]`); await p.setInputFiles('.modal #ph-file', { name: 'me.png', mimeType: 'image/png', buffer: png });
       await p.waitForFunction((i) => window.__mockdb.profiles.find((x) => x.id === i).photo_url, id);
       await p.waitForSelector('.modal .acc-photo .av.has-photo img'); await p.keyboard.press('Escape');
-      await p.goto(BASE + '#/roster'); await p.waitForSelector('.ro-who .av.has-photo img'); });
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('.ro-who .av.has-photo img');
+      await p.setViewportSize({ width: 390, height: 844 }); await p.click('[data-view=day]'); await p.waitForSelector('.m-row .m-who .av'); await p.waitForSelector('.m-who .av.has-photo img'); await p.screenshot({ path: `${OUT}/roster-day-photos.png` }); await p.click('[data-view=week]'); await p.setViewportSize({ width: 1280, height: 900 }); });
     await step('settings: one account for both apps, Finance access set from the Team app', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'Shared Login'); await p.fill('.modal [name=email]', 'shared@example.test');
