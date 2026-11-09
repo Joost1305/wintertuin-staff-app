@@ -62,6 +62,12 @@ export const nameOf = (id) => { const p = state.profiles.find((x) => x.id === id
 // ------------------------------------------------------------------ DOM
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+// Round avatar: the person's photo when there is one, otherwise the initials
+export function avatar(name, photo, cls = '') {
+  const ini = String(name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+  return photo ? `<span class="av has-photo ${cls}"><img src="${esc(photo)}" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-photo');this.replaceWith(document.createTextNode('${ini.replace(/[^A-Z0-9]/g, '')}'))"></span>`
+    : `<span class="av ${cls}">${esc(ini)}</span>`;
+}
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

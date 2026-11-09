@@ -1,7 +1,7 @@
 // Roster: a day, week or month overview. The week is a grid like Teams Shifts. Your own shifts in colour, colleagues in grey.
 // Managers plan by clicking "+", by dragging a fixed shift onto a day, or by dragging a shift to another day or person.
 // Exports to calendar (.ics), prints "who works today", and compares planned hours with clocked hours.
-import { state, isManager, app, esc, fmt, toast, toastError, isoOf, $, $$, openModal, confirmDialog, download, printHtml } from '../core.js';
+import { state, isManager, app, esc, fmt, toast, toastError, isoOf, $, $$, openModal, confirmDialog, download, printHtml, avatar } from '../core.js';
 import { t, lang } from '../i18n.js';
 import { sectionClass } from './roster-colors.js';
 import { sb, check } from '../data.js';
@@ -119,7 +119,7 @@ function draw(days, checkins) {
           ${mgr ? `<button type="button" class="day-toggle ${closed ? 'is-closed' : 'is-open'}" data-day="${isoOf(d)}" title="${t(closed ? 'day_click_open' : 'day_click_close')}">${t(closed ? 'closed' : 'open')}</button>
             <button type="button" class="day-note-btn ${c && c.note ? 'has-note' : ''}" data-dnote="${isoOf(d)}" title="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(c && c.note ? 'day_note_edit' : 'day_note_add')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>`
             : closed && !noteOf(c) ? `<span class="day-closed">${t('closed')}</span>` : ''}</th>`; }).join('')}</tr></thead>
-        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<span class="ro-who"><span class="av sm">${esc(String(p.full_name || '?').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase())}</span><strong>${esc(p.full_name)}</strong></span>
+        <tbody>${!staff.length ? `<tr><td colspan="8" class="empty">${t('roster_no_staff')}</td></tr>` : staff.map((p, i) => `<tr ${mgr ? `data-row="${p.id}"` : ''}><td>${mgr ? `<span class="row-handle" draggable="true" data-handle="${p.id}" title="${t('drag_to_reorder')}">&#10303;</span>` : ''}<span class="ro-who">${avatar(p.full_name, p.photo_url, 'sm')}<strong>${esc(p.full_name)}</strong></span>
             ${mgr ? `<span class="row-move"><button type="button" data-up="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-down="${i}" ${i === staff.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span>` : ''}</td>
           ${days.map((d) => { const ds = isoOf(d); const here = shifts.filter((s) => s.staff_id === p.id && s.shift_date === ds);
             const closed = calendar[ds] && !calendar[ds].is_open;

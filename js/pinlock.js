@@ -92,7 +92,7 @@ export function showUnlock(me) {
     keypad({
       title: L({ en: `Hi ${esc(first)}`, nl: `Hoi ${esc(first)}` }),
       sub: L({ en: 'Type your PIN', nl: 'Typ je pincode' }),
-      foot: `<span class="av big">${esc(initials(me.full_name))}</span><a href="#" data-link="password">${L({ en: 'Not you, or forgot your PIN? Sign in with your password', nl: 'Niet jij, of pincode vergeten? Inloggen met wachtwoord' })}</a>`,
+      foot: `${me.photo_url ? `<span class="av big has-photo"><img src="${esc(me.photo_url)}" alt=""></span>` : `<span class="av big">${esc(initials(me.full_name))}</span>`}<a href="#" data-link="password">${L({ en: 'Not you, or forgot your PIN? Sign in with your password', nl: 'Niet jij, of pincode vergeten? Inloggen met wachtwoord' })}</a>`,
       onLink: (_, el) => { forgetDevicePin(me.id); finish(false, el); },
       onPin: async (pin) => {
         const m = read(KEY, {}); const rec = m[me.id];

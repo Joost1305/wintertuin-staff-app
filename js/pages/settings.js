@@ -1,6 +1,7 @@
 // Settings (managers only): team and accounts, fixed shifts, links, backups.
 // Accounts and passwords go through the admin-users edge function, which re-checks that you are a manager.
-import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView } from '../core.js';
+import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView, avatar } from '../core.js';
+import { PHOTO_BUCKET } from '../config.js';
 import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 import { renderSystemCheck } from './system-check.js';
@@ -216,7 +217,7 @@ async function team(el) {
       <button type="button" class="btn-primary btn-sm" id="add">+ ${t('add_account')}</button></div>
     <div class="table-wrap" style="margin-top:12px"><table class="stack"><thead><tr><th>${t('name')}</th><th>${t('email')}</th><th>${t('role')}</th>${fin ? `<th>Finance</th>` : ''}<th>${t('active')}</th><th></th></tr></thead><tbody>
     ${rows.map((p) => { const self = p.id === state.me.id; return `<tr>
-      <td data-label="${t('name')}"><strong>${esc(p.full_name)}</strong>${self ? ` <span class="small muted">(${t('you')})</span>` : ''}</td>
+      <td data-label="${t('name')}"><span class="team-av">${avatar(p.full_name, p.photo_url)}<span><strong>${esc(p.full_name)}</strong>${self ? ` <span class="small muted">(${t('you')})</span>` : ''}</span></span></td>
       <td data-label="${t('email')}" class="small">${esc(p.email || '')}</td>
       <td data-label="${t('role')}">${t('role_' + p.role)}</td>
       ${fin ? `<td data-label="Finance">${finLabel(finOf(p))}</td>` : ''}
@@ -266,9 +267,28 @@ async function team(el) {
     // your own finance access and a super admin's are managed in the finance app
     const finEditable = fin && !self && !(fu && fu.role === 'super_admin');
     if (finEditable) fields.push({ name: 'fin_role', label: t('acc_fin_role'), type: 'select', options: finOptions });
-    openModal(`<h2>${esc(p.email || p.full_name)}</h2><form id="f">${formHtml(fields, { ...p, active: p.active !== false, fin_role: finNow })}
+    openModal(`<h2>${esc(p.email || p.full_name)}</h2>
+      <div class="acc-photo">${avatar(p.full_name, p.photo_url, 'xl')}<div><button type="button" class="btn btn-sm" id="ph-pick"><i class="ic ic-camera" aria-hidden="true"></i> ${t('acc_photo')}</button>
+        ${p.photo_url ? `<button type="button" class="link-btn small" id="ph-rm">${t('acc_photo_rm')}</button>` : ''}<input type="file" id="ph-file" accept="image/*" hidden></div></div>
+      <form id="f">${formHtml(fields, { ...p, active: p.active !== false, fin_role: finNow })}
       <div class="modal-actions">${!self && !(fu && fu.role === 'super_admin') ? `<button type="button" class="link-btn danger" id="acc-del" style="margin-right:auto">${t('acc_delete')}</button>` : ''}<button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></form>`,
     (card, close) => {
+      // photo: made small (square, 400 px) and saved straight away
+      const setPhoto = async (url) => { check(await sb.from('profiles').update({ photo_url: url }).eq('id', p.id)); p.photo_url = url; if (self) state.me.photo_url = url;
+        card.querySelector('.acc-photo .av').outerHTML = avatar(p.full_name, url, 'xl'); toast(t('saved')); };
+      card.querySelector('#ph-pick').onclick = () => card.querySelector('#ph-file').click();
+      card.querySelector('#ph-file').onchange = async (e) => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        try {
+          const img = await createImageBitmap(f); const side = Math.min(img.width, img.height); const cv = document.createElement('canvas'); cv.width = cv.height = 400;
+          cv.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, 400, 400);
+          const blob = await new Promise((r) => cv.toBlob(r, 'image/jpeg', 0.85));
+          const path = `avatars/${p.id}-${Date.now()}.jpg`;
+          const { error } = await sb.storage.from(PHOTO_BUCKET).upload(path, blob, { contentType: 'image/jpeg' }); if (error) throw error;
+          await setPhoto(sb.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl);
+        } catch (err) { toastError(err); }
+      };
+      const rm = card.querySelector('#ph-rm'); if (rm) rm.onclick = async () => { try { await setPhoto(null); rm.remove(); } catch (err) { toastError(err); } };
       const del = card.querySelector('#acc-del');
       if (del) del.onclick = async () => {
         if (!(await confirmDialog(t('acc_delete_confirm', { n: p.full_name }), t('acc_delete')))) return;

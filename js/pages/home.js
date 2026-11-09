@@ -1,6 +1,6 @@
 // Today: the start page. Everything a person needs at the start of a shift on one screen:
 // next shift, clock in or out, today's checklists, events, who works today and swaps waiting.
-import { state, isManager, app, esc, fmt, toastError, todayIso, isoOf, $ } from '../core.js';
+import { state, isManager, app, esc, fmt, toastError, todayIso, isoOf, $, avatar } from '../core.js';
 import { t, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { view } from './sops.js';
@@ -32,7 +32,7 @@ export async function renderHome() {
   const today = todayIso();
   const [mine, todayShifts, openRow, sops, checks, events, swaps] = await Promise.all([
     safe(sb.from('shifts').select('*').eq('staff_id', state.me.id).gte('shift_date', today).order('shift_date').order('start_time').limit(4)),
-    safe(sb.from('shifts').select('*, profiles:staff_id(full_name)').eq('shift_date', today).order('start_time')),
+    safe(sb.from('shifts').select('*, profiles:staff_id(full_name, photo_url)').eq('shift_date', today).order('start_time')),
     safe(sb.from('checkins').select('*').eq('staff_id', state.me.id).is('check_out_at', null).order('check_in_at', { ascending: false }).limit(1).maybeSingle()),
     safe(sb.from('sops').select('*').order('category').order('sort_order')),
     safe(sb.from('sop_checks').select('*').eq('check_date', today)),
@@ -95,7 +95,7 @@ export async function renderHome() {
       <section class="card home-card">
         <div class="hc-head"><h2>${L({ en: 'Working today', nl: 'Vandaag aan het werk' })}</h2><a href="#/roster" class="small">${L({ en: 'Roster', nl: 'Rooster' })}</a></div>
         ${(todayShifts || []).length ? `<ul class="who-list">${todayShifts.map((s) => `<li class="${s.staff_id === state.me.id ? 'me' : ''}">
-            <span class="av ${sectionClass(s.section)}">${esc(initials(s.profiles && s.profiles.full_name))}</span>
+            ${avatar(s.profiles && s.profiles.full_name, s.profiles && s.profiles.photo_url, sectionClass(s.section))}
             <span class="who">${esc(s.profiles ? s.profiles.full_name : '')}${s.section ? `<span class="small muted">${esc(s.section)}</span>` : ''}</span>
             <span class="tm">${esc(fmt.time(s.start_time))}–${esc(fmt.time(s.end_time))}</span></li>`).join('')}</ul>`
           : `<p class="muted">${L({ en: 'Nobody is on the roster today.', nl: 'Vandaag staat niemand op het rooster.' })}</p>`}

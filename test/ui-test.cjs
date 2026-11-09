@@ -203,6 +203,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       }
       if (await p.evaluate(() => { const me = window.__mockdb.profiles.find((x) => x.role === 'manager'); return !!me; })) { /* own account has no delete button */ }
     });
+    await step('settings: a photo for an account shows in the round avatars', async () => {
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64');
+      await p.goto(BASE + '#/settings/team'); await p.waitForSelector('[data-edit]');
+      const id = await p.evaluate(() => window.__mockdb.profiles.find((x) => x.role !== 'manager').id);
+      await p.click(`[data-edit="${id}"]`); await p.setInputFiles('.modal #ph-file', { name: 'me.png', mimeType: 'image/png', buffer: png });
+      await p.waitForFunction((i) => window.__mockdb.profiles.find((x) => x.id === i).photo_url, id);
+      await p.waitForSelector('.modal .acc-photo .av.has-photo img'); await p.keyboard.press('Escape');
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('.ro-who .av.has-photo img'); });
     await step('settings: one account for both apps, Finance access set from the Team app', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'Shared Login'); await p.fill('.modal [name=email]', 'shared@example.test');
