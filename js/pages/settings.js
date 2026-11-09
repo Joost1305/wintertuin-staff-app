@@ -171,7 +171,7 @@ function generatePassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
 function credentialsPopup(name, email, password) {
-  const text = t('cred_text', { n: name, e: email, p: password, url: `${location.origin}${location.pathname}` });
+  const text = t('cred_text', { n: name, e: email, p: password, url: `${location.origin}${location.pathname}?w=2` /* new ?w makes WhatsApp fetch the new preview */ });
   openModal(`<h2>${t('cred_title', { n: esc(name) })}</h2>
     <div class="pw-card"><div class="small">${t('pw_once')}</div><div style="margin:6px 0">${esc(email)}<br><code>${esc(password)}</code></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn-sm" id="copy">${t('copy')}</button>
