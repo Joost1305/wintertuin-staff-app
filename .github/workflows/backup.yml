@@ -92,7 +92,9 @@ jobs:
           fi
           # 5. Joost's recipe app (own database): all data plus photos and attachments, as the "Volledige backup" zip
           #    of that app, so it can be put back with Meer > Backup terugzetten. Read with its public key, as the app does.
-          python3 - "$OUT" <<'PY' || echo "::warning::Recipe app could not be copied; the Wintertuin data is still complete"
+          #    It goes in its own zip and its own mail, so both mails stay well under the attachment limit.
+          RDIR="receptendatabase-backup-$STAMP"; mkdir -p "$RDIR"
+          python3 - "$RDIR" <<'PY' || echo "::warning::Recipe app could not be copied; the Wintertuin data is still complete"
           import json, os, re, sys, urllib.request, urllib.parse, zipfile, io
           out = sys.argv[1]
           url = 'https://lvqkpogyjobcutjttdqg.supabase.co'
@@ -110,7 +112,7 @@ jobs:
                       b = urllib.request.urlopen(u, timeout=60).read()
                   except Exception:
                       continue
-                  if size + len(b) > 12_000_000:   # keep the mail under the limit; the data always goes
+                  if size + len(b) > 17_000_000:   # keep the mail under the limit; the data always goes
                       skipped += 1; continue
                   z.writestr('bestanden/' + urllib.parse.unquote(u.split(mark, 1)[1].split('?')[0]), b); ok += 1; size += len(b)
               z.writestr('LEESMIJ.txt', 'Volledige backup van de Receptendatabase.\nTerugzetten: in de receptenapp Meer > Backup terugzetten, en kies deze zip.\n'
@@ -126,14 +128,17 @@ jobs:
           logins.sql               De accounts, zodat iedereen na het terugzetten zijn wachtwoord houdt.
           tables/                  Elke tabel als CSV: te openen in Excel of Numbers.
           files/                   Foto's, menukaarten en andere uploads.
-          receptendatabase-volledig.zip  Je receptenapp: alle recepten, foto's en bijlagen.
-                                   Terugzetten in de receptenapp: Meer > Backup terugzetten.
 
           Vraag bij twijfel hulp voordat je iets terugzet: terugzetten overschrijft de huidige gegevens.
           TXT
           7z a -tzip -mem=AES256 -p"$BACKUP_PASSWORD" "$OUT.zip" "$OUT" > /dev/null
           rm -rf "$OUT" tables.txt files.tsv
           echo "ZIP=$OUT.zip" >> "$GITHUB_ENV"
+          if [ -f "$RDIR/receptendatabase-volledig.zip" ]; then
+            7z a -tzip -mem=AES256 -p"$BACKUP_PASSWORD" "$RDIR.zip" "$RDIR" > /dev/null
+            echo "RECIPE_ZIP=$RDIR.zip" >> "$GITHUB_ENV"; echo "Recipe zip: $(du -h "$RDIR.zip" | cut -f1)"
+          fi
+          rm -rf "$RDIR"
           echo "Zip: $(du -h "$OUT.zip" | cut -f1)"
 
       - name: E-mail the backup
@@ -141,36 +146,40 @@ jobs:
           python3 - <<'PY'
           import os, smtplib, ssl, base64, json, urllib.request
           from email.message import EmailMessage
-          zip_path = os.environ['ZIP']
           to = [a.strip() for a in os.environ['BACKUP_TO'].split(',') if a.strip()]
-          subject = f"Wintertuin back-up {os.environ['STAMP'].replace('_', ' ')}"
-          size = os.path.getsize(zip_path) / 1e6
-          body = (
-              "Hoi,\n\nIn de bijlage de back-up van vannacht van de Wintertuin-apps (Team en Finance): "
-              "alle gegevens, de accounts, elke tabel als spreadsheet en de foto's en pdf's.\n\n"
-              f"Grootte: {size:.1f} MB. {os.environ.get('FILES_NOTE', '')}\n\n"
-              "Openen gaat met het back-upwachtwoord. Bewaar deze mail; Gmail houdt hem gewoon bij.\n"
-              "Komt er een nacht geen mail, dan stuurt GitHub een melding dat de back-up mislukt is.\n")
-          data = open(zip_path, 'rb').read()
-          name = os.path.basename(zip_path)
-          if os.environ.get('RESEND_API_KEY'):
-              req = urllib.request.Request('https://api.resend.com/emails', method='POST', headers={
-                  'Authorization': f"Bearer {os.environ['RESEND_API_KEY']}", 'Content-Type': 'application/json', 'User-Agent': 'wintertuin-backup'},
-                  data=json.dumps({'from': 'Wintertuin back-up <onboarding@resend.dev>', 'to': to, 'subject': subject, 'text': body,
-                                   'attachments': [{'filename': name, 'content': base64.b64encode(data).decode()}]}).encode())
-              try:
-                  urllib.request.urlopen(req, timeout=120).read()
-              except urllib.error.HTTPError as e:
-                  raise SystemExit(f"::error::Resend refused the mail: {e.code} {e.read().decode()[:300]}")
-          else:
-              m = EmailMessage()
-              m['Subject'] = subject
-              m['From'] = f"Wintertuin back-up <{os.environ['GMAIL_USER']}>"
-              m['To'] = ', '.join(to)
-              m.set_content(body)
-              m.add_attachment(data, maintype='application', subtype='zip', filename=name)
-              with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
-                  s.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
-                  s.send_message(m)
-          print(f"Sent to {len(to)} address(es), {size:.1f} MB")
+          when = os.environ['STAMP'].replace('_', ' ')
+          def send(zip_path, subject, intro):
+              size = os.path.getsize(zip_path) / 1e6
+              body = (f"Hoi,\n\n{intro}\n\nGrootte: {size:.1f} MB.\n\n"
+                      "Openen gaat met het back-upwachtwoord. Bewaar deze mail; Gmail houdt hem gewoon bij.\n"
+                      "Komt er een nacht geen mail, dan stuurt GitHub een melding dat de back-up mislukt is.\n")
+              data = open(zip_path, 'rb').read()
+              name = os.path.basename(zip_path)
+              if os.environ.get('RESEND_API_KEY'):
+                  req = urllib.request.Request('https://api.resend.com/emails', method='POST', headers={
+                      'Authorization': f"Bearer {os.environ['RESEND_API_KEY']}", 'Content-Type': 'application/json', 'User-Agent': 'wintertuin-backup'},
+                      data=json.dumps({'from': 'Wintertuin back-up <onboarding@resend.dev>', 'to': to, 'subject': subject, 'text': body,
+                                       'attachments': [{'filename': name, 'content': base64.b64encode(data).decode()}]}).encode())
+                  try:
+                      urllib.request.urlopen(req, timeout=120).read()
+                  except urllib.error.HTTPError as e:
+                      raise SystemExit(f"::error::Resend refused the mail: {e.code} {e.read().decode()[:300]}")
+              else:
+                  m = EmailMessage()
+                  m['Subject'] = subject
+                  m['From'] = f"Wintertuin back-up <{os.environ['GMAIL_USER']}>"
+                  m['To'] = ', '.join(to)
+                  m.set_content(body)
+                  m.add_attachment(data, maintype='application', subtype='zip', filename=name)
+                  with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=ssl.create_default_context()) as s:
+                      s.login(os.environ['GMAIL_USER'], os.environ['GMAIL_APP_PASSWORD'])
+                      s.send_message(m)
+              print(f"Sent to {len(to)} address(es), {size:.1f} MB")
+          send(os.environ['ZIP'], f"Wintertuin back-up {when}",
+               "In de bijlage de back-up van vannacht van de Wintertuin-apps (Team en Finance): alle gegevens, de accounts, "
+               f"elke tabel als spreadsheet en de foto's en pdf's. {os.environ.get('FILES_NOTE', '')}")
+          if os.environ.get('RECIPE_ZIP'):
+              send(os.environ['RECIPE_ZIP'], f"Receptendatabase back-up {when}",
+                   "In de bijlage de back-up van vannacht van je receptenapp: alle recepten, foto's en bijlagen. "
+                   "Pak de zip uit (back-upwachtwoord) en kies in de receptenapp Meer > Backup terugzetten > receptendatabase-volledig.zip.")
           PY
