@@ -1,4 +1,4 @@
-# Nightly backup of both Wintertuin apps (Team and Finance share one database).
+# Nightly backup of both Wintertuin apps (Team and Finance share one database), plus Joost's recipe app.
 # Makes a password-protected zip with:
 #   - wintertuin-database.sql  full copy of all app data, ready to restore
 #   - logins.sql               the login accounts (so everyone keeps their password after a restore)
@@ -90,6 +90,34 @@ jobs:
           if [ "$(du -sm "$OUT/files" | cut -f1)" -gt 18 ]; then
             rm -rf "$OUT/files"; echo "FILES_NOTE=Foto's en pdf's zijn deze keer weggelaten (te groot voor e-mail)." >> "$GITHUB_ENV"
           fi
+          # 5. Joost's recipe app (own database): all data plus photos and attachments, as the "Volledige backup" zip
+          #    of that app, so it can be put back with Meer > Backup terugzetten. Read with its public key, as the app does.
+          python3 - "$OUT" <<'PY' || echo "::warning::Recipe app could not be copied; the Wintertuin data is still complete"
+          import json, os, re, sys, urllib.request, urllib.parse, zipfile, io
+          out = sys.argv[1]
+          url = 'https://lvqkpogyjobcutjttdqg.supabase.co'
+          key = 'sb_publishable_KRkvUq-jiQ_VOx4DUQZBow_BHiU5u9-'
+          req = urllib.request.Request(f'{url}/rest/v1/bakboek_store?id=eq.main&select=data', headers={'apikey': key, 'Authorization': f'Bearer {key}'})
+          data = json.load(urllib.request.urlopen(req, timeout=60))[0]['data']
+          text = json.dumps(data, ensure_ascii=False, indent=2)
+          mark = '/storage/v1/object/public/recipe-files/'
+          urls = sorted(set(re.findall(r'https?://[^"\s]+/storage/v1/object/public/recipe-files/[^"\s]+', text)))
+          buf = io.BytesIO(); ok = 0; size = 0; skipped = 0
+          with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
+              z.writestr('backup.json', text)
+              for u in urls:
+                  try:
+                      b = urllib.request.urlopen(u, timeout=60).read()
+                  except Exception:
+                      continue
+                  if size + len(b) > 12_000_000:   # keep the mail under the limit; the data always goes
+                      skipped += 1; continue
+                  z.writestr('bestanden/' + urllib.parse.unquote(u.split(mark, 1)[1].split('?')[0]), b); ok += 1; size += len(b)
+              z.writestr('LEESMIJ.txt', 'Volledige backup van de Receptendatabase.\nTerugzetten: in de receptenapp Meer > Backup terugzetten, en kies deze zip.\n'
+                         + (f'{skipped} grote bestanden zijn weggelaten (te groot voor e-mail); maak daarvoor in de app een volledige backup.\n' if skipped else ''))
+          open(os.path.join(out, 'receptendatabase-volledig.zip'), 'wb').write(buf.getvalue())
+          print(f'Recipe app: {len(data.get("recipes", []))} recipes, {ok} files' + (f', {skipped} left out' if skipped else ''))
+          PY
           cat > "$OUT/LEESMIJ.txt" <<TXT
           Back-up Wintertuin (Team en Finance), $STAMP
 
@@ -98,6 +126,8 @@ jobs:
           logins.sql               De accounts, zodat iedereen na het terugzetten zijn wachtwoord houdt.
           tables/                  Elke tabel als CSV: te openen in Excel of Numbers.
           files/                   Foto's, menukaarten en andere uploads.
+          receptendatabase-volledig.zip  Je receptenapp: alle recepten, foto's en bijlagen.
+                                   Terugzetten in de receptenapp: Meer > Backup terugzetten.
 
           Vraag bij twijfel hulp voordat je iets terugzet: terugzetten overschrijft de huidige gegevens.
           TXT
