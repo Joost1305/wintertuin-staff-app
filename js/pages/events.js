@@ -400,7 +400,7 @@ function renderEditor(ev, date = null) {
         ${grid(inp('min_spend', 'money'), inp('deposit', 'money'), inp('deposit_due', 'date'), inp('quote_valid_until', 'date'))}
         ${chk('deposit_paid')}
         <div class="field"><label for="f-agreement_kind">${t('ev_agreement_kind')}</label><select id="f-agreement_kind" name="agreement_kind"><option value="">${L2('Automatisch', 'Automatic')}: ${esc(uvhL(KIND_LABEL[suggestKind(v)]))}</option>${Object.keys(KIND_LABEL).map((k) => `<option value="${k}" ${v.agreement_kind === k ? 'selected' : ''}>${esc(uvhL(KIND_LABEL[k]))}</option>`).join('')}</select>
-          <div class="hint">${L2('Alleen voor zakelijke klanten; voor particulieren geldt UVH art. 14.', 'Business clients only; private clients fall under UVH art. 14.')}</div></div>
+          <div class="hint">${L2('Alleen voor zakelijke gasten; voor particulieren geldt UVH art. 14.', 'Business clients only; private clients fall under UVH art. 14.')}</div></div>
         ${inp('corkage', 'text', `placeholder="${esc(L2('Bijvoorbeeld: eigen taart € 2,50 p.p.', 'For example: own cake € 2.50 p.p.'))}"`)}
         ${area('deviations', 2, L2('Alleen als je iets anders afspreekt dan de UVH, bijvoorbeeld een andere annuleringsregeling.', 'Only when you agree something other than the UVH, such as a different cancellation rule.'))}
         ${area('payment_terms', 2)}${v.cancellation_terms ? area('cancellation_terms', 2) : ''}
@@ -587,7 +587,10 @@ function clientHtml(ev, l) {
   const dietOf = (x) => (/^diet_/.test(x || '') ? tIn(l, x) : x || '');
   const pct = (r) => `${Math.round(r * 100)}%`;
   // our details: on every quote, and required on an invoice
-  const us = [c.legal_name || c.trade_name || 'Wintertuin', c.address, c.postcode_city].filter(Boolean).map(esc).join('<br>');
+  // under the logo: Cantonspark, Baarn; then the legal name and address once they are filled in (never the same name twice)
+  const brandName = c.trade_name || 'Wintertuin';
+  const us = ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city]
+    .filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).map(esc).join('<br>');
   const ids = [c.kvk ? `KVK ${esc(c.kvk)}` : '', c.vat_id ? `${T('Btw', 'VAT')} ${esc(c.vat_id)}` : '', c.iban ? `IBAN ${esc(c.iban)}` : '', [c.email, c.phone].filter(Boolean).map(esc).join(' · ')].filter(Boolean).join('<br>');
   // price table: business clients see amounts excluding VAT plus VAT per rate, private clients amounts including VAT
   const priceTable = ps.lines.length ? `<table class="pt"><tr><th>${T('Omschrijving', 'Description')}</th><th class="n">${T('Aantal', 'Qty')}</th><th class="n">${business ? T('Prijs excl.', 'Price excl.') : T('Prijs', 'Price')}</th><th class="n">${T('Btw', 'VAT')}</th><th class="n">${business ? T('Totaal excl.', 'Total excl.') : T('Totaal', 'Total')}</th></tr>
@@ -601,6 +604,7 @@ function clientHtml(ev, l) {
       ${(sch.rules || []).map((x) => `<p class="small" style="margin:3px 0 0">${esc(x)}</p>`).join('')}`;
   const payDays = Number(c.pay_days) || 14;
   return (`${sheetCss}<style>
+    .beo .q-brand { display: flex; align-items: center; gap: 10px; } .beo .q-brand img { width: 46px; height: auto; display: block; }
     .beo .pt { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .beo .pt th { text-align: left; font-size: 8pt; color: #666; font-weight: 600; border-bottom: 1px solid #999 !important; padding: 3px 6px; }
     .beo .pt td { padding: 3px 6px; border-bottom: 1px solid #e3e3e3 !important; }
@@ -611,12 +615,12 @@ function clientHtml(ev, l) {
     .beo .uvh { border: 1px solid #bbb; border-radius: 6px; padding: 7px 10px; margin-top: 10px; font-size: 9pt; }
     .beo .doc { font-size: 15pt; font-weight: 700; }
   </style><div class="beo">
-    <div class="top"><div><div class="brand">${esc(c.trade_name || 'Wintertuin')}</div><div class="small">${us}</div></div>
+    <div class="top"><div class="q-brand"><img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt=""><div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
       <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
     ${isQuote ? `<p class="small">${ev.quote_valid_until ? T(`Deze offerte is geldig tot en met ${esc(dateIn(ev.quote_valid_until, l))}.`, `This quote is valid until ${esc(dateIn(ev.quote_valid_until, l))}.`) : ''} ${T('Het aanbod is vrijblijvend en onder voorbehoud van beschikbaarheid (UVH art. 3.2).', 'The offer is without obligation and subject to availability (UVH art. 3.2).')}
-      ${ev.option_until ? T(` Je hebt een optie op deze datum tot en met ${esc(dateIn(ev.option_until, l))}. Wil een andere klant dezelfde datum boeken, dan vragen we je eerst om een besluit (UVH art. 4).`, ` You hold an option on this date until ${esc(dateIn(ev.option_until, l))}. If another client wants the same date, we will first ask you to decide (UVH art. 4).`) : ''}</p>` : ''}
-    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [T('Soort klant', 'Client type'), ev.client_type ? tt(business ? 'ev_ct_business' : 'ev_ct_private') : ''], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
+      ${ev.option_until ? T(` Je hebt een optie op deze datum tot en met ${esc(dateIn(ev.option_until, l))}. Wil een andere gast dezelfde datum boeken, dan vragen we je eerst om een besluit (UVH art. 4).`, ` You hold an option on this date until ${esc(dateIn(ev.option_until, l))}. If another client wants the same date, we will first ask you to decide (UVH art. 4).`) : ''}</p>` : ''}
+    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [T('Soort gast', 'Client type'), ev.client_type ? tt(business ? 'ev_ct_business' : 'ev_ct_private') : ''], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
         [tt('ev_day_contact'), esc([ev.day_contact_name, ev.day_contact_phone].filter(Boolean).join(', '))], [tt('ev_reference'), esc(ev.reference || '')], [tt('ev_invoice'), ev.invoice_details ? `<span class="pre">${esc(ev.invoice_details)}</span>` : '']])}</div>
       <div><h2>${tt('ev_sec_event')}</h2>${kv([[tt('ev_type'), esc(ev.event_type || '')], [tt('ev_area'), esc(ev.area || '')], [tt('ev_exclusive'), ev.exclusive ? tt('yes') : ''],
         [tt('ev_service_style'), esc(/^style_/.test(ev.service_style || '') ? tIn(l, ev.service_style) : ev.service_style || '')],

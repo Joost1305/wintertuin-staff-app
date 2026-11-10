@@ -372,9 +372,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('events: mail quote shares the PDF with the mail text (sender is chosen in the mail app)', async () => {
       const id = await p.evaluate(() => { const e = window.__mockdb.events[0]; e.client_email = 'klant@example.test'; e.client_name = 'Klant'; return e.id; });
       await p.goto(BASE + `#/events/${id}`); await p.waitForSelector('#ev-mail');
-      await p.evaluate(() => { window.__shared = null; navigator.canShare = () => true; navigator.share = async (d) => { window.__shared = { name: d.files[0].name, type: d.files[0].type, size: d.files[0].size, text: d.text, title: d.title }; }; });
+      await p.evaluate(() => { window.__shared = null; navigator.canShare = () => true; navigator.share = async (d) => { const b = new Uint8Array(await d.files[0].arrayBuffer()); let x = ''; for (let i = 0; i < b.length; i++) x += String.fromCharCode(b[i]); window.__pdf64 = btoa(x); window.__shared = { name: d.files[0].name, type: d.files[0].type, size: d.files[0].size, text: d.text, title: d.title }; }; });
       await p.click('#ev-mail'); await p.waitForFunction(() => window.__shared, null, { timeout: 30000 });
       const sh = await p.evaluate(() => window.__shared);
+      require('fs').writeFileSync(`${OUT}/quote.pdf`, Buffer.from(await p.evaluate(() => window.__pdf64), 'base64'));
       if (sh.type !== 'application/pdf' || sh.size < 5000 || !/klant@example\.test/.test(sh.text) || !/bijlage/.test(sh.text)) throw new Error(JSON.stringify(sh)); });
     await step('haccp: print this week opens the sheet with share, PDF and print', async () => {
       await p.goto(BASE + '#/haccp'); await p.waitForSelector('#hc-print-all');
