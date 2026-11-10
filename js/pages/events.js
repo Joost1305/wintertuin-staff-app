@@ -294,7 +294,7 @@ async function mailQuote(ev, btn) {
     `Hierbij ${name === 'Offerte' ? 'de offerte' : 'de bevestiging'} voor ${ev.title} op ${dateIn(ev.event_date, l)}. Je vindt hem als pdf in de bijlage.`,
     ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, l)}.` : '',
     '', 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing.' + (company.uvh_url ? ` Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : ''),
-    '', 'Laat je ons weten of alles klopt? Dan zetten we het vast.', '', 'Hartelijke groet,', state.me.full_name || '', company.trade_name || 'Wintertuin',
+    '', 'Laat je ons weten of alles klopt? Dan zetten we het vast.', '', 'Hartelijke groet,', 'Het Wintertuin team',
   ].filter((x, i, a) => !(x === '' && a[i - 1] === ''));
   const body = lines.join('\n');
   const label = btn ? btn.innerHTML : '';
