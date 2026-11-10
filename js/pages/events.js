@@ -8,6 +8,8 @@ import { t, tIn, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { ALLERGENS } from './menu.js';
 import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKind, KIND_LABEL, uvhL, VAT_RATES } from '../uvh.js';
+import { sheetPdf } from '../sheet.js';
+const L = (o) => o[lang()] || o.en;
 
 const STATUSES = ['option', 'confirmed', 'cancelled', 'done'];
 const DRAFT = 'wintertuinEventDraft_';
@@ -236,7 +238,11 @@ async function renderView(ev) {
     else if (k === 'kitchen') printKitchen(ev);
     else printService(ev, shifts);
   }));
-  const mail = $('#ev-mail'); if (mail) mail.onclick = () => mailQuote(ev);
+  const mail = $('#ev-mail'); if (mail) mail.onclick = async () => {
+    // a second tap after "the PDF is ready" shares straight away (iPhone wants a fresh tap)
+    if (pendingShare) { const ps = pendingShare; pendingShare = null; try { await navigator.share({ files: [ps.file], title: ps.subject, text: ps.text }); } catch { /* closed */ } return; }
+    mailQuote(ev, mail);
+  };
   const del = $('#del');
   if (del) del.onclick = async () => {
     if (!(await confirmDialog(t('ev_confirm_delete'), t('delete')))) return;
@@ -276,19 +282,43 @@ function scheduleHtml(ev, l) {
     ${(sch.rules || []).map((x) => `<p class="tiny muted" style="margin:6px 0 0">${esc(x)}</p>`).join('')}`;
 }
 // Open the mail program with the quote text and the UVH link; the PDF of the quote you attach yourself
-async function mailQuote(ev) {
-  const name = docName(ev, 'nl');
+// Mail the quote: the PDF goes along as an attachment through the share sheet of the phone (Gmail, Mail),
+// so it is sent from the account chosen there (for example wintertuinrestaurant@gmail.com).
+// Where a browser cannot share files: the PDF is downloaded and the mail opens, to attach it by hand.
+async function mailQuote(ev, btn) {
+  const l = 'nl';
+  const name = docName(ev, l);
+  const subject = `${name} ${ev.title}, ${dateIn(ev.event_date, l)}`;
   const lines = [
     `Beste ${ev.client_name || ''},`.trim(), '',
-    `Hierbij ${name === 'Offerte' ? 'de offerte' : 'de bevestiging'} voor ${ev.title} op ${dateIn(ev.event_date, 'nl')}. Je vindt hem als pdf in de bijlage.`,
-    ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, 'nl')}.` : '',
-    '', 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing.' + (company.uvh_url ? ` Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : ' We sturen ze mee als bijlage.'),
+    `Hierbij ${name === 'Offerte' ? 'de offerte' : 'de bevestiging'} voor ${ev.title} op ${dateIn(ev.event_date, l)}. Je vindt hem als pdf in de bijlage.`,
+    ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, l)}.` : '',
+    '', 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing.' + (company.uvh_url ? ` Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : ''),
     '', 'Laat je ons weten of alles klopt? Dan zetten we het vast.', '', 'Hartelijke groet,', state.me.full_name || '', company.trade_name || 'Wintertuin',
   ].filter((x, i, a) => !(x === '' && a[i - 1] === ''));
-  const href = `mailto:${encodeURIComponent(ev.client_email)}?subject=${encodeURIComponent(`${name} ${ev.title}, ${dateIn(ev.event_date, 'nl')}`)}&body=${encodeURIComponent(lines.join('\n'))}`;
-  location.href = href;
-  if (hasUvhCols && !ev.uvh_sent_at) { try { check(await sb.from('events').update({ uvh_sent_at: todayIso() }).eq('id', ev.id)); } catch { /* the mail still opens */ } }
+  const body = lines.join('\n');
+  const label = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${esc(L({ en: 'Making PDF…', nl: 'Pdf maken…' }))}`; }
+  let file = null;
+  try { file = await sheetPdf(clientHtml(ev, l), quoteFileName(ev, l)); }
+  catch (e) { toastError(e); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = label; } }
+  const mark = async () => { if (hasUvhCols && !ev.uvh_sent_at) { try { check(await sb.from('events').update({ uvh_sent_at: todayIso() }).eq('id', ev.id)); ev.uvh_sent_at = todayIso(); } catch { /* the mail still goes */ } } };
+  if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+    // the address goes on top, so it can be copied into the To field
+    const text = `${ev.client_email ? `Aan: ${ev.client_email}\nOnderwerp: ${subject}\n\n` : ''}${body}`;
+    try { await navigator.share({ files: [file], title: subject, text }); await mark(); return; }
+    catch (e) {
+      if (e.name === 'AbortError') return;
+      if (e.name === 'NotAllowedError') { pendingShare = { file, subject, text }; toast(L({ en: 'The PDF is ready. Tap Mail quote again.', nl: 'De pdf is klaar. Tik nog een keer op Offerte mailen.' })); return; }
+    }
+  }
+  if (file) { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); }
+  location.href = `mailto:${encodeURIComponent(ev.client_email || '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  toast(L({ en: 'The PDF is in your downloads: attach it to the mail.', nl: 'De pdf staat in je downloads: voeg hem toe aan de mail.' }));
+  await mark();
 }
+let pendingShare = null;
 
 // One value, readable (screen and history)
 function display(k, val, l) {
@@ -543,7 +573,7 @@ const sheetCss = `<style>
 const kv = (pairs) => `<table>${pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => `<tr><td class="k">${k}</td><td>${v}</td></tr>`).join('')}</table>`;
 const timelineHtml = (ev) => ((ev.timeline || []).length ? `<table>${ev.timeline.map((x) => `<tr><td class="k" style="width:14%">${esc(x.time || '')}</td><td>${esc(x.what || '')}</td></tr>`).join('')}</table>` : '');
 
-function printClient(ev, l) {
+function clientHtml(ev, l) {
   const tt = (k, vars) => tIn(l, k, vars);
   const T = (nl, en) => (l === 'nl' ? nl : en);
   const money = (n) => (n == null ? '' : new Intl.NumberFormat(l === 'nl' ? 'nl-NL' : 'en-GB', { style: 'currency', currency: 'EUR' }).format(Number(n)));
@@ -570,7 +600,7 @@ function printClient(ev, l) {
     : `<table>${sch.rows.map((r) => `<tr><td class="k" style="width:58%">${esc(r.when)}</td><td>${r.pct ? `${r.pct}% ${T('van de reserveringswaarde', 'of the booking value')}${r.amountText ? ` (${esc(r.amountText)})` : ''}` : T('kosteloos', 'free of charge')}</td></tr>`).join('')}</table>
       ${(sch.rules || []).map((x) => `<p class="small" style="margin:3px 0 0">${esc(x)}</p>`).join('')}`;
   const payDays = Number(c.pay_days) || 14;
-  printHtml(`${sheetCss}<style>
+  return (`${sheetCss}<style>
     .beo .pt { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .beo .pt th { text-align: left; font-size: 8pt; color: #666; font-weight: 600; border-bottom: 1px solid #999 !important; padding: 3px 6px; }
     .beo .pt td { padding: 3px 6px; border-bottom: 1px solid #e3e3e3 !important; }
@@ -613,6 +643,8 @@ function printClient(ev, l) {
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
 }
+const quoteFileName = (ev, l) => `${docName(ev, l)} ${ev.title}`;
+function printClient(ev, l) { printHtml(clientHtml(ev, l), { name: quoteFileName(ev, l) }); }
 
 function printKitchen(ev) {
   const g = guestsOf(ev);

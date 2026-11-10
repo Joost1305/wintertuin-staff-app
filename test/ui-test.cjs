@@ -369,6 +369,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForFunction((b) => (window.__printed || 0) > b, before);
       await p.waitForTimeout(2000); // Safari keeps scripts running while its print window is open
       if (!/Event request/.test(await p.textContent('#printArea'))) throw new Error('print sheet cleared while printing'); });
+    await step('events: mail quote shares the PDF with the mail text (sender is chosen in the mail app)', async () => {
+      const id = await p.evaluate(() => { const e = window.__mockdb.events[0]; e.client_email = 'klant@example.test'; e.client_name = 'Klant'; return e.id; });
+      await p.goto(BASE + `#/events/${id}`); await p.waitForSelector('#ev-mail');
+      await p.evaluate(() => { window.__shared = null; navigator.canShare = () => true; navigator.share = async (d) => { window.__shared = { name: d.files[0].name, type: d.files[0].type, size: d.files[0].size, text: d.text, title: d.title }; }; });
+      await p.click('#ev-mail'); await p.waitForFunction(() => window.__shared, null, { timeout: 30000 });
+      const sh = await p.evaluate(() => window.__shared);
+      if (sh.type !== 'application/pdf' || sh.size < 5000 || !/klant@example\.test/.test(sh.text) || !/bijlage/.test(sh.text)) throw new Error(JSON.stringify(sh)); });
     await step('haccp: print this week opens the sheet with share, PDF and print', async () => {
       await p.goto(BASE + '#/haccp'); await p.waitForSelector('#hc-print-all');
       const n0 = await p.evaluate(() => { window.__keepSheet = true; return window.__printed || 0; });
