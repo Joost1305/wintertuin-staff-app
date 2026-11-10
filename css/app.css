@@ -1589,3 +1589,5 @@ body.sheet-open { overflow: hidden; }
 .ev-room { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
 .ev-room input { width: 18px !important; height: 18px; margin: 0; flex: none; }
 .ev-room.on { border-color: var(--primary); background: var(--primary-soft); }
+.ev-ext { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--ink-2); flex-basis: 100%; }
+.ev-ext input { width: 18px !important; height: 18px; flex: none; min-width: 0 !important; }

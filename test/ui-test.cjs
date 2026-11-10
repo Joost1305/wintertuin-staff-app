@@ -414,10 +414,10 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
     await step('rooms: name them in Settings, tick one on an event and its room hire goes on the quote', async () => {
       await p.goto(BASE + '#/settings/rooms'); await p.waitForSelector('#rm-rows [name=rm_name]');
       if (!(await p.$('.note:has-text("examples")'))) throw new Error('example note missing');
-      await p.fill('#rm-rows [data-i="0"] [name=rm_name]', 'Glazen kas'); await p.fill('#rm-rows [data-i="0"] [name=rm_hire]', '400');
+      await p.fill('#rm-rows [data-i="1"] [name=rm_name]', 'Glazen kas'); await p.fill('#rm-rows [data-i="1"] [name=rm_hire]', '400');
       await p.click('#rm-save'); await p.waitForSelector('.toast:has-text("Saved")');
       const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'rooms').value.rooms);
-      if (saved[0].name !== 'Glazen kas' || saved[0].hire !== 400) throw new Error(JSON.stringify(saved[0]));
+      if (saved[1].name !== 'Glazen kas' || saved[1].hire !== 400 || saved[1].owner !== 'landlord' || saved[0].owner !== 'restaurant') throw new Error(JSON.stringify(saved));
       const id = await p.evaluate(() => window.__mockdb.events[0].id);
       await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room');
       await p.click('.ev-room:has-text("Glazen kas")');
@@ -440,6 +440,22 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/print-menu-phone.png` });
       await p.click('h1'); await p.setViewportSize({ width: 1280, height: 900 });
       if (r[0] < 0 || r[1] > r[2]) throw new Error('dropdown off screen ' + r.join(',')); });
+    await step('rooms: a room of the landlord can be invoiced by her; it stays out of our total and is shown apart on the quote', async () => {
+      const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room');
+      await p.click('.ev-room:has-text("Glazen kas")'); 
+      await p.waitForSelector('#rows-price [data-room-line] [name=pr_ext]');
+      const before = await p.textContent('#price-total');
+      await p.check('#rows-price [data-room-line] [name=pr_ext]'); await p.waitForTimeout(200);
+      const after = await p.textContent('#price-total'); if (!/not in our total|niet in ons totaal/.test(after) || after === before) throw new Error(after);
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")');
+      const ev = await p.evaluate((i) => window.__mockdb.events.find((e) => e.id === i), id);
+      const line = ev.price_lines.find((x) => x.room_id); if (!line.billed_by_landlord || line.owner !== 'landlord') throw new Error(JSON.stringify(line));
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
+      const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
+      if (!/factureert .* rechtstreeks aan jou/.test(html)) throw new Error('no landlord note on the quote');
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room.on'); await p.click('.ev-room:has-text("Glazen kas")');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")'); });
     await step('settings: the texts on the quote can be changed', async () => {
       await p.goto(BASE + '#/settings/quotetexts'); await p.waitForSelector('#qt-intro_quote');
       await p.fill('#qt-intro_quote', 'Hoi {voornaam}, wat leuk dat {event} bij ons komt!'); await p.click('#qt-save'); await p.waitForSelector('.toast:has-text("Saved")');

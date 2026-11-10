@@ -30,23 +30,25 @@ async function quoteTextsSection(el) {
 // Rooms with their standard room hire, used when making a quote
 async function roomsSection(el) {
   const nl = lang() === 'nl';
-  let { rooms, example } = await loadRooms();
+  let { rooms, example, landlord } = await loadRooms();
   const num = (v) => (v == null ? '' : String(v).replace('.', ','));
   const draw = () => {
     el.innerHTML = `<div class="card"><h2>${t('set_rooms')}</h2>
-      <p class="small muted">${nl ? 'De ruimtes die je bij een event kunt aanvinken. De zaalhuur is inclusief 21% btw en komt vanzelf bij de prijzen van de offerte; per event kun je hem nog aanpassen.' : 'The rooms you can tick on an event. Room hire includes 21% VAT and goes onto the quote prices automatically; you can still change it per event.'}</p>
+      <p class="small muted">${nl ? 'De ruimtes die je bij een event kunt aanvinken. De zaalhuur is inclusief 21% btw en komt vanzelf bij de prijzen van de offerte; per event kun je hem nog aanpassen. Zaalhuur van ruimtes van de verhuurder komt in Finance in het overzicht Zaalhuur voor de verhuurder.' : 'The rooms you can tick on an event. Room hire includes 21% VAT and goes onto the quote prices automatically; you can still change it per event.'}</p>
       ${example ? `<div class="note" style="margin-bottom:12px">${nl ? '<strong>Dit zijn voorbeelden.</strong> Pas de namen en prijzen aan naar de echte ruimtes en sla op.' : '<strong>These are examples.</strong> Change the names and prices to the real rooms and save.'}</div>` : ''}
+      <div class="field" style="max-width:360px"><label for="rm-landlord">${nl ? 'Verhuurder van de ruimtes' : 'Landlord of the rooms'}</label><input id="rm-landlord" value="${esc(landlord)}"></div>
       <div id="rm-rows">${rooms.map((r, i) => `<div class="ev-line rm-line" data-i="${i}" data-id="${esc(r.id || '')}">
         <input name="rm_name" value="${esc(r.name || '')}" placeholder="${nl ? 'Naam, bijv. De kas' : 'Name, e.g. The greenhouse'}" aria-label="${nl ? 'Naam' : 'Name'}">
         <input name="rm_hire" value="${num(r.hire)}" inputmode="decimal" placeholder="€ incl." style="max-width:110px" aria-label="${nl ? 'Zaalhuur incl. btw' : 'Room hire incl. VAT'}">
         <input name="rm_cap" value="${r.capacity || ''}" inputmode="numeric" placeholder="${nl ? 'max. gasten' : 'max. guests'}" style="max-width:110px" aria-label="${nl ? 'Maximaal aantal gasten' : 'Max. guests'}">
+        <select name="rm_owner" style="max-width:190px" aria-label="${nl ? 'Van wie' : 'Owned by'}"><option value="landlord" ${r.owner !== 'restaurant' ? 'selected' : ''}>${nl ? 'Van' : 'Of'} ${esc(landlord)}</option><option value="restaurant" ${r.owner === 'restaurant' ? 'selected' : ''}>${nl ? 'Van het restaurant' : 'Of the restaurant'}</option></select>
         <button type="button" class="btn-sm btn-ghost" data-rmdel="${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('')}</div>
       <button type="button" class="btn-sm" id="rm-add">+ ${nl ? 'Ruimte toevoegen' : 'Add room'}</button>
       <div style="margin-top:14px"><button type="button" class="btn-primary" id="rm-save">${t('save')}</button></div></div>`;
-    const read = () => { rooms = $$('#rm-rows [data-i]', el).map((r) => ({ id: r.dataset.id || null, name: r.querySelector('[name=rm_name]').value, hire: (() => { const x = r.querySelector('[name=rm_hire]').value.replace(/[€\s.]/g, '').replace(',', '.'); return x === '' ? null : Number(x); })(), capacity: r.querySelector('[name=rm_cap]').value })); };
-    $('#rm-add', el).onclick = () => { read(); rooms.push({ name: '', hire: null }); draw(); const ins = $$('#rm-rows [name=rm_name]', el); ins[ins.length - 1].focus(); };
+    const read = () => { rooms = $$('#rm-rows [data-i]', el).map((r) => ({ id: r.dataset.id || null, name: r.querySelector('[name=rm_name]').value, hire: (() => { const x = r.querySelector('[name=rm_hire]').value.replace(/[€\s.]/g, '').replace(',', '.'); return x === '' ? null : Number(x); })(), capacity: r.querySelector('[name=rm_cap]').value, owner: r.querySelector('[name=rm_owner]').value })); landlord = $('#rm-landlord', el).value; };
+    $('#rm-add', el).onclick = () => { read(); rooms.push({ name: '', hire: null, owner: 'landlord' }); draw(); const ins = $$('#rm-rows [name=rm_name]', el); ins[ins.length - 1].focus(); };
     $$('[data-rmdel]', el).forEach((b) => (b.onclick = () => { read(); rooms.splice(Number(b.dataset.rmdel), 1); draw(); }));
-    $('#rm-save', el).onclick = async () => { read(); try { rooms = await saveRooms(rooms); example = false; draw(); toast(t('saved')); } catch (e) { toastError(e); } };
+    $('#rm-save', el).onclick = async () => { read(); try { rooms = await saveRooms(rooms, landlord); example = false; draw(); toast(t('saved')); } catch (e) { toastError(e); } };
   };
   draw();
 }

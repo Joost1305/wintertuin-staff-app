@@ -100,14 +100,16 @@ export function priceLines(ev, guests) {
 }
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 export function priceSummary(ev, guests) {
-  const lines = priceLines(ev, guests);
+  const all = priceLines(ev, guests);
+  const lines = all.filter((x) => !x.billed_by_landlord);
+  const external = all.filter((x) => x.billed_by_landlord); // room hire the landlord invoices to the guest herself
   const byRate = VAT_RATES.map((r) => {
     const ls = lines.filter((x) => x.vat === r);
     return { rate: r, ex: round2(ls.reduce((a, x) => a + x.ex, 0)), vat: round2(ls.reduce((a, x) => a + x.vatAmount, 0)), total: round2(ls.reduce((a, x) => a + x.total, 0)) };
   }).filter((x) => x.total);
   const total = round2(lines.reduce((a, x) => a + x.total, 0));
   const min = Number(ev.min_spend || 0);
-  return { lines, byRate, total, ex: round2(byRate.reduce((a, x) => a + x.ex, 0)), vat: round2(byRate.reduce((a, x) => a + x.vat, 0)), value: Math.max(total, min) || null, minApplies: min > total };
+  return { lines, external, externalTotal: round2(external.reduce((a, x) => a + x.total, 0)), byRate, total, ex: round2(byRate.reduce((a, x) => a + x.ex, 0)), vat: round2(byRate.reduce((a, x) => a + x.vat, 0)), value: Math.max(total, min) || null, minApplies: min > total };
 }
 
 // ------------------------------------------------------------------ cancellation (UVH art. 13 business, 14 private)

@@ -62,7 +62,7 @@ let company = {};
 
 let menuItems = [];
 let courses = { food: [], beverage: [] };
-let rooms = { rooms: [], example: true };
+let rooms = { rooms: [], example: true, landlord: 'Mette te Velde' };
 const guestsOf = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
 const statusTag = (s) => `<span class="tag ev-${esc(s)}">${t('evs_' + s)}</span>`;
 const labelOf = (code) => (code && /^(course|diet|style)_/.test(code) ? t(code) : code || '');
@@ -72,11 +72,11 @@ function saveDraft(k, d) { try { localStorage.setItem(DRAFT + k, JSON.stringify(
 function clearDraft(k) { try { localStorage.removeItem(DRAFT + k); } catch { /* private mode */ } }
 
 export async function renderEvents(args = []) {
-  await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; }), loadQuoteTexts()]);
+  await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; }), loadQuoteTexts(), loadRooms().then((r) => { rooms = r; })]);
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active, sort_order').order('group_type').order('sort_order').order('name')) || [];
   const [id, sub] = args;
-  if (sub === 'edit' || id === 'new') [courses, rooms] = await Promise.all([loadCourses(menuItems), loadRooms()]);
+  if (sub === 'edit' || id === 'new') courses = await loadCourses(menuItems);
   if (id === 'cal') { rememberView('cal'); return renderCalendar(sub); }
   if (!id && !sub && savedView() === 'cal') return renderCalendar();
   if (!id) { rememberView('list'); return renderList(sub); }
@@ -277,7 +277,8 @@ function moneyBlock(ev) {
   if (!ps.lines.length) return '';
   return `<table class="ev-table ev-price">${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? t('ev_room_hire') : t('ev_price_pp')))}</td><td class="num">${x.per === 'pp' ? `${x.qty} × ` : x.qty !== 1 ? `${x.qty} × ` : ''}${euro(x.price)}</td><td class="num muted">${Math.round(x.vat * 100)}%</td><td class="num">${euro(x.total)}</td></tr>`).join('')}
     <tr class="tot"><td colspan="3">${L2('Totaal incl. btw', 'Total incl. VAT')}${ps.byRate.length ? `<div class="tiny muted">${ps.byRate.map((r) => `${L2('btw', 'VAT')} ${Math.round(r.rate * 100)}%: ${euro(r.vat)}`).join(' · ')}</div>` : ''}</td><td class="num">${euro(ps.total)}</td></tr></table>
-    ${ps.minApplies ? `<div class="tiny muted">${L2('De minimale besteding is hoger: die geldt.', 'The minimum spend is higher: that applies.')}</div>` : ''}`;
+    ${ps.minApplies ? `<div class="tiny muted">${L2('De minimale besteding is hoger: die geldt.', 'The minimum spend is higher: that applies.')}</div>` : ''}
+    ${ps.external.length ? `<div class="tiny muted" style="margin-top:6px">${esc(L2(`Factureert ${rooms.landlord} zelf aan de gast`, `Invoiced by ${rooms.landlord} to the guest`))}: ${ps.external.map((x) => `${esc(x.label || t('ev_room_hire'))} ${euro(x.total)}`).join(', ')}</div>` : ''}`;
 }
 function scheduleHtml(ev, l) {
   if (!hasUvhCols) return '';
@@ -503,8 +504,9 @@ function renderEditor(ev, date = null) {
         <input name="pr_qty" value="${x.per === 'pp' ? '' : esc(String(x.qty ?? 1))}" ${x.per === 'pp' ? 'disabled' : ''} inputmode="decimal" placeholder="${x.per === 'pp' ? esc(L2('gasten', 'guests')) : '1'}" style="max-width:70px" aria-label="${esc(L2('Aantal', 'Quantity'))}">
         <input name="pr_price" value="${x.price != null ? esc(String(x.price).replace('.', ',')) : ''}" inputmode="decimal" placeholder="€ incl." style="max-width:96px" aria-label="${esc(L2('Prijs incl. btw', 'Price incl. VAT'))}">
         <select name="pr_vat" aria-label="${L2('Btw', 'VAT')}">${VAT_RATES.map((r) => `<option value="${r}" ${Number(x.vat) === r ? 'selected' : ''}>${Math.round(r * 100)}%</option>`).join('')}</select>
+        ${x.room_id && (x.owner || (rooms.rooms.find((r) => r.id === x.room_id) || {}).owner || 'landlord') === 'landlord' ? `<label class="ev-ext"><input type="checkbox" name="pr_ext" ${x.billed_by_landlord ? 'checked' : ''}> ${esc(L2(`${rooms.landlord} factureert dit zelf`, `${rooms.landlord} invoices this herself`))}</label>` : ''}
         <button type="button" class="btn-sm btn-ghost" data-del="price|${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('');
-      $$('[name=pr_per]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
+      $$('[name=pr_per], [name=pr_ext]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
       showTotal();
     }
     $$('[data-del]').forEach((b) => (b.onclick = () => { const [l, i] = b.dataset.del.split('|'); readRows(); lists[l].splice(Number(i), 1); drawRows(); persist(); }));
@@ -519,12 +521,12 @@ function renderEditor(ev, date = null) {
     const el = $('#price-total'); if (!el) return;
     const f = $('#ev-form'); const g = ['guests_final', 'guests_guaranteed', 'guests_expected'].map((k) => parseNum(f.elements[k] && f.elements[k].value)).find((x) => x != null);
     const ps = priceSummary({ price_lines: lists.price, min_spend: parseNum(f.elements.min_spend && f.elements.min_spend.value) }, g);
-    el.innerHTML = ps.lines.length ? `${L2('Totaal', 'Total')} <strong>${euro(ps.total)}</strong> ${L2('incl. btw', 'incl. VAT')}${g ? ` (${g} ${L2('gasten', 'guests')})` : ''}${ps.byRate.length ? ` · ${ps.byRate.map((r) => `${Math.round(r.rate * 100)}%: ${euro(r.ex)} + ${euro(r.vat)}`).join(' · ')}` : ''}` : '';
+    el.innerHTML = (ps.external.length ? `<div class="tiny muted">${esc(L2(`Zaalhuur via ${rooms.landlord}: ${euro(ps.externalTotal)} (niet in ons totaal)`, `Room hire via ${rooms.landlord}: ${euro(ps.externalTotal)} (not in our total)`))}</div>` : '') + (ps.lines.length ? `${L2('Totaal', 'Total')} <strong>${euro(ps.total)}</strong> ${L2('incl. btw', 'incl. VAT')}${g ? ` (${g} ${L2('gasten', 'guests')})` : ''}${ps.byRate.length ? ` · ${ps.byRate.map((r) => `${Math.round(r.rate * 100)}%: ${euro(r.ex)} + ${euro(r.vat)}`).join(' · ')}` : ''}` : '');
   };
   const readRows = () => {
     if ($('#rows-price')) lists.price = $$('#rows-price [data-i]').map((r) => {
       const per = r.querySelector('[name=pr_per]').value;
-      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value), ...(r.dataset.roomLine ? { room_id: r.dataset.roomLine } : {}) };
+      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value), ...(r.dataset.roomLine ? { room_id: r.dataset.roomLine, owner: (lists.price[Number(r.dataset.i)] || {}).owner || (rooms.rooms.find((x) => x.id === r.dataset.roomLine) || {}).owner || 'landlord', billed_by_landlord: !!(r.querySelector('[name=pr_ext]') && r.querySelector('[name=pr_ext]').checked) } : {}) };
     });
     lists.timeline = $$('#rows-timeline [data-i]').map((r) => ({ time: r.querySelector('[name=tl_time]').value.trim(), what: r.querySelector('[name=tl_what]').value.trim() }));
     lists.dietary = $$('#rows-dietary [data-i]').map((r) => ({ count: parseNum(r.querySelector('[name=di_count]').value), type: r.querySelector('[name=di_type]').value.trim(), who: r.querySelector('[name=di_who]').value.trim() }));
@@ -576,7 +578,7 @@ function renderEditor(ev, date = null) {
       cb.closest('label').classList.toggle('on', cb.checked);
       readRows();
       if ($('#rows-price')) {
-        if (cb.checked && !lists.price.some((x) => x.room_id === r.id)) lists.price.push({ label: `Zaalhuur ${r.name}`, per: 'fixed', qty: 1, price: r.hire, vat: 0.21, room_id: r.id });
+        if (cb.checked && !lists.price.some((x) => x.room_id === r.id)) lists.price.push({ label: `Zaalhuur ${r.name}`, per: 'fixed', qty: 1, price: r.hire, vat: 0.21, room_id: r.id, owner: r.owner || 'landlord' });
         if (!cb.checked) lists.price = lists.price.filter((x) => x.room_id !== r.id);
         drawRows();
       }
@@ -725,6 +727,8 @@ function clientHtml(ev, l) {
     <p class="small">${esc(qt(l, 'allergy'))}</p>
     ${ev.setup || ev.drinks || ev.extras ? `<h2>${tt('ev_sec_setup')}</h2>${kv([[tt('ev_setup'), ev.setup ? `<span class="pre">${esc(ev.setup)}</span>` : ''], [tt('ev_drinks'), ev.drinks ? `<span class="pre">${esc(ev.drinks)}</span>` : ''], [tt('ev_extras'), ev.extras ? `<span class="pre">${esc(ev.extras)}</span>` : '']])}` : ''}
     <h2>${tt('ev_sec_money')}</h2>${priceTable}
+    ${ps.external.length ? `<table class="pt" style="margin-top:8px">${ps.external.map((x) => `<tr><td>${esc(x.label || tt('ev_room_hire'))}</td><td class="n">${money(x.total)} ${T('incl. btw', 'incl. VAT')}</td></tr>`).join('')}</table>
+      <p class="small">${esc(T(`De zaalhuur hierboven factureert ${rooms.landlord} rechtstreeks aan jou; die zit niet in ons totaal.`, `${rooms.landlord} invoices the room hire above directly to you; it is not in our total.`))}</p>` : ''}
     ${kv([
       [tt('ev_min_spend'), ev.min_spend != null ? `${money(ev.min_spend)} ${T('inclusief btw', 'including VAT')}${ps.minApplies ? ` (${T('geldt', 'applies')})` : ''}` : ''],
       [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur.', 'Deducted from the final invoice.')}` : ''],
