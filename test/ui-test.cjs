@@ -394,6 +394,15 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const sh = await p.evaluate(() => window.__shared);
       require('fs').writeFileSync(`${OUT}/quote.pdf`, Buffer.from(await p.evaluate(() => window.__pdf64), 'base64'));
       if (sh.type !== 'application/pdf' || sh.size < 5000 || !/klant@example\.test/.test(sh.text) || !/bijlage/.test(sh.text)) throw new Error(JSON.stringify(sh)); });
+    await step('pdf: a heading never ends a page, it moves along with its first lines', async () => {
+      const r = await p.evaluate(async () => {
+        const { sheetPdf } = await import('./js/sheet.js');
+        const H = Math.floor((297 - 28) * 96 / 25.4);
+        const html = `<div style="height:${H - 80}px"></div><h2 id="hh" style="margin:0">Menu</h2><p style="margin:0">Regel een</p><p style="margin:0">Regel twee</p><p style="margin:0">Regel drie</p><p style="margin:0">Regel vier</p><p style="margin:0">Regel vijf</p>`;
+        await sheetPdf(html, 'test'); return { cuts: window.__sheetCuts, H };
+      });
+      const firstEnd = r.cuts[0][1];
+      if (firstEnd > r.H - 80 + 1) throw new Error('heading left at the bottom: ' + JSON.stringify(r.cuts)); });
     await step('haccp: print this week opens the sheet with share, PDF and print', async () => {
       await p.goto(BASE + '#/haccp'); await p.waitForSelector('#hc-print-all');
       const n0 = await p.evaluate(() => { window.__keepSheet = true; return window.__printed || 0; });

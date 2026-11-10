@@ -14,7 +14,7 @@ export const canPrint = () => !(isIOS() && standalone());
 
 const BASE_CSS = `html,body{margin:0;background:#fff;color:#000;-webkit-text-size-adjust:none;text-size-adjust:none}
   body{font:10.5pt/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  h1{font-size:20pt;margin:0 0 8px} table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left}
+  h1{font-size:20pt;margin:0 0 8px} h1,h2,h3,h4{break-after:avoid;page-break-after:avoid} tr,img{break-inside:avoid;page-break-inside:avoid} p{orphans:3;widows:3} table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid #ccc;padding:6px;text-align:left}
   @font-face{font-family:WTSerif;src:url(fonts/young-serif.woff2) format('woff2')}
   @font-face{font-family:WTSans;src:url(fonts/inter-400.woff2) format('woff2');font-weight:400}
   @font-face{font-family:WTSans;src:url(fonts/inter-600.woff2) format('woff2');font-weight:600}
@@ -61,6 +61,15 @@ export async function sheetPdf(html, name) {
     const els = [...body.querySelectorAll('*')];
     const atomic = els.filter((el) => /^(TR|IMG|H1|H2|H3|H4|LI|P|svg)$/i.test(el.tagName) || w.getComputedStyle(el).breakInside === 'avoid' || w.getComputedStyle(el).pageBreakInside === 'avoid')
       .map((el) => [top(el), top(el) + el.getBoundingClientRect().height]).filter(([a, b]) => b - a < H);
+    // a heading never ends a page: it stays together with the first lines of what follows (about three lines)
+    const KEEP = 75;
+    body.querySelectorAll('h1, h2, h3, h4, .doc, .sec-title').forEach((h) => {
+      let n = h.nextElementSibling; while (n && !n.getBoundingClientRect().height) n = n.nextElementSibling;
+      const a = top(h); const hb = a + h.getBoundingClientRect().height;
+      const parentEnd = top(h.parentElement) + h.parentElement.getBoundingClientRect().height;
+      const end = n ? Math.min(parentEnd, Math.max(top(n), hb) + KEEP) : hb;
+      if (end - a < H * 0.6) atomic.push([a, end]);
+    });
     const forced = new Set();
     els.forEach((el) => {
       const cs = w.getComputedStyle(el);
@@ -78,6 +87,7 @@ export async function sheetPdf(html, name) {
       else e = cuts.filter((y) => y > s + H * 0.4 && y <= s + H && free(y)).pop() || s + H;
       pages.push([s, e]); s = e;
     }
+    window.__sheetCuts = pages; // for the tests
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
     const bg = full ? '#FFFDF0' : '#ffffff';

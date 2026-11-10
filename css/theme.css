@@ -148,7 +148,9 @@ th { font-size: .8rem; color: var(--ink-2); font-weight: 600; }
   .more-scrim { position: fixed; inset: 0; z-index: 39; background: rgba(10, 20, 16, .28); }
   .toast { top: calc(10px + env(safe-area-inset-top)); }
 }
-@media print { .tabbar, .more-scrim { display: none !important; } }
+@media print { .tabbar, .more-scrim { display: none !important; }
+  /* a heading never stays alone at the bottom of a page */
+  h1, h2, h3, h4 { break-after: avoid; page-break-after: avoid; } tr, img { break-inside: avoid; page-break-inside: avoid; } p, li { orphans: 3; widows: 3; } }
 
 /* ---------------------------------------------------------------- empty states with a little glasshouse */
 .empty-state { text-align: center; padding: 36px 20px; }
