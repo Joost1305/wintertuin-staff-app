@@ -280,12 +280,12 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/>Bevestiging</.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
       if (!/Uniforme Voorwaarden Horeca/.test(html) || !/ontvangst van de Uniforme Voorwaarden Horeca/.test(html)) throw new Error('no UVH on the confirmation');
       if (!/Btw 9% over/.test(html) || !/Btw 21% over/.test(html) || !/7\.560,00/.test(html)) throw new Error('VAT per rate');
-      if (!/van de reserveringswaarde/.test(html) || !/sporen van andere ingrediënten/.test(html)) throw new Error('cancellation or allergens');
+      if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html) || !/annuleren en wijzigen/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
       if (!/Gluten/i.test(html) || !/Bread warm/.test(html) || !/Vegetarian/.test(html)) throw new Error('kitchen sheet'); });
-    await step('settings: company details on the quote; a private client gets UVH art. 14 instead of percentages', async () => {
+    await step('settings: company details on the quote; conditions by reference to the UVH', async () => {
       await p.goto(BASE + '#/settings/company'); await p.waitForSelector('#co-f');
       await p.fill('#co-legal_name', 'Wintertuin B.V. i.o.'); await p.fill('#co-address', 'Cantonspark 1'); await p.fill('#co-postcode_city', '3741 AA Baarn');
       await p.fill('#co-kvk', '12345678'); await p.fill('#co-vat_id', 'NL123456789B01'); await p.fill('#co-iban', 'NL00TEST0123456789');
@@ -299,7 +299,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       const html = await p.evaluate(() => window.__printed);
-      if (!/>Offerte</.test(html) || !/KVK 12345678/.test(html) || !/NL123456789B01/.test(html) || !/UVH art\. 14\.2/.test(html) || /van de reserveringswaarde/.test(html)) throw new Error('private quote');
+      if (!/>Offerte</.test(html) || !/KVK 12345678/.test(html) || !/NL123456789B01/.test(html) || /UVH art\./.test(html) || /van de reserveringswaarde/.test(html)) throw new Error('private quote');
       await p.evaluate((h) => { document.body.insertAdjacentHTML('beforeend', `<div id="pv" style="position:fixed;inset:0;background:#fff;overflow:auto;z-index:9999;padding:20px">${h}</div>`); }, html);
       await p.screenshot({ path: `${OUT}/18b-quote.png`, fullPage: false }); await p.evaluate(() => document.getElementById('pv').remove());
       // back to a business confirmation for the next steps
