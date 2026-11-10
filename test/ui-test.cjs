@@ -312,6 +312,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/>Bevestiging</.test(html) || !/bakery/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
       if (!/Uniforme Voorwaarden Horeca/.test(html) || !/ontvangst van de Uniforme Voorwaarden Horeca/.test(html)) throw new Error('no UVH on the confirmation');
       if (!/Btw 9% over/.test(html) || !/Btw 21% over/.test(html) || !/7\.560,00/.test(html)) throw new Error('VAT per rate');
+      if (/Soort gast|Client type/.test(html)) throw new Error('client type on the guest PDF');
+      if (!/per persoon/.test(html) || !/class="intro"/.test(html)) throw new Error('no per person or opening');
       if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html) || !/annuleren en wijzigen/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);

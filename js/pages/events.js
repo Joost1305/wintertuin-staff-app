@@ -680,14 +680,15 @@ function clientHtml(ev, l) {
   // our details: on every quote, and required on an invoice
   // under the logo: Cantonspark, Baarn; then the legal name and address once they are filled in (never the same name twice)
   const brandName = c.trade_name || 'Wintertuin';
-  const us = ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city]
+  const us = ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city, [c.phone, c.email].filter(Boolean).join(' · '), c.website && c.website !== 'https://' ? c.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : '']
     .filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).map(esc).join('<br>');
-  const ids = [c.kvk ? `KVK ${esc(c.kvk)}` : '', c.vat_id ? `${T('Btw', 'VAT')} ${esc(c.vat_id)}` : '', c.iban ? `IBAN ${esc(c.iban)}` : '', [c.email, c.phone].filter(Boolean).map(esc).join(' · ')].filter(Boolean).join('<br>');
+  const ids = [c.kvk ? `KVK ${esc(c.kvk)}` : '', c.vat_id ? `${T('Btw', 'VAT')} ${esc(c.vat_id)}` : '', c.iban ? `IBAN ${esc(c.iban)}` : ''].filter(Boolean).join('<br>');
   // price table: business clients see amounts excluding VAT plus VAT per rate, private clients amounts including VAT
   const priceTable = ps.lines.length ? `<table class="pt"><tr><th>${T('Omschrijving', 'Description')}</th><th class="n">${T('Aantal', 'Qty')}</th><th class="n">${business ? T('Prijs excl.', 'Price excl.') : T('Prijs', 'Price')}</th><th class="n">${T('Btw', 'VAT')}</th><th class="n">${business ? T('Totaal excl.', 'Total excl.') : T('Totaal', 'Total')}</th></tr>
       ${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? tt('ev_room_hire') : tt('ev_price_pp')))}${x.per === 'pp' && !/p\.p\.|per pers/i.test(x.label || '') ? ` <span class="small">(${T('per persoon', 'per person')})</span>` : ''}</td><td class="n">${x.qty}</td><td class="n">${money(business ? x.priceEx : x.price)}</td><td class="n">${pct(x.vat)}</td><td class="n">${money(business ? x.ex : x.total)}</td></tr>`).join('')}
       ${business ? ps.byRate.map((r) => `<tr class="sub"><td colspan="4">${T('Btw', 'VAT')} ${pct(r.rate)} ${T('over', 'on')} ${money(r.ex)}</td><td class="n">${money(r.vat)}</td></tr>`).join('') : ''}
       <tr class="tot"><td colspan="4">${T('Totaal inclusief btw', 'Total including VAT')}</td><td class="n">${money(ps.total)}</td></tr>
+      ${g && ps.total ? `<tr class="sub"><td colspan="4">${T(`Dat is per persoon (${g} gasten)`, `That is per person (${g} guests)`)}</td><td class="n">${money(ps.total / g)}</td></tr>` : ''}
       ${!business && ps.byRate.length ? `<tr class="sub"><td colspan="5">${T('Waarvan btw', 'Of which VAT')}: ${ps.byRate.map((r) => `${pct(r.rate)} ${money(r.vat)}`).join(', ')}</td></tr>` : ''}</table>` : '';
   const sch = cancellationSchedule(ev, ps.value, l);
   const schHtml = !sch ? '' : sch.kind === 'private' ? `<p class="small">${esc(sch.text)}</p>`
@@ -695,6 +696,7 @@ function clientHtml(ev, l) {
       ${(sch.rules || []).map((x) => `<p class="small" style="margin:3px 0 0">${esc(x)}</p>`).join('')}`;
   const payDays = Number(c.pay_days) || 14;
   return (`${sheetCss}<style>
+    .beo .intro { margin: 10px 0 4px; font-size: 10.5pt; line-height: 1.5; }
     .beo .q-brand { display: flex; align-items: center; gap: 10px; } .beo .q-brand img { width: 46px; height: auto; display: block; }
     .beo .pt { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .beo .pt th { text-align: left; font-size: 8pt; color: #666; font-weight: 600; border-bottom: 1px solid #999 !important; padding: 3px 6px; }
@@ -709,15 +711,18 @@ function clientHtml(ev, l) {
     <div class="top"><div class="q-brand"><img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt=""><div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
       <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
+    <p class="intro">${ev.client_name ? `${T('Beste', 'Dear')} ${esc((ev.client_name || '').trim().split(/\s+/)[0])}, ` : ''}${isQuote
+      ? T(`fijn dat je ${esc(ev.title)} bij ons in de Wintertuin wilt vieren. Hieronder staat ons voorstel; laat gerust weten als je iets anders wilt.`, `thank you for thinking of the Wintertuin for ${esc(ev.title)}. Below is our proposal; just let us know if you would like anything changed.`)
+      : T('fijn dat je bij ons in de Wintertuin viert. Hieronder staat alles wat we samen hebben afgesproken.', 'we are glad you are celebrating with us at the Wintertuin. Below is everything we agreed together.')}</p>
     ${isQuote ? `<p class="small">${ev.quote_valid_until ? T(`Deze offerte is geldig tot en met ${esc(dateIn(ev.quote_valid_until, l))}.`, `This quote is valid until ${esc(dateIn(ev.quote_valid_until, l))}.`) : ''} ${T('Het aanbod is vrijblijvend en onder voorbehoud van beschikbaarheid.', 'The offer is without obligation and subject to availability.')}
       ${ev.option_until ? T(` Je hebt een optie op deze datum tot en met ${esc(dateIn(ev.option_until, l))}. Vraagt iemand anders naar dezelfde datum, dan nemen we eerst contact met je op.`, ` You hold an option on this date until ${esc(dateIn(ev.option_until, l))}. If someone else asks for the same date, we will contact you first.`) : ''}</p>` : ''}
-    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [T('Soort gast', 'Client type'), ev.client_type ? tt(business ? 'ev_ct_business' : 'ev_ct_private') : ''], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
-        [tt('ev_day_contact'), esc([ev.day_contact_name, ev.day_contact_phone].filter(Boolean).join(', '))], [tt('ev_reference'), esc(ev.reference || '')], [tt('ev_invoice'), ev.invoice_details ? `<span class="pre">${esc(ev.invoice_details)}</span>` : '']])}</div>
+    <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
+        [tt('ev_day_contact'), (ev.day_contact_name || '').trim().toLowerCase() === (ev.client_name || '').trim().toLowerCase() && (!ev.day_contact_phone || ev.day_contact_phone === ev.client_phone) ? '' : esc([ev.day_contact_name, ev.day_contact_phone].filter(Boolean).join(', '))], [tt('ev_reference'), esc(ev.reference || '')], [tt('ev_invoice'), ev.invoice_details ? `<span class="pre">${esc(ev.invoice_details)}</span>` : '']])}</div>
       <div><h2>${tt('ev_sec_event')}</h2>${kv([[tt('ev_type'), esc(ev.event_type || '')], [tt('ev_area'), esc(ev.area || '')], [tt('ev_exclusive'), ev.exclusive ? tt('yes') : ''],
         [tt('ev_service_style'), esc(/^style_/.test(ev.service_style || '') ? tIn(l, ev.service_style) : ev.service_style || '')],
         [tt('ev_guests'), g != null ? `${g}${ev.children ? ` (${tt('ev_children')}: ${ev.children})` : ''}` : ''],
         [tt('ev_guarantee_deadline'), ev.guarantee_deadline ? esc(dateIn(ev.guarantee_deadline, l)) : '']])}</div></div>
-    ${(ev.timeline || []).length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml(ev)}` : ''}
+    ${(() => { const tl = guestTimeline(ev); return tl.length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml({ ...ev, timeline: tl })}` : ''; })()}
     ${(ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
     <h2>${tt('ev_dietary')}</h2>${(ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
     <p class="small">${T('Laat allergieën en dieetwensen op tijd weten, dan houden we er graag rekening mee. Sporen van andere ingrediënten kunnen we helaas niet helemaal uitsluiten.', 'Let us know about allergies and dietary needs in good time and we will gladly take them into account. We cannot fully rule out traces of other ingredients.')}</p>
@@ -736,6 +741,14 @@ function clientHtml(ev, l) {
     <p class="small"><strong>${T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
+}
+// the guest sees the programme of the event itself; set-up before and clearing up after stay on the team BEO
+function guestTimeline(ev) {
+  const tl = (ev.timeline || []).filter((x) => x.time || x.what);
+  const m = (s2) => { const r = /^(\d{1,2})[:.](\d{2})/.exec(String(s2 || '')); return r ? Number(r[1]) * 60 + Number(r[2]) : null; };
+  const a = m(ev.start_time); const b = m(ev.end_time);
+  if (a == null) return tl;
+  return tl.filter((x) => { const v2 = m(x.time); if (v2 == null || b == null) return v2 == null || v2 >= a; return b >= a ? v2 >= a && v2 <= b : v2 >= a || v2 <= b; }); // also past midnight
 }
 const quoteFileName = (ev, l) => `${docName(ev, l)} ${ev.title}`;
 function printClient(ev, l) { printHtml(clientHtml(ev, l), { name: quoteFileName(ev, l) }); }
