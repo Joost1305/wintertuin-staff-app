@@ -212,6 +212,17 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForSelector('.modal .acc-photo .av.has-photo img'); await p.keyboard.press('Escape');
       await p.goto(BASE + '#/roster'); await p.waitForSelector('.ro-who .av.has-photo img');
       await p.setViewportSize({ width: 390, height: 844 }); await p.click('[data-view=day]'); await p.waitForSelector('.m-row .m-who .av'); await p.waitForSelector('.m-who .av.has-photo img'); await p.screenshot({ path: `${OUT}/roster-day-photos.png` }); await p.click('[data-view=week]'); await p.setViewportSize({ width: 1280, height: 900 }); });
+    await step('events: drag a dish up in the menu, so the borrel comes before the main course', async () => {
+      await p.goto(BASE + '#/events/new'); await p.waitForSelector('[data-addmenu=food]');
+      await p.click('[data-addmenu=food]'); await p.selectOption('#rows-menu-food [data-i]:nth-child(1) [name=mn_course]', 'Hoofdgerecht'); await p.fill('#rows-menu-food [data-i]:nth-child(1) [name=mn_name]', 'Stoofpot');
+      await p.click('[data-addmenu=food]'); await p.selectOption('#rows-menu-food [data-i]:nth-child(2) [name=mn_course]', 'Borrel'); await p.fill('#rows-menu-food [data-i]:nth-child(2) [name=mn_name]', 'Bitterballen');
+      const g = await p.$('#rows-menu-food [data-i]:nth-child(2) [data-grip]'); const b = await g.boundingBox();
+      const first = await (await p.$('#rows-menu-food [data-i]:nth-child(1)')).boundingBox();
+      await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await p.mouse.down();
+      await p.mouse.move(b.x + b.width / 2, first.y + 5, { steps: 8 }); await p.mouse.up(); await p.waitForTimeout(200);
+      const names = await p.$$eval('#rows-menu-food [name=mn_name]', (x) => x.map((i) => i.value));
+      if (names.join('|') !== 'Bitterballen|Stoofpot') throw new Error(names.join('|'));
+      await p.evaluate(() => { try { Object.keys(localStorage).filter((k) => /draft/i.test(k)).forEach((k) => localStorage.removeItem(k)); } catch {} }); });
     await step('settings: courses for events can be changed and show up in the event menu', async () => {
       await p.goto(BASE + '#/settings/courses'); await p.waitForSelector('#cs-food');
       await p.fill('#cs-food', 'Borrel\nAmuse\nHoofdgerecht'); await p.click('#cs-save'); await p.waitForSelector('.toast:has-text("Saved")');

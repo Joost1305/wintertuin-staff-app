@@ -1580,3 +1580,7 @@ body.sheet-open { overflow: hidden; }
 /* Event menu: food and drinks */
 .ev-mh { font-size: .95rem; margin: 14px 0 6px; color: var(--ink-2); }
 .ev-mh:first-of-type { margin-top: 4px; }
+/* Event menu: drag handle */
+.ev-grip { flex: none; width: 28px; height: 40px; display: grid; place-items: center; color: var(--ink-3); font-size: 18px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 8px; }
+.ev-grip:active { cursor: grabbing; background: var(--primary-soft); }
+.ev-menu-line.dragging { background: var(--primary-soft); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); position: relative; z-index: 2; }

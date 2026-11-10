@@ -444,6 +444,7 @@ function renderEditor(ev, date = null) {
     };
     for (const g of ['food', 'beverage']) {
       $(`#rows-menu-${g}`).innerHTML = lists.menu.map((m, i) => (m.group !== g ? '' : `<div class="ev-line ev-menu-line" data-i="${i}" data-group="${g}">
+      <span class="ev-grip" data-grip aria-label="${esc(L2('Slepen om te verplaatsen', 'Drag to move'))}" title="${esc(L2('Slepen om te verplaatsen', 'Drag to move'))}">&#10303;</span>
       <select name="mn_course" aria-label="${t('ev_course')}" style="max-width:170px">${courseSel(g, m.course)}</select>
       <select name="mn_item" aria-label="${t('ev_dish')}">${dishSel(g, m.course, m.item_id)}</select>
       <input name="mn_name" value="${esc(m.name || '')}" placeholder="${esc(g === 'beverage' ? L2('Bijvoorbeeld: glas cava', 'For example: glass of cava') : t('ev_dish_ph'))}" aria-label="${t('ev_dish')}">
@@ -451,6 +452,22 @@ function renderEditor(ev, date = null) {
       <div class="ev-al">${(m.allergens || []).map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('') || (m.name && g === 'food' ? `<span class="tiny muted">${t(m.item_id ? 'ev_no_allergens' : 'ev_check_allergens')}</span>` : '')}</div></div>`)).join('');
     }
     $$('[name=mn_course]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
+    // drag a dish or drink up or down within its own list (finger or mouse); the new order is the order on paper
+    $$('.rows-menu [data-grip]').forEach((grip) => (grip.onpointerdown = (e) => {
+      e.preventDefault();
+      const row = grip.closest('[data-i]'); const box = row.parentElement;
+      row.classList.add('dragging'); grip.setPointerCapture(e.pointerId);
+      const move = (ev2) => {
+        const others = [...box.children].filter((x) => x !== row);
+        const after = others.find((x) => { const r = x.getBoundingClientRect(); return ev2.clientY < r.top + r.height / 2; });
+        if (after) { if (row.nextElementSibling !== after) box.insertBefore(row, after); } else if (box.lastElementChild !== row) box.appendChild(row);
+      };
+      const up = () => {
+        grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
+        row.classList.remove('dragging'); readRows(); drawRows(); persist();
+      };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    }));
     if ($('#rows-price')) {
       $('#rows-price').innerHTML = lists.price.map((x, i) => `<div class="ev-line ev-price-line" data-i="${i}">
         <input name="pr_label" value="${esc(x.label || '')}" placeholder="${esc(L2('Omschrijving', 'Description'))}" aria-label="${esc(L2('Omschrijving', 'Description'))}">
