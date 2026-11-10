@@ -11,6 +11,7 @@ import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKi
 import { sheetPdf } from '../sheet.js';
 import { loadCourses, DRINK_CODES } from '../courses.js';
 import { loadRooms } from '../rooms.js';
+import { loadQuoteTexts, qt } from '../quotetexts.js';
 const L = (o) => o[lang()] || o.en;
 
 const STATUSES = ['option', 'confirmed', 'cancelled', 'done'];
@@ -71,7 +72,7 @@ function saveDraft(k, d) { try { localStorage.setItem(DRAFT + k, JSON.stringify(
 function clearDraft(k) { try { localStorage.removeItem(DRAFT + k); } catch { /* private mode */ } }
 
 export async function renderEvents(args = []) {
-  await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; })]);
+  await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; }), loadQuoteTexts()]);
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active, sort_order').order('group_type').order('sort_order').order('name')) || [];
   const [id, sub] = args;
@@ -294,14 +295,12 @@ async function mailQuote(ev, btn) {
   const l = 'nl';
   const name = docName(ev, l);
   const subject = `${name} ${ev.title}, ${dateIn(ev.event_date, l)}`;
-  const lines = [
-    `Beste ${ev.client_name || ''},`.trim(), '',
-    `Hierbij ${name === 'Offerte' ? 'de offerte' : 'de bevestiging'} voor ${ev.title} op ${dateIn(ev.event_date, l)}. Je vindt hem als pdf in de bijlage.`,
-    ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, l)}.` : '',
-    '', 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing.' + (company.uvh_url ? ` Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : ''),
-    '', 'Laat je ons weten of alles klopt? Dan zetten we het vast.', '', 'Hartelijke groet,', 'Het Wintertuin team',
-  ].filter((x, i, a) => !(x === '' && a[i - 1] === ''));
-  const body = lines.join('\n');
+  const body = qt(l, 'mail', {
+    voornaam: (ev.client_name || '').trim().split(/\s+/)[0] || '', event: ev.title, datum: dateIn(ev.event_date, l),
+    de_offerte: name === 'Offerte' ? 'de offerte' : 'de bevestiging',
+    geldig_tot: ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, l)}.` : '',
+    uvh_link: company.uvh_url ? `Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : '',
+  });
   const label = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${esc(L({ en: 'Making PDF…', nl: 'Pdf maken…' }))}`; }
   let file = null;
@@ -711,9 +710,7 @@ function clientHtml(ev, l) {
     <div class="top"><div class="q-brand"><img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt=""><div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
       <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
-    <p class="intro">${ev.client_name ? `${T('Beste', 'Dear')} ${esc((ev.client_name || '').trim().split(/\s+/)[0])}, ` : ''}${isQuote
-      ? T(`fijn dat je ${esc(ev.title)} bij ons in de Wintertuin wilt vieren. Hieronder staat ons voorstel; laat gerust weten als je iets anders wilt.`, `thank you for thinking of the Wintertuin for ${esc(ev.title)}. Below is our proposal; just let us know if you would like anything changed.`)
-      : T('fijn dat je bij ons in de Wintertuin viert. Hieronder staat alles wat we samen hebben afgesproken.', 'we are glad you are celebrating with us at the Wintertuin. Below is everything we agreed together.')}</p>
+    <p class="intro">${esc(qt(l, isQuote ? 'intro_quote' : 'intro_confirm', { voornaam: (ev.client_name || '').trim().split(/\s+/)[0] || '', event: ev.title }))}</p>
     ${isQuote ? `<p class="small">${ev.quote_valid_until ? T(`Deze offerte is geldig tot en met ${esc(dateIn(ev.quote_valid_until, l))}.`, `This quote is valid until ${esc(dateIn(ev.quote_valid_until, l))}.`) : ''} ${T('Het aanbod is vrijblijvend en onder voorbehoud van beschikbaarheid.', 'The offer is without obligation and subject to availability.')}
       ${ev.option_until ? T(` Je hebt een optie op deze datum tot en met ${esc(dateIn(ev.option_until, l))}. Vraagt iemand anders naar dezelfde datum, dan nemen we eerst contact met je op.`, ` You hold an option on this date until ${esc(dateIn(ev.option_until, l))}. If someone else asks for the same date, we will contact you first.`) : ''}</p>` : ''}
     <div class="cols"><div><h2>${tt('ev_sec_client')}</h2>${kv([[tt('ev_client_name'), esc(ev.client_name || '')], [tt('ev_client_company'), esc(ev.client_company || '')], [tt('ev_phone'), esc(ev.client_phone || '')], [tt('ev_email'), esc(ev.client_email || '')],
@@ -725,7 +722,7 @@ function clientHtml(ev, l) {
     ${(() => { const tl = guestTimeline(ev); return tl.length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml({ ...ev, timeline: tl })}` : ''; })()}
     ${(ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
     <h2>${tt('ev_dietary')}</h2>${(ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
-    <p class="small">${T('Laat allergieën en dieetwensen op tijd weten, dan houden we er graag rekening mee. Sporen van andere ingrediënten kunnen we helaas niet helemaal uitsluiten.', 'Let us know about allergies and dietary needs in good time and we will gladly take them into account. We cannot fully rule out traces of other ingredients.')}</p>
+    <p class="small">${esc(qt(l, 'allergy'))}</p>
     ${ev.setup || ev.drinks || ev.extras ? `<h2>${tt('ev_sec_setup')}</h2>${kv([[tt('ev_setup'), ev.setup ? `<span class="pre">${esc(ev.setup)}</span>` : ''], [tt('ev_drinks'), ev.drinks ? `<span class="pre">${esc(ev.drinks)}</span>` : ''], [tt('ev_extras'), ev.extras ? `<span class="pre">${esc(ev.extras)}</span>` : '']])}` : ''}
     <h2>${tt('ev_sec_money')}</h2>${priceTable}
     ${kv([
@@ -733,10 +730,10 @@ function clientHtml(ev, l) {
       [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur.', 'Deducted from the final invoice.')}` : ''],
       [tt('ev_corkage'), ev.corkage ? esc(ev.corkage) : ''],
       [T('Betaling', 'Payment'), `${T(`Binnen ${payDays} dagen na factuurdatum`, `Within ${payDays} days of the invoice date`)}${c.iban ? ` ${T('op', 'to')} ${esc(c.iban)}` : ''}.${ev.payment_terms ? ` <span class="pre">${esc(ev.payment_terms)}</span>` : ''}`]])}
-    <div class="small" style="margin-top:4px">${tt('ev_final_count_note')}</div>
+    <div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>
     ${ev.deviations || ev.cancellation_terms ? `<h2>${T('Aanvullende afspraken', 'Additional arrangements')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
-    <div class="uvh">${T('Op deze overeenkomst zijn de <strong>Uniforme Voorwaarden Horeca (UVH)</strong> van toepassing, gedeponeerd bij de Kamer van Koophandel. Daarin staan onder meer de afspraken over annuleren en wijzigen. Je ontvangt ze bij deze', 'The <strong>Uniform Conditions for the Hospitality Industry (UVH)</strong> apply to this agreement, filed with the Chamber of Commerce. They include the rules on cancelling and changes. You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
-    <h2>${tt('ev_approval')}</h2><p class="small">${tt('ev_approval_text')}</p>
+    <div class="uvh">${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
+    <h2>${tt('ev_approval')}</h2><p class="small">${esc(qt(l, 'approval'))}</p>
     <p class="small consent">${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
     <p class="small"><strong>${T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>

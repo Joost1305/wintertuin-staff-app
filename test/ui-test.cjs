@@ -440,6 +440,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/print-menu-phone.png` });
       await p.click('h1'); await p.setViewportSize({ width: 1280, height: 900 });
       if (r[0] < 0 || r[1] > r[2]) throw new Error('dropdown off screen ' + r.join(',')); });
+    await step('settings: the texts on the quote can be changed', async () => {
+      await p.goto(BASE + '#/settings/quotetexts'); await p.waitForSelector('#qt-intro_quote');
+      await p.fill('#qt-intro_quote', 'Hoi {voornaam}, wat leuk dat {event} bij ons komt!'); await p.click('#qt-save'); await p.waitForSelector('.toast:has-text("Saved")');
+      const id = await p.evaluate(() => { const e = window.__mockdb.events[0]; e.status = 'option'; return e.id; });
+      await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
+      const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
+      if (!/Hoi Klant, wat leuk dat /.test(html)) throw new Error('own opening not on the quote');
+      await p.goto(BASE + '#/settings/quotetexts'); await p.click('[data-qreset=intro_quote]'); await p.click('#qt-save'); await p.waitForTimeout(300);
+      await p.evaluate(() => { window.__mockdb.events[0].status = 'confirmed'; }); });
     await step('pdf: a heading never ends a page, it moves along with its first lines', async () => {
       const r = await p.evaluate(async () => {
         const { sheetPdf } = await import('./js/sheet.js');

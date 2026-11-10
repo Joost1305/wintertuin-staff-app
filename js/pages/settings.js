@@ -4,6 +4,28 @@ import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, op
 import { PHOTO_BUCKET } from '../config.js';
 import { loadCourses, saveCourses, DEFAULT_COURSES } from '../courses.js';
 import { loadRooms, saveRooms } from '../rooms.js';
+import { loadQuoteTexts, saveQuoteTexts, QT_FIELDS, QT_DEFAULTS } from '../quotetexts.js';
+
+// Texts on the quote, the confirmation and the quote mail; empty = the standard text
+async function quoteTextsSection(el) {
+  const nl = lang() === 'nl';
+  const v = await loadQuoteTexts();
+  let tab = 'nl';
+  const draw = () => {
+    el.innerHTML = `<div class="card"><h2>${t('set_quote_texts')}</h2>
+      <p class="small muted">${nl ? 'De vaste teksten op de offerte, de bevestiging en in de mail. Woorden tussen accolades vult de app zelf in: {voornaam}, {event}, {datum}, {de_offerte}, {geldig_tot} en {uvh_link}. Laat je een veld leeg, dan gebruikt de app de standaardtekst.' : 'The fixed texts on the quote, the confirmation and in the mail. Words in braces are filled in by the app: {voornaam} (first name), {event}, {datum} (date), {de_offerte}, {geldig_tot} (valid until) and {uvh_link}. An empty field uses the standard text.'}</p>
+      <div class="ro-views" role="tablist" style="margin:8px 0 14px">${['nl', 'en'].map((k) => `<button type="button" class="${tab === k ? 'on' : ''}" data-qtab="${k}">${k === 'nl' ? 'Nederlands' : 'English'}</button>`).join('')}</div>
+      ${QT_FIELDS.map(([k, label, ph]) => `<div class="field"><label for="qt-${k}">${esc(label[lang()] || label.en)}${ph ? ` <span class="tiny muted">${esc(ph)}</span>` : ''}</label>
+        <textarea id="qt-${k}" data-qt="${k}" rows="${k === 'mail' ? 12 : 3}" placeholder="${esc(QT_DEFAULTS[tab][k])}">${esc((v[tab] || {})[k] || QT_DEFAULTS[tab][k])}</textarea>
+        <button type="button" class="link-btn small" data-qreset="${k}">${nl ? 'Standaardtekst' : 'Standard text'}</button></div>`).join('')}
+      <button type="button" class="btn-primary" id="qt-save">${t('save')}</button></div>`;
+    const read = () => { v[tab] = v[tab] || {}; $$('[data-qt]', el).forEach((x) => { const val = x.value.trim(); v[tab][x.dataset.qt] = val === QT_DEFAULTS[tab][x.dataset.qt] ? '' : val; }); };
+    $$('[data-qtab]', el).forEach((b) => (b.onclick = () => { read(); tab = b.dataset.qtab; draw(); }));
+    $$('[data-qreset]', el).forEach((b) => (b.onclick = () => { $(`#qt-${b.dataset.qreset}`, el).value = QT_DEFAULTS[tab][b.dataset.qreset]; }));
+    $('#qt-save', el).onclick = async () => { read(); try { await saveQuoteTexts(v); toast(t('saved')); } catch (e) { toastError(e); } };
+  };
+  draw();
+}
 
 // Rooms with their standard room hire, used when making a quote
 async function roomsSection(el) {
@@ -66,6 +88,7 @@ const SECTIONS = [
   { id: 'menuorder', label: 'set_menu_order' },
   { id: 'courses', label: 'set_courses' },
   { id: 'rooms', label: 'set_rooms' },
+  { id: 'quotetexts', label: 'set_quote_texts' },
   { id: 'haccp', label: 'set_haccp' },
   { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
@@ -86,7 +109,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, quotetexts: quoteTextsSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 
