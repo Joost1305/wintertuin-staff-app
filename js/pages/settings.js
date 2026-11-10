@@ -2,6 +2,23 @@
 // Accounts and passwords go through the admin-users edge function, which re-checks that you are a manager.
 import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView, avatar } from '../core.js';
 import { PHOTO_BUCKET } from '../config.js';
+import { loadCourses, saveCourses, DEFAULT_COURSES } from '../courses.js';
+
+// Courses for the event menu: one list for food, one for drinks; the order here is the order in the dropdown
+async function coursesSection(el) {
+  const items = check(await sb.from('menu_items').select('group_type, category')) || [];
+  const c = await loadCourses(items);
+  const nl = lang() === 'nl';
+  const box = (g, title) => `<div class="field"><label for="cs-${g}">${title}</label><textarea id="cs-${g}" rows="10">${esc((c[g] || []).join('\n'))}</textarea></div>`;
+  el.innerHTML = `<div class="card"><h2>${t('set_courses')}</h2>
+    <p class="small muted">${nl ? 'De keuzes bij Menu in een event. Eén gang per regel, in de volgorde waarin je ze wilt zien. Categorieën uit het menu (zoals Zoet of Bakkerij) kun je er gewoon bij zetten; dan staan de gerechten daaruit bovenaan bij het kiezen.' : 'The choices under Menu in an event. One course per line, in the order you want to see them. Menu categories (such as Sweet or Bakery) can go in too; their dishes then come first when choosing.'}</p>
+    <div class="grid grid-2">${box('food', t('group_food'))}${box('beverage', t('group_beverage'))}</div>
+    <div class="row" style="gap:8px;margin-top:6px"><button type="button" class="btn-primary" id="cs-save">${t('save')}</button>
+      <button type="button" class="link-btn small" id="cs-reset">${nl ? 'Terug naar de standaardlijst' : 'Back to the standard list'}</button></div></div>`;
+  const read = (g) => $(`#cs-${g}`, el).value.split('\n').map((x) => x.trim()).filter(Boolean);
+  $('#cs-save', el).onclick = async () => { try { await saveCourses({ food: read('food'), beverage: read('beverage') }); toast(t('saved')); } catch (e) { toastError(e); } };
+  $('#cs-reset', el).onclick = () => { for (const g of ['food', 'beverage']) $(`#cs-${g}`, el).value = DEFAULT_COURSES[g].join('\n'); };
+}
 import { t } from '../i18n.js';
 import { sb, check, adminUsers, loadProfiles, setPassword } from '../data.js';
 import { renderSystemCheck } from './system-check.js';
@@ -22,6 +39,7 @@ const SECTIONS = [
   { id: 'company', label: 'set_company' },
   { id: 'templates', label: 'set_templates' },
   { id: 'menuorder', label: 'set_menu_order' },
+  { id: 'courses', label: 'set_courses' },
   { id: 'haccp', label: 'set_haccp' },
   { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
@@ -42,7 +60,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

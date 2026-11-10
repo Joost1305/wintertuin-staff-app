@@ -212,6 +212,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.waitForSelector('.modal .acc-photo .av.has-photo img'); await p.keyboard.press('Escape');
       await p.goto(BASE + '#/roster'); await p.waitForSelector('.ro-who .av.has-photo img');
       await p.setViewportSize({ width: 390, height: 844 }); await p.click('[data-view=day]'); await p.waitForSelector('.m-row .m-who .av'); await p.waitForSelector('.m-who .av.has-photo img'); await p.screenshot({ path: `${OUT}/roster-day-photos.png` }); await p.click('[data-view=week]'); await p.setViewportSize({ width: 1280, height: 900 }); });
+    await step('settings: courses for events can be changed and show up in the event menu', async () => {
+      await p.goto(BASE + '#/settings/courses'); await p.waitForSelector('#cs-food');
+      await p.fill('#cs-food', 'Borrel\nAmuse\nHoofdgerecht'); await p.click('#cs-save'); await p.waitForSelector('.toast:has-text("Saved")');
+      const v = await p.evaluate(() => (window.__mockdb.team_settings.find((x) => x.key === 'event_courses') || {}).value);
+      if (!v || v.food.join('|') !== 'Borrel|Amuse|Hoofdgerecht') throw new Error(JSON.stringify(v));
+      await p.goto(BASE + '#/events/new'); await p.waitForSelector('[data-addmenu=food]'); await p.click('[data-addmenu=food]');
+      const opts = await p.$$eval('#rows-menu-food [name=mn_course] option', (o) => o.map((x) => x.textContent));
+      if (!opts.includes('Amuse')) throw new Error(opts.join(','));
+      await p.goto(BASE + '#/settings/courses'); await p.click('#cs-reset'); await p.click('#cs-save'); await p.waitForTimeout(300);
+      await p.evaluate(() => { try { Object.keys(localStorage).filter((k) => /draft/i.test(k)).forEach((k) => localStorage.removeItem(k)); } catch {} }); });
     await step('settings: one account for both apps, Finance access set from the Team app', async () => {
       await p.goto(BASE + '#/settings/team'); await p.waitForSelector('#add'); await p.click('#add');
       await p.fill('.modal [name=full_name]', 'Shared Login'); await p.fill('.modal [name=email]', 'shared@example.test');
@@ -249,8 +259,15 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.fill('[name=client_name]', 'Eva Jansen'); await p.fill('[name=guests_expected]', '60'); await p.fill('[name=staff_needed]', '5');
       await p.click('[data-addrow=dietary]'); await p.fill('#rows-dietary [name=di_count]', '3'); await p.fill('#rows-dietary [name=di_type]', 'Vegetarian');
       await p.click('[data-addrow=timeline]'); await p.fill('#rows-timeline [name=tl_time]', '17:00'); await p.fill('#rows-timeline [name=tl_what]', 'Guests arrive, welcome drink');
-      await p.click('[data-addrow=menu]'); await p.fill('#rows-menu [name=mn_course]', 'Starter');
-      await p.selectOption('#rows-menu [name=mn_item]', { label: 'Sourdough' }); await p.waitForSelector('#rows-menu .tag.allergen');
+      await p.click('[data-addmenu=food]'); await p.selectOption('#rows-menu-food [name=mn_course]', 'Voorgerecht');
+      await p.selectOption('#rows-menu-food [name=mn_item]', { label: 'Sourdough' }); await p.waitForSelector('#rows-menu-food .tag.allergen');
+      // drinks have their own list: only drink courses and only drinks in the dropdown
+      await p.click('[data-addmenu=beverage]');
+      const dc = await p.$$eval('#rows-menu-beverage [name=mn_course] option', (o) => o.map((x) => x.textContent));
+      if (!dc.includes('Welkomstdrank') || dc.includes('Hoofdgerecht')) throw new Error('drink courses ' + dc);
+      const food = await p.$$eval('#rows-menu-beverage [name=mn_item] option', (o) => o.map((x) => x.textContent));
+      if (food.includes('Sourdough')) throw new Error('food in the drinks list');
+      await p.selectOption('#rows-menu-beverage [name=mn_course]', 'Welkomstdrank'); await p.fill('#rows-menu-beverage [name=mn_name]', 'Glas cava');
       await p.click('.ev-ct label:has-text("Business")');
       await p.click('[data-addprice^="Diner p.p."]'); await p.fill('#rows-price [name=pr_price]', '85'); await p.waitForSelector('#price-total:has-text("5,100")');
       await p.click('[data-addprice^="Wijnarrangement"]'); await p.fill('#rows-price [data-i="1"] [name=pr_price]', '20');

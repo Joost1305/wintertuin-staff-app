@@ -9,6 +9,7 @@ import { sb, check } from '../data.js';
 import { ALLERGENS } from './menu.js';
 import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKind, KIND_LABEL, uvhL, VAT_RATES } from '../uvh.js';
 import { sheetPdf } from '../sheet.js';
+import { loadCourses, DRINK_CODES } from '../courses.js';
 const L = (o) => o[lang()] || o.en;
 
 const STATUSES = ['option', 'confirmed', 'cancelled', 'done'];
@@ -58,6 +59,7 @@ const UVH_KEYS = ['client_type', 'agreement_kind', 'quote_valid_until', 'corkage
 let company = {};
 
 let menuItems = [];
+let courses = { food: [], beverage: [] };
 const guestsOf = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
 const statusTag = (s) => `<span class="tag ev-${esc(s)}">${t('evs_' + s)}</span>`;
 const labelOf = (code) => (code && /^(course|diet|style)_/.test(code) ? t(code) : code || '');
@@ -71,6 +73,7 @@ export async function renderEvents(args = []) {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active').order('group_type').order('category').order('sort_order')) || [];
   const [id, sub] = args;
+  if (sub === 'edit' || id === 'new') courses = await loadCourses(menuItems);
   if (id === 'cal') { rememberView('cal'); return renderCalendar(sub); }
   if (!id && !sub && savedView() === 'cal') return renderCalendar();
   if (!id) { rememberView('list'); return renderList(sub); }
@@ -386,7 +389,9 @@ function renderEditor(ev, date = null) {
       ${sec(t('ev_dietary'), `<div id="rows-dietary"></div><button type="button" class="btn-sm" data-addrow="dietary">+ ${t('ev_add_diet')}</button>`, t('ev_dietary_hint'))}
       ${sec(t('ev_sec_setup'), grid(inp('area', 'text', `placeholder="${esc(t('ev_area_ph'))}"`), inp('service_style', 'text', 'list="ev-styles"')) + chk('exclusive') + area('setup', 3, t('ev_setup_ph')))}
       ${sec(t('ev_timeline'), `<div id="rows-timeline"></div><button type="button" class="btn-sm" data-addrow="timeline">+ ${t('ev_add_time')}</button>`, t('ev_timeline_hint'))}
-      ${sec(t('ev_menu'), `<div id="rows-menu"></div><button type="button" class="btn-sm" data-addrow="menu">+ ${t('ev_add_course')}</button>`, t('ev_menu_hint'))}
+      ${sec(t('ev_menu'), `<h3 class="ev-mh">${t('group_food')}</h3><div id="rows-menu-food" class="rows-menu"></div><button type="button" class="btn-sm" data-addmenu="food">+ ${L2('Gerecht toevoegen', 'Add dish')}</button>
+        <h3 class="ev-mh">${t('group_beverage')}</h3><div id="rows-menu-beverage" class="rows-menu"></div><button type="button" class="btn-sm" data-addmenu="beverage">+ ${L2('Drank toevoegen', 'Add drink')}</button>
+        <p class="tiny muted" style="margin-top:10px">${isManager() ? L2('De lijst met gangen pas je aan onder <a href="#/settings/courses">Instellingen, Gangen voor events</a>.', 'Change the list of courses under <a href="#/settings/courses">Settings, Courses for events</a>.') : ''}</p>`, t('ev_menu_hint'))}
       ${sec(t('ev_sec_drinks_extras'), area('drinks', 3, t('ev_drinks_ph')) + area('extras', 3, t('ev_extras_ph')))}
       ${sec(t('ev_sec_staff'), grid(inp('staff_needed', 'number')) + area('staffing', 2, t('ev_staffing_ph')), t('ev_staff_hint'))}
       ${uvhOn ? sec(t('ev_sec_money'), `
@@ -415,7 +420,8 @@ function renderEditor(ev, date = null) {
 
   // older events: price per person and room hire become price lines the first time you edit them
   const startPrices = (v.price_lines || []).length ? v.price_lines : priceSummary(v, guestsOf(v)).lines.map((x) => ({ label: x.room ? 'Zaalhuur' : 'Prijs p.p.', per: x.per, qty: x.per === 'pp' ? null : x.qty, price: x.price, vat: x.vat }));
-  const lists = { menu: [...(v.menu || [])], dietary: [...(v.dietary || [])], timeline: [...(v.timeline || [])], price: startPrices.map((x) => ({ ...x })) };
+  const groupOf = (m) => m.group || ((menuItems.find((x) => x.id === m.item_id) || {}).group_type) || (DRINK_CODES.has(m.course) ? 'beverage' : 'food');
+  const lists = { menu: (v.menu || []).map((m) => ({ ...m, group: groupOf(m) === 'beverage' ? 'beverage' : 'food' })), dietary: [...(v.dietary || [])], timeline: [...(v.timeline || [])], price: startPrices.map((x) => ({ ...x })) };
   const drawRows = () => {
     $('#rows-timeline').innerHTML = lists.timeline.map((x, i) => `<div class="ev-line" data-i="${i}">
       <input name="tl_time" value="${esc(x.time || '')}" placeholder="18:00" style="max-width:90px" aria-label="${t('time')}">
@@ -426,12 +432,25 @@ function renderEditor(ev, date = null) {
       <input name="di_type" value="${esc(labelOf(d.type))}" list="ev-diets" placeholder="${esc(t('diet_vegetarian'))}" aria-label="${t('ev_diet_type')}">
       <input name="di_who" value="${esc(d.who || '')}" placeholder="${esc(t('ev_who_ph'))}" aria-label="${t('ev_who')}">
       <button type="button" class="btn-sm btn-ghost" data-del="dietary|${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('');
-    $('#rows-menu').innerHTML = lists.menu.map((m, i) => `<div class="ev-line ev-menu-line" data-i="${i}">
-      <input name="mn_course" value="${esc(labelOf(m.course))}" list="ev-courses" placeholder="${esc(t('course_starter'))}" style="max-width:150px" aria-label="${t('ev_course')}">
-      <select name="mn_item" aria-label="${t('ev_dish')}">${menuOpts(m.item_id)}</select>
-      <input name="mn_name" value="${esc(m.name || '')}" placeholder="${esc(t('ev_dish_ph'))}" aria-label="${t('ev_dish')}">
+    // per group: first the course (Voorgerecht, Zoet, Welkomstdrank...), then a dish of that group; the dishes of a matching menu category come first
+    const courseSel = (g, cur) => { const list = courses[g] || []; const label = labelOf(cur);
+      return `<option value="">${esc(L2('Gang kiezen', 'Choose course'))}</option>${list.map((c) => `<option ${c.toLowerCase() === label.toLowerCase() ? 'selected' : ''}>${esc(c)}</option>`).join('')}${label && !list.some((c) => c.toLowerCase() === label.toLowerCase()) ? `<option selected>${esc(label)}</option>` : ''}`; };
+    const dishSel = (g, course, sel) => {
+      const items = menuItems.filter((m) => (m.group_type || 'food') === g);
+      const lc = labelOf(course).toLowerCase(); const cats = [...new Set(items.map((m) => m.category || ''))];
+      const match = cats.filter((c) => c && (c.toLowerCase() === lc || c.toLowerCase().includes(lc) && lc.length > 3));
+      const ordered = [...match, ...cats.filter((c) => !match.includes(c))];
+      return `<option value="">${t('ev_free_text')}</option>${ordered.map((c) => `<optgroup label="${esc(c || L2('Overig', 'Other'))}">${items.filter((m) => (m.category || '') === c).map((m) => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.name)}${m.active === false ? ` (${t('inactive')})` : ''}</option>`).join('')}</optgroup>`).join('')}`;
+    };
+    for (const g of ['food', 'beverage']) {
+      $(`#rows-menu-${g}`).innerHTML = lists.menu.map((m, i) => (m.group !== g ? '' : `<div class="ev-line ev-menu-line" data-i="${i}" data-group="${g}">
+      <select name="mn_course" aria-label="${t('ev_course')}" style="max-width:170px">${courseSel(g, m.course)}</select>
+      <select name="mn_item" aria-label="${t('ev_dish')}">${dishSel(g, m.course, m.item_id)}</select>
+      <input name="mn_name" value="${esc(m.name || '')}" placeholder="${esc(g === 'beverage' ? L2('Bijvoorbeeld: glas cava', 'For example: glass of cava') : t('ev_dish_ph'))}" aria-label="${t('ev_dish')}">
       <button type="button" class="btn-sm btn-ghost" data-del="menu|${i}" aria-label="${t('delete')}">&#10005;</button>
-      <div class="ev-al">${(m.allergens || []).map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('') || (m.name ? `<span class="tiny muted">${t(m.item_id ? 'ev_no_allergens' : 'ev_check_allergens')}</span>` : '')}</div></div>`).join('');
+      <div class="ev-al">${(m.allergens || []).map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('') || (m.name && g === 'food' ? `<span class="tiny muted">${t(m.item_id ? 'ev_no_allergens' : 'ev_check_allergens')}</span>` : '')}</div></div>`)).join('');
+    }
+    $$('[name=mn_course]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
     if ($('#rows-price')) {
       $('#rows-price').innerHTML = lists.price.map((x, i) => `<div class="ev-line ev-price-line" data-i="${i}">
         <input name="pr_label" value="${esc(x.label || '')}" placeholder="${esc(L2('Omschrijving', 'Description'))}" aria-label="${esc(L2('Omschrijving', 'Description'))}">
@@ -464,9 +483,9 @@ function renderEditor(ev, date = null) {
     });
     lists.timeline = $$('#rows-timeline [data-i]').map((r) => ({ time: r.querySelector('[name=tl_time]').value.trim(), what: r.querySelector('[name=tl_what]').value.trim() }));
     lists.dietary = $$('#rows-dietary [data-i]').map((r) => ({ count: parseNum(r.querySelector('[name=di_count]').value), type: r.querySelector('[name=di_type]').value.trim(), who: r.querySelector('[name=di_who]').value.trim() }));
-    lists.menu = $$('#rows-menu [data-i]').map((r, i) => {
-      const id = r.querySelector('[name=mn_item]').value || null; const it = menuItems.find((x) => x.id === id);
-      return { course: r.querySelector('[name=mn_course]').value.trim(), item_id: id, name: r.querySelector('[name=mn_name]').value.trim(), allergens: it ? it.allergens || [] : (lists.menu[i] && !lists.menu[i].item_id ? [] : []) };
+    lists.menu = $$('.rows-menu [data-i]').map((r) => {
+      const id = r.querySelector('[name=mn_item]').value || null; const it = menuItems.find((x) => x.id === id); const i = Number(r.dataset.i);
+      return { group: r.dataset.group, course: r.querySelector('[name=mn_course]').value.trim(), item_id: id, name: r.querySelector('[name=mn_name]').value.trim(), allergens: it ? it.allergens || [] : (lists.menu[i] && lists.menu[i].item_id ? [] : (lists.menu[i] || {}).allergens || []) };
     });
   };
   // course and diet labels typed in the current language become codes, so the other language shows them too
@@ -490,7 +509,7 @@ function renderEditor(ev, date = null) {
     } else UVH_KEYS.forEach((k) => delete out[k]);
     out.timeline = lists.timeline.filter((x) => x.time || x.what).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
     out.dietary = lists.dietary.filter((d) => d.type || d.count).map((d) => ({ ...d, type: toCode(d.type, DIETS) }));
-    out.menu = lists.menu.filter((m) => m.name || m.item_id).map((m) => ({ ...m, course: toCode(m.course, COURSES) }));
+    out.menu = lists.menu.filter((m) => m.name || m.item_id).map((m) => ({ ...m, course: toCode(m.course, COURSES) })).sort((x, y) => (x.group === 'beverage') - (y.group === 'beverage')); // food first, then drinks
     return out;
   };
   const persist = () => saveDraft(key, collect());
@@ -501,6 +520,11 @@ function renderEditor(ev, date = null) {
     const rows = $$('#rows-price [data-i]'); const last = rows[rows.length - 1]; if (last) last.querySelector(label ? '[name=pr_price]' : '[name=pr_label]').focus();
   }));
   $$('.ev-ct input').forEach((r) => (r.onchange = () => { $$('.ev-ct label').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked)); }));
+  $$('[data-addmenu]').forEach((b) => (b.onclick = () => {
+    readRows(); const g = b.dataset.addmenu;
+    lists.menu.push({ group: g, course: '', item_id: null, name: '', allergens: [] }); drawRows();
+    const rows = $$(`#rows-menu-${g} [data-i]`); const last = rows[rows.length - 1]; if (last) last.querySelector('select').focus();
+  }));
   $$('[data-addrow]').forEach((b) => (b.onclick = () => {
     readRows();
     const l = b.dataset.addrow;

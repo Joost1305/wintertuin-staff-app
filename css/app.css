@@ -1577,3 +1577,6 @@ body.sheet-open { overflow: hidden; }
 .m-who .av.sm, .ro-tl-name .av.sm { width: 32px; height: 32px; font-size: .72rem; display: inline-grid; place-items: center; border-radius: 50%; flex: none; }
 .ro-tl-name { display: inline-flex; align-items: center; gap: 6px; }
 .ro-tl-name .av.sm { width: 22px; height: 22px; font-size: .6rem; }
+/* Event menu: food and drinks */
+.ev-mh { font-size: .95rem; margin: 14px 0 6px; color: var(--ink-2); }
+.ev-mh:first-of-type { margin-top: 4px; }
