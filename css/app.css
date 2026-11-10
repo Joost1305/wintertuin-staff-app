@@ -1584,3 +1584,8 @@ body.sheet-open { overflow: hidden; }
 .ev-grip { flex: none; width: 28px; height: 40px; display: grid; place-items: center; color: var(--ink-3); font-size: 18px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; border-radius: 8px; }
 .ev-grip:active { cursor: grabbing; background: var(--primary-soft); }
 .ev-menu-line.dragging { background: var(--primary-soft); border-radius: 10px; box-shadow: 0 6px 18px rgba(0,0,0,.12); position: relative; z-index: 2; }
+/* Event editor: rooms */
+.ev-rooms { display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-room { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.ev-room input { width: 18px !important; height: 18px; margin: 0; flex: none; }
+.ev-room.on { border-color: var(--primary); background: var(--primary-soft); }

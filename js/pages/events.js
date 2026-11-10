@@ -10,6 +10,7 @@ import { ALLERGENS } from './menu.js';
 import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKind, KIND_LABEL, uvhL, VAT_RATES } from '../uvh.js';
 import { sheetPdf } from '../sheet.js';
 import { loadCourses, DRINK_CODES } from '../courses.js';
+import { loadRooms } from '../rooms.js';
 const L = (o) => o[lang()] || o.en;
 
 const STATUSES = ['option', 'confirmed', 'cancelled', 'done'];
@@ -60,6 +61,7 @@ let company = {};
 
 let menuItems = [];
 let courses = { food: [], beverage: [] };
+let rooms = { rooms: [], example: true };
 const guestsOf = (e) => e.guests_final ?? e.guests_guaranteed ?? e.guests_expected;
 const statusTag = (s) => `<span class="tag ev-${esc(s)}">${t('evs_' + s)}</span>`;
 const labelOf = (code) => (code && /^(course|diet|style)_/.test(code) ? t(code) : code || '');
@@ -73,7 +75,7 @@ export async function renderEvents(args = []) {
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
   if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active, sort_order').order('group_type').order('sort_order').order('name')) || [];
   const [id, sub] = args;
-  if (sub === 'edit' || id === 'new') courses = await loadCourses(menuItems);
+  if (sub === 'edit' || id === 'new') [courses, rooms] = await Promise.all([loadCourses(menuItems), loadRooms()]);
   if (id === 'cal') { rememberView('cal'); return renderCalendar(sub); }
   if (!id && !sub && savedView() === 'cal') return renderCalendar();
   if (!id) { rememberView('list'); return renderList(sub); }
@@ -387,7 +389,8 @@ function renderEditor(ev, date = null) {
         inp('day_contact_name'), inp('day_contact_phone', 'tel'), inp('reference')) + (nlCol ? chk('newsletter_ok') : '') + area('invoice_details', 2))}
       ${sec(t('ev_guests'), grid(inp('guests_expected', 'number'), inp('guests_guaranteed', 'number'), inp('guarantee_deadline', 'date'), inp('guests_final', 'number'), inp('children', 'number')))}
       ${sec(t('ev_dietary'), `<div id="rows-dietary"></div><button type="button" class="btn-sm" data-addrow="dietary">+ ${t('ev_add_diet')}</button>`, t('ev_dietary_hint'))}
-      ${sec(t('ev_sec_setup'), grid(inp('area', 'text', `placeholder="${esc(t('ev_area_ph'))}"`), inp('service_style', 'text', 'list="ev-styles"')) + chk('exclusive') + area('setup', 3, t('ev_setup_ph')))}
+      ${sec(t('ev_sec_setup'), `<div class="field"><span class="lbl-like">${L2('Ruimtes', 'Rooms')}</span><div class="ev-rooms">${rooms.rooms.map((r) => `<label class="ev-room"><input type="checkbox" data-room="${esc(r.id)}"> <span>${esc(r.name)}${r.hire != null ? ` <span class="tiny muted">${euro(r.hire)}</span>` : ''}</span></label>`).join('')}</div>
+        <div class="hint">${L2('Een ruimte aanvinken zet de zaalhuur bij de prijzen (21% btw); uitvinken haalt hem weg.', 'Ticking a room adds its room hire to the prices (21% VAT); unticking removes it.')} ${isManager() ? L2(`Namen en prijzen pas je aan onder <a href="#/settings/rooms">Instellingen, Ruimtes</a>.${rooms.example ? ' <strong>Dit zijn nog voorbeelden.</strong>' : ''}`, `Names and prices are set under <a href="#/settings/rooms">Settings, Rooms</a>.${rooms.example ? ' <strong>These are still examples.</strong>' : ''}`) : ''}</div></div>` + grid(inp('area', 'text', `placeholder="${esc(t('ev_area_ph'))}"`), inp('service_style', 'text', 'list="ev-styles"')) + chk('exclusive') + area('setup', 3, t('ev_setup_ph')))}
       ${sec(t('ev_timeline'), `<div id="rows-timeline"></div><button type="button" class="btn-sm" data-addrow="timeline">+ ${t('ev_add_time')}</button>`, t('ev_timeline_hint'))}
       ${sec(t('ev_menu'), `<h3 class="ev-mh">${t('group_food')}</h3><div id="rows-menu-food" class="rows-menu"></div><button type="button" class="btn-sm" data-addmenu="food">+ ${L2('Gerecht toevoegen', 'Add dish')}</button>
         <h3 class="ev-mh">${t('group_beverage')}</h3><div id="rows-menu-beverage" class="rows-menu"></div><button type="button" class="btn-sm" data-addmenu="beverage">+ ${L2('Drank toevoegen', 'Add drink')}</button>
@@ -495,7 +498,7 @@ function renderEditor(ev, date = null) {
       grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
     }));
     if ($('#rows-price')) {
-      $('#rows-price').innerHTML = lists.price.map((x, i) => `<div class="ev-line ev-price-line" data-i="${i}">
+      $('#rows-price').innerHTML = lists.price.map((x, i) => `<div class="ev-line ev-price-line" data-i="${i}" ${x.room_id ? `data-room-line="${esc(x.room_id)}"` : ''}>
         <input name="pr_label" value="${esc(x.label || '')}" placeholder="${esc(L2('Omschrijving', 'Description'))}" aria-label="${esc(L2('Omschrijving', 'Description'))}">
         <select name="pr_per" aria-label="${esc(L2('Per', 'Per'))}"><option value="pp" ${x.per === 'pp' ? 'selected' : ''}>p.p.</option><option value="fixed" ${x.per !== 'pp' ? 'selected' : ''}>${L2('vast', 'fixed')}</option></select>
         <input name="pr_qty" value="${x.per === 'pp' ? '' : esc(String(x.qty ?? 1))}" ${x.per === 'pp' ? 'disabled' : ''} inputmode="decimal" placeholder="${x.per === 'pp' ? esc(L2('gasten', 'guests')) : '1'}" style="max-width:70px" aria-label="${esc(L2('Aantal', 'Quantity'))}">
@@ -522,7 +525,7 @@ function renderEditor(ev, date = null) {
   const readRows = () => {
     if ($('#rows-price')) lists.price = $$('#rows-price [data-i]').map((r) => {
       const per = r.querySelector('[name=pr_per]').value;
-      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value) };
+      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value), ...(r.dataset.roomLine ? { room_id: r.dataset.roomLine } : {}) };
     });
     lists.timeline = $$('#rows-timeline [data-i]').map((r) => ({ time: r.querySelector('[name=tl_time]').value.trim(), what: r.querySelector('[name=tl_what]').value.trim() }));
     lists.dietary = $$('#rows-dietary [data-i]').map((r) => ({ count: parseNum(r.querySelector('[name=di_count]').value), type: r.querySelector('[name=di_type]').value.trim(), who: r.querySelector('[name=di_who]').value.trim() }));
@@ -563,6 +566,27 @@ function renderEditor(ev, date = null) {
     const rows = $$('#rows-price [data-i]'); const last = rows[rows.length - 1]; if (last) last.querySelector(label ? '[name=pr_price]' : '[name=pr_label]').focus();
   }));
   $$('.ev-ct input').forEach((r) => (r.onchange = () => { $$('.ev-ct label').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked)); }));
+  // rooms: ticked when their hire line is there or their name is in the area text
+  const areaEl = () => $('#ev-form').elements.area;
+  const roomTicks = $$('[data-room]');
+  roomTicks.forEach((cb) => {
+    const r = rooms.rooms.find((x) => x.id === cb.dataset.room);
+    cb.checked = lists.price.some((x) => x.room_id === r.id) || (!!v.area && String(v.area).toLowerCase().split(/\s*[,+&]\s*/).includes(r.name.toLowerCase()));
+    cb.closest('label').classList.toggle('on', cb.checked);
+    cb.onchange = () => {
+      cb.closest('label').classList.toggle('on', cb.checked);
+      readRows();
+      if ($('#rows-price')) {
+        if (cb.checked && !lists.price.some((x) => x.room_id === r.id)) lists.price.push({ label: `Zaalhuur ${r.name}`, per: 'fixed', qty: 1, price: r.hire, vat: 0.21, room_id: r.id });
+        if (!cb.checked) lists.price = lists.price.filter((x) => x.room_id !== r.id);
+        drawRows();
+      }
+      const names = rooms.rooms.filter((x) => roomTicks.find((c) => c.dataset.room === x.id && c.checked)).map((x) => x.name);
+      const typed = String(areaEl().value || '').split(/\s*,\s*/).filter((x) => x && !rooms.rooms.some((y) => y.name.toLowerCase() === x.toLowerCase()));
+      areaEl().value = [...names, ...typed].join(', ');
+      persist();
+    };
+  });
   $$('[data-addmenu]').forEach((b) => (b.onclick = () => {
     readRows(); const g = b.dataset.addmenu;
     lists.menu.push({ group: g, course: '', item_id: null, name: '', allergens: [] }); drawRows();

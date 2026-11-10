@@ -3,6 +3,31 @@
 import { state, isManager, app, esc, fmt, toast, toastError, todayIso, $, $$, openModal, confirmDialog, formHtml, readForm, download, employeeView, avatar } from '../core.js';
 import { PHOTO_BUCKET } from '../config.js';
 import { loadCourses, saveCourses, DEFAULT_COURSES } from '../courses.js';
+import { loadRooms, saveRooms } from '../rooms.js';
+
+// Rooms with their standard room hire, used when making a quote
+async function roomsSection(el) {
+  const nl = lang() === 'nl';
+  let { rooms, example } = await loadRooms();
+  const num = (v) => (v == null ? '' : String(v).replace('.', ','));
+  const draw = () => {
+    el.innerHTML = `<div class="card"><h2>${t('set_rooms')}</h2>
+      <p class="small muted">${nl ? 'De ruimtes die je bij een event kunt aanvinken. De zaalhuur is inclusief 21% btw en komt vanzelf bij de prijzen van de offerte; per event kun je hem nog aanpassen.' : 'The rooms you can tick on an event. Room hire includes 21% VAT and goes onto the quote prices automatically; you can still change it per event.'}</p>
+      ${example ? `<div class="note" style="margin-bottom:12px">${nl ? '<strong>Dit zijn voorbeelden.</strong> Pas de namen en prijzen aan naar de echte ruimtes en sla op.' : '<strong>These are examples.</strong> Change the names and prices to the real rooms and save.'}</div>` : ''}
+      <div id="rm-rows">${rooms.map((r, i) => `<div class="ev-line rm-line" data-i="${i}" data-id="${esc(r.id || '')}">
+        <input name="rm_name" value="${esc(r.name || '')}" placeholder="${nl ? 'Naam, bijv. De kas' : 'Name, e.g. The greenhouse'}" aria-label="${nl ? 'Naam' : 'Name'}">
+        <input name="rm_hire" value="${num(r.hire)}" inputmode="decimal" placeholder="€ incl." style="max-width:110px" aria-label="${nl ? 'Zaalhuur incl. btw' : 'Room hire incl. VAT'}">
+        <input name="rm_cap" value="${r.capacity || ''}" inputmode="numeric" placeholder="${nl ? 'max. gasten' : 'max. guests'}" style="max-width:110px" aria-label="${nl ? 'Maximaal aantal gasten' : 'Max. guests'}">
+        <button type="button" class="btn-sm btn-ghost" data-rmdel="${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('')}</div>
+      <button type="button" class="btn-sm" id="rm-add">+ ${nl ? 'Ruimte toevoegen' : 'Add room'}</button>
+      <div style="margin-top:14px"><button type="button" class="btn-primary" id="rm-save">${t('save')}</button></div></div>`;
+    const read = () => { rooms = $$('#rm-rows [data-i]', el).map((r) => ({ id: r.dataset.id || null, name: r.querySelector('[name=rm_name]').value, hire: (() => { const x = r.querySelector('[name=rm_hire]').value.replace(/[€\s.]/g, '').replace(',', '.'); return x === '' ? null : Number(x); })(), capacity: r.querySelector('[name=rm_cap]').value })); };
+    $('#rm-add', el).onclick = () => { read(); rooms.push({ name: '', hire: null }); draw(); const ins = $$('#rm-rows [name=rm_name]', el); ins[ins.length - 1].focus(); };
+    $$('[data-rmdel]', el).forEach((b) => (b.onclick = () => { read(); rooms.splice(Number(b.dataset.rmdel), 1); draw(); }));
+    $('#rm-save', el).onclick = async () => { read(); try { rooms = await saveRooms(rooms); example = false; draw(); toast(t('saved')); } catch (e) { toastError(e); } };
+  };
+  draw();
+}
 
 // Courses for the event menu: one list for food, one for drinks; the order here is the order in the dropdown
 async function coursesSection(el) {
@@ -40,6 +65,7 @@ const SECTIONS = [
   { id: 'templates', label: 'set_templates' },
   { id: 'menuorder', label: 'set_menu_order' },
   { id: 'courses', label: 'set_courses' },
+  { id: 'rooms', label: 'set_rooms' },
   { id: 'haccp', label: 'set_haccp' },
   { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
@@ -60,7 +86,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

@@ -409,6 +409,27 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const sh = await p.evaluate(() => window.__shared);
       require('fs').writeFileSync(`${OUT}/quote.pdf`, Buffer.from(await p.evaluate(() => window.__pdf64), 'base64'));
       if (sh.type !== 'application/pdf' || sh.size < 5000 || !/klant@example\.test/.test(sh.text) || !/bijlage/.test(sh.text)) throw new Error(JSON.stringify(sh)); });
+    await step('rooms: name them in Settings, tick one on an event and its room hire goes on the quote', async () => {
+      await p.goto(BASE + '#/settings/rooms'); await p.waitForSelector('#rm-rows [name=rm_name]');
+      if (!(await p.$('.note:has-text("examples")'))) throw new Error('example note missing');
+      await p.fill('#rm-rows [data-i="0"] [name=rm_name]', 'Glazen kas'); await p.fill('#rm-rows [data-i="0"] [name=rm_hire]', '400');
+      await p.click('#rm-save'); await p.waitForSelector('.toast:has-text("Saved")');
+      const saved = await p.evaluate(() => window.__mockdb.team_settings.find((x) => x.key === 'rooms').value.rooms);
+      if (saved[0].name !== 'Glazen kas' || saved[0].hire !== 400) throw new Error(JSON.stringify(saved[0]));
+      const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room');
+      await p.click('.ev-room:has-text("Glazen kas")');
+      await p.waitForSelector('#rows-price [data-room-line]');
+      if ((await p.inputValue('#rows-price [data-room-line] [name=pr_label]')) !== 'Zaalhuur Glazen kas') throw new Error('label');
+      if (!/Glazen kas/.test(await p.inputValue('[name=area]'))) throw new Error('area not filled');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")');
+      const ev = await p.evaluate((i) => window.__mockdb.events.find((e) => e.id === i), id);
+      const line = (ev.price_lines || []).find((x) => x.room_id);
+      if (!line || line.price !== 400 || line.vat !== 0.21) throw new Error(JSON.stringify(ev.price_lines));
+      // untick: the line goes again
+      await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room.on'); await p.click('.ev-room:has-text("Glazen kas")');
+      if (await p.$('#rows-price [data-room-line]')) throw new Error('room line stays');
+      await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")'); });
     await step('pdf: a heading never ends a page, it moves along with its first lines', async () => {
       const r = await p.evaluate(async () => {
         const { sheetPdf } = await import('./js/sheet.js');
