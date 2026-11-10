@@ -432,6 +432,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room.on'); await p.click('.ev-room:has-text("Glazen kas")');
       if (await p.$('#rows-price [data-room-line]')) throw new Error('room line stays');
       await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")'); });
+    await step('phone: the Print dropdown of an event stays on the screen', async () => {
+      const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.setViewportSize({ width: 390, height: 844 }); await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
+      await p.click('summary:has-text("Print")'); await p.waitForTimeout(150);
+      const r = await p.evaluate(() => { const c = document.querySelector('details.export-menu[open] > .card').getBoundingClientRect(); return [c.left, c.right, window.innerWidth]; });
+      await p.screenshot({ path: `${OUT}/print-menu-phone.png` });
+      await p.click('h1'); await p.setViewportSize({ width: 1280, height: 900 });
+      if (r[0] < 0 || r[1] > r[2]) throw new Error('dropdown off screen ' + r.join(',')); });
     await step('pdf: a heading never ends a page, it moves along with its first lines', async () => {
       const r = await p.evaluate(async () => {
         const { sheetPdf } = await import('./js/sheet.js');

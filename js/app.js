@@ -249,3 +249,16 @@ const known = /^#\/(login|home|today|kiosk|guests|newsletter|menucard|about|sops
 // unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
 if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();
+
+// Dropdowns (Print, Export, ...) always stay on the screen: when one opens, its panel is moved
+// so it fits between the edges, also on a narrow phone. Clicking outside closes it.
+function fitDropdown(d) {
+  const pop = [...d.children].find((c) => c.tagName !== 'SUMMARY' && getComputedStyle(c).position === 'absolute');
+  if (!pop) return;
+  pop.style.left = ''; pop.style.right = ''; pop.style.maxWidth = `${window.innerWidth - 24}px`;
+  const r = pop.getBoundingClientRect(); const gap = 12;
+  if (r.left < gap) { pop.style.right = 'auto'; pop.style.left = `${gap - d.getBoundingClientRect().left}px`; }
+  else if (r.right > window.innerWidth - gap) { pop.style.left = 'auto'; pop.style.right = `${d.getBoundingClientRect().right - (window.innerWidth - gap)}px`; }
+}
+document.addEventListener('toggle', (e) => { const d = e.target; if (d.tagName === 'DETAILS' && d.open && d.classList.contains('export-menu')) fitDropdown(d); }, true);
+document.addEventListener('click', (e) => { document.querySelectorAll('details.export-menu[open]').forEach((d) => { if (!d.contains(e.target)) d.open = false; }); });
