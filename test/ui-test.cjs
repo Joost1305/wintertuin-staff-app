@@ -270,7 +270,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.fill('[name=client_name]', 'Eva Jansen'); await p.fill('[name=guests_expected]', '60'); await p.fill('[name=staff_needed]', '5');
       await p.click('[data-addrow=dietary]'); await p.fill('#rows-dietary [name=di_count]', '3'); await p.fill('#rows-dietary [name=di_type]', 'Vegetarian');
       await p.click('[data-addrow=timeline]'); await p.fill('#rows-timeline [name=tl_time]', '17:00'); await p.fill('#rows-timeline [name=tl_what]', 'Guests arrive, welcome drink');
-      await p.click('[data-addmenu=food]'); await p.selectOption('#rows-menu-food [name=mn_course]', 'Voorgerecht');
+      // first the category as in Menu, then only the dishes of that category; allergens come along
+      await p.click('[data-addmenu=food]'); await p.selectOption('#rows-menu-food [name=mn_course]', 'bakery');
+      const only = await p.$$eval('#rows-menu-food [name=mn_item] option', (o) => o.filter((x) => x.value).map((x) => x.textContent));
+      const want = await p.evaluate(() => window.__mockdb.menu_items.filter((m) => m.category === 'bakery' && m.active !== false).map((m) => m.name));
+      if (only.slice().sort().join('|') !== want.slice().sort().join('|')) throw new Error('dishes outside the category: ' + only.join('|'));
       await p.selectOption('#rows-menu-food [name=mn_item]', { label: 'Sourdough' }); await p.waitForSelector('#rows-menu-food .tag.allergen');
       // drinks have their own list: only drink courses and only drinks in the dropdown
       await p.click('[data-addmenu=beverage]');
@@ -286,7 +290,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/15-event-form.png`, fullPage: true });
       await p.click('#ev-form button[type=submit]'); await p.waitForSelector('h1:has-text("Wedding Jansen")');
       const ev = await p.evaluate(() => window.__mockdb.events[0]);
-      if (ev.menu[0].course !== 'course_starter' || ev.menu[0].allergens[0] !== 'gluten') throw new Error(JSON.stringify(ev.menu));
+      if (ev.menu[0].course !== 'bakery' || ev.menu[0].allergens[0] !== 'gluten') throw new Error(JSON.stringify(ev.menu));
       if (ev.dietary[0].type !== 'diet_vegetarian' || ev.dietary[0].count !== 3) throw new Error(JSON.stringify(ev.dietary));
       if (ev.guests_expected !== 60 || ev.client_type !== 'business' || ev.price_lines.length !== 2 || ev.price_lines[0].price !== 85 || ev.price_lines[1].vat !== 0.21) throw new Error('numbers ' + JSON.stringify(ev.price_lines));
       if (!/€6,300/.test(await p.textContent('.ev-kpis'))) throw new Error('expected revenue');
@@ -305,7 +309,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       let html = await p.evaluate(() => window.__printed);
-      if (!/>Bevestiging</.test(html) || !/Voorgerecht/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
+      if (!/>Bevestiging</.test(html) || !/bakery/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
       if (!/Uniforme Voorwaarden Horeca/.test(html) || !/ontvangst van de Uniforme Voorwaarden Horeca/.test(html)) throw new Error('no UVH on the confirmation');
       if (!/Btw 9% over/.test(html) || !/Btw 21% over/.test(html) || !/7\.560,00/.test(html)) throw new Error('VAT per rate');
       if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html) || !/annuleren en wijzigen/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');

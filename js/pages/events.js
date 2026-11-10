@@ -71,7 +71,7 @@ function clearDraft(k) { try { localStorage.removeItem(DRAFT + k); } catch { /* 
 export async function renderEvents(args = []) {
   await Promise.all([newsletterColumn(), uvhColumns(), loadCompany().then((c) => { company = c; })]);
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
-  if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active').order('group_type').order('category').order('sort_order')) || [];
+  if (!menuItems.length) menuItems = check(await sb.from('menu_items').select('id, name, description, category, group_type, allergens, active, sort_order').order('group_type').order('sort_order').order('name')) || [];
   const [id, sub] = args;
   if (sub === 'edit' || id === 'new') courses = await loadCourses(menuItems);
   if (id === 'cal') { rememberView('cal'); return renderCalendar(sub); }
@@ -433,14 +433,30 @@ function renderEditor(ev, date = null) {
       <input name="di_who" value="${esc(d.who || '')}" placeholder="${esc(t('ev_who_ph'))}" aria-label="${t('ev_who')}">
       <button type="button" class="btn-sm btn-ghost" data-del="dietary|${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('');
     // per group: first the course (Voorgerecht, Zoet, Welkomstdrank...), then a dish of that group; the dishes of a matching menu category come first
-    const courseSel = (g, cur) => { const list = courses[g] || []; const label = labelOf(cur);
-      return `<option value="">${esc(L2('Gang kiezen', 'Choose course'))}</option>${list.map((c) => `<option ${c.toLowerCase() === label.toLowerCase() ? 'selected' : ''}>${esc(c)}</option>`).join('')}${label && !list.some((c) => c.toLowerCase() === label.toLowerCase()) ? `<option selected>${esc(label)}</option>` : ''}`; };
+    // first dropdown: the categories exactly as in Menu (in menu order), then the other courses from Settings;
+    // second dropdown: the dishes of that category, so name and allergens come straight from the menu
+    const itemsOf = (g) => menuItems.filter((m) => (m.group_type || 'food') === g && m.active !== false);
+    const catsOf = (g) => [...new Set(itemsOf(g).map((m) => (m.category || '').trim()).filter(Boolean))];
+    const sameCat = (a, b2) => String(a || '').trim().toLowerCase() === String(b2 || '').trim().toLowerCase();
+    const courseSel = (g, cur) => {
+      const label = labelOf(cur); const cats = catsOf(g); const other = (courses[g] || []).filter((c) => !cats.some((x) => sameCat(x, c)));
+      const opt = (c) => `<option ${sameCat(c, label) ? 'selected' : ''}>${esc(c)}</option>`;
+      const known = [...cats, ...other].some((c) => sameCat(c, label));
+      return `<option value="">${esc(L2('Categorie kiezen', 'Choose category'))}</option>
+        ${cats.length ? `<optgroup label="${esc(L2('Uit het menu', 'From the menu'))}">${cats.map(opt).join('')}</optgroup>` : ''}
+        ${other.length ? `<optgroup label="${esc(L2('Andere gang', 'Other course'))}">${other.map(opt).join('')}</optgroup>` : ''}
+        ${label && !known ? `<option selected>${esc(label)}</option>` : ''}`;
+    };
     const dishSel = (g, course, sel) => {
-      const items = menuItems.filter((m) => (m.group_type || 'food') === g);
-      const lc = labelOf(course).toLowerCase(); const cats = [...new Set(items.map((m) => m.category || ''))];
-      const match = cats.filter((c) => c && (c.toLowerCase() === lc || c.toLowerCase().includes(lc) && lc.length > 3));
-      const ordered = [...match, ...cats.filter((c) => !match.includes(c))];
-      return `<option value="">${t('ev_free_text')}</option>${ordered.map((c) => `<optgroup label="${esc(c || L2('Overig', 'Other'))}">${items.filter((m) => (m.category || '') === c).map((m) => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.name)}${m.active === false ? ` (${t('inactive')})` : ''}</option>`).join('')}</optgroup>`).join('')}`;
+      const label = labelOf(course); const cat = catsOf(g).find((c) => sameCat(c, label));
+      const opt = (m) => `<option value="${m.id}" ${m.id === sel ? 'selected' : ''}>${esc(m.name)}</option>`;
+      const chosen = sel && menuItems.find((m) => m.id === sel);
+      let list;
+      if (cat) list = itemsOf(g).filter((m) => sameCat(m.category, cat)).map(opt).join('');
+      else list = catsOf(g).map((c) => `<optgroup label="${esc(c)}">${itemsOf(g).filter((m) => sameCat(m.category, c)).map(opt).join('')}</optgroup>`).join('');
+      // a dish that is no longer on the menu (or in another category) stays selectable on old events
+      if (chosen && !list.includes(`value="${chosen.id}"`)) list += `<option value="${chosen.id}" selected>${esc(chosen.name)}${chosen.active === false ? ` (${t('inactive')})` : ''}</option>`;
+      return `<option value="">${cat ? esc(L2(`Kies uit ${cat}…`, `Choose from ${cat}…`)) : t('ev_free_text')}</option>${list}${cat ? `<option value="">${t('ev_free_text')}</option>` : ''}`;
     };
     for (const g of ['food', 'beverage']) {
       $(`#rows-menu-${g}`).innerHTML = lists.menu.map((m, i) => (m.group !== g ? '' : `<div class="ev-line ev-menu-line" data-i="${i}" data-group="${g}">
@@ -451,7 +467,17 @@ function renderEditor(ev, date = null) {
       <button type="button" class="btn-sm btn-ghost" data-del="menu|${i}" aria-label="${t('delete')}">&#10005;</button>
       <div class="ev-al">${(m.allergens || []).map((a) => `<span class="tag allergen">${esc(t('al_' + a))}</span>`).join('') || (m.name && g === 'food' ? `<span class="tiny muted">${t(m.item_id ? 'ev_no_allergens' : 'ev_check_allergens')}</span>` : '')}</div></div>`)).join('');
     }
-    $$('[name=mn_course]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
+    $$('[name=mn_course]').forEach((s2) => (s2.onchange = () => {
+      readRows();
+      const row = s2.closest('[data-i]'); const i = Number(row.dataset.i); const g = row.dataset.group; const m = lists.menu[i];
+      const cat = catsOf(g).find((c) => sameCat(c, s2.value));
+      if (cat) {
+        const inCat = itemsOf(g).filter((x) => sameCat(x.category, cat));
+        if (m.item_id && !inCat.some((x) => x.id === m.item_id)) { m.item_id = null; m.name = ''; m.allergens = []; }
+        if (!m.item_id && !m.name && inCat.length === 1) { m.item_id = inCat[0].id; m.name = inCat[0].name; m.allergens = inCat[0].allergens || []; }
+      }
+      drawRows(); persist();
+    }));
     // drag a dish or drink up or down within its own list (finger or mouse); the new order is the order on paper
     $$('.rows-menu [data-grip]').forEach((grip) => (grip.onpointerdown = (e) => {
       e.preventDefault();
