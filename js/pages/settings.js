@@ -91,6 +91,7 @@ const SECTIONS = [
   { id: 'courses', label: 'set_courses' },
   { id: 'rooms', label: 'set_rooms' },
   { id: 'quotetexts', label: 'set_quote_texts' },
+  { id: 'handbook', label: 'set_handbook' },
   { id: 'haccp', label: 'set_haccp' },
   { id: 'navorder', label: 'set_nav_order' },
   { id: 'links', label: 'set_links' },
@@ -111,7 +112,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, quotetexts: quoteTextsSection, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, quotetexts: quoteTextsSection, handbook: (el) => { location.hash = '#/help'; }, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

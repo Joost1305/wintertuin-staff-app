@@ -466,6 +466,18 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (!/Hoi Klant, wat leuk dat /.test(html)) throw new Error('own opening not on the quote');
       await p.goto(BASE + '#/settings/quotetexts'); await p.click('[data-qreset=intro_quote]'); await p.click('#qt-save'); await p.waitForTimeout(300);
       await p.evaluate(() => { window.__mockdb.events[0].status = 'confirmed'; }); });
+    await step('handbook: cover, contents, search, the ? icon opens the chapter of the page, PDF', async () => {
+      await p.goto(BASE + '#/roster'); await p.waitForSelector('#help-btn');
+      if (!/#\/help\/roster$/.test(await p.getAttribute('#help-btn', 'href'))) throw new Error('help icon not pointing at the roster chapter');
+      await p.click('#help-btn'); await p.waitForSelector('.hb-cover img'); await p.waitForSelector('#hb-roster');
+      const toc = await p.$$eval('.hb-toc li', (x) => x.length); if (toc < 15) throw new Error('toc ' + toc);
+      await p.fill('#hb-q', 'zaalhuur'); await p.waitForSelector('.hb-res');
+      const n = await p.$$eval('.hb-res', (x) => x.length); if (n < 2) throw new Error('search ' + n);
+      await p.fill('#hb-q', 'xyzqq'); await p.waitForSelector('.hb-results:has-text("Niets gevonden"), .hb-results:has-text("Nothing found")');
+      await p.goto(BASE + '#/settings/handbook'); await p.waitForURL(/#\/help/);
+      await p.click('#hb-pdf'); await p.waitForTimeout(400);
+      if (!(await p.evaluate(() => /Handleiding/.test(document.getElementById('printArea').innerHTML)))) throw new Error('no handbook PDF');
+      await p.screenshot({ path: `${OUT}/handbook.png` }); });
     await step('pdf: a heading never ends a page, it moves along with its first lines', async () => {
       const r = await p.evaluate(async () => {
         const { sheetPdf } = await import('./js/sheet.js');

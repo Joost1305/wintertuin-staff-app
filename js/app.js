@@ -20,6 +20,8 @@ import { renderKiosk } from './pages/kiosk.js';
 import { renderGuests } from './pages/guests.js';
 import { renderNewsletter } from './pages/newsletter.js';
 import { renderMenuCard } from './pages/menucard.js';
+import { renderHelp } from './pages/help.js';
+import { chapterFor } from './handbook.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
 
@@ -63,6 +65,7 @@ const routes = [
   { path: 'newsletter', render: renderNewsletter, nav: null, show: isManager },
   { path: 'menucard', render: renderMenuCard, nav: null, show: () => true },
   { path: 'kiosk', render: renderKiosk, nav: null, show: isManager, bare: true },
+  { path: 'help', render: renderHelp, nav: null, show: () => true },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
 // Start page: Today, with the next shift, clocking in and today's checklists
@@ -207,6 +210,8 @@ async function route() {
     location.hash = '#/login'; return;
   }
   const [path, ...rest] = location.hash.replace(/^#\//, '').split('/');
+  // the ? icon opens the handbook at the chapter of this page
+  { const hb = document.getElementById('help-btn'); if (hb && path !== 'help') hb.href = `#/help/${chapterFor(path || 'today')}`; }
   if (path === 'logout') {
     employeeView.set(false);
     await signOut().catch(() => {});
