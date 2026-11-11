@@ -57,7 +57,7 @@ async function uvhColumns() {
   try { const { error } = await sb.from('events').select('client_type, price_lines').limit(1); hasUvhCols = !error; } catch { hasUvhCols = false; }
   return hasUvhCols;
 }
-const UVH_KEYS = ['client_type', 'agreement_kind', 'quote_valid_until', 'corkage', 'deviations', 'uvh_sent_at', 'uvh_received_at', 'price_lines'];
+const UVH_KEYS = ['client_type', 'agreement_kind', 'quote_valid_until', 'corkage', 'deviations', 'uvh_sent_at', 'uvh_received_at', 'price_lines', 'quote_by'];
 let company = {};
 
 let menuItems = [];
@@ -296,12 +296,14 @@ async function mailQuote(ev, btn) {
   const l = 'nl';
   const name = docName(ev, l);
   const subject = `${name} ${ev.title}, ${dateIn(ev.event_date, l)}`;
-  const body = qt(l, 'mail', {
+  let body = qt(l, 'mail', {
     voornaam: (ev.client_name || '').trim().split(/\s+/)[0] || '', event: ev.title, datum: dateIn(ev.event_date, l),
     de_offerte: name === 'Offerte' ? 'de offerte' : 'de bevestiging',
     geldig_tot: ev.status === 'option' && ev.quote_valid_until ? `De offerte is geldig tot en met ${dateIn(ev.quote_valid_until, l)}.` : '',
     uvh_link: company.uvh_url ? `Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : '',
   });
+  // a quote of the landlord: signed by her, without the UVH (those are for the restaurant)
+  if (ev.quote_by === 'landlord') body = body.split('\n').filter((x) => !/UVH/.test(x)).join('\n').replace(/Het Wintertuin team|The Wintertuin team/, rooms.landlord).replace(/\n{3,}/g, '\n\n');
   const label = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${esc(L({ en: 'Making PDF…', nl: 'Pdf maken…' }))}`; }
   let file = null;
@@ -398,6 +400,8 @@ function renderEditor(ev, date = null) {
       ${sec(t('ev_sec_drinks_extras'), area('drinks', 3, t('ev_drinks_ph')) + area('extras', 3, t('ev_extras_ph')))}
       ${sec(t('ev_sec_staff'), grid(inp('staff_needed', 'number')) + area('staffing', 2, t('ev_staffing_ph')), t('ev_staff_hint'))}
       ${uvhOn ? sec(t('ev_sec_money'), `
+        <div class="field"><span class="lbl-like">${L2('Offerte van', 'Quote from')}</span><div class="ro-views ev-qb">${[['restaurant', L2('Wintertuin: eten, drinken en zaal', 'Wintertuin: food, drinks and room')], ['landlord', L2(`${rooms.landlord}: alleen zaalhuur`, `${rooms.landlord}: room hire only`)]].map(([k, lab]) => `<label class="${(v.quote_by || 'restaurant') === k ? 'on' : ''}"><input type="radio" name="quote_by" value="${k}" ${(v.quote_by || 'restaurant') === k ? 'checked' : ''}> ${esc(lab)}</label>`).join('')}</div>
+          <div class="hint">${esc(L2(`Bij een event met eten en drinken factureren wij alles, ook de zaal; ${rooms.landlord} factureert ons daarna de zaalhuur. Alleen een zaal zonder eten en drinken? Kies ${rooms.landlord}: de offerte komt dan op haar naam en zij factureert zelf.`, `With food and drinks we invoice everything, the room too; ${rooms.landlord} then invoices us. A room only, without food and drinks? Choose ${rooms.landlord}: the quote is in her name and she invoices herself.`))}</div></div>
         <div class="field"><span class="lbl-like">${t('ev_client_type')}</span><div class="ro-views ev-ct">${['business', 'private'].map((k) => `<label class="${v.client_type === k ? 'on' : ''}"><input type="radio" name="client_type" value="${k}" ${v.client_type === k ? 'checked' : ''}> ${t(k === 'private' ? 'ev_ct_private' : 'ev_ct_business')}</label>`).join('')}</div>
           <div class="hint">${L2('Bepaalt de btw-weergave en de annuleringsregels (UVH art. 13 of 14).', 'Sets how VAT is shown and the cancellation rules (UVH art. 13 or 14).')}</div></div>
         <div class="field"><span class="lbl-like">${t('ev_price_lines')}</span><div id="rows-price"></div>
@@ -504,9 +508,8 @@ function renderEditor(ev, date = null) {
         <input name="pr_qty" value="${x.per === 'pp' ? '' : esc(String(x.qty ?? 1))}" ${x.per === 'pp' ? 'disabled' : ''} inputmode="decimal" placeholder="${x.per === 'pp' ? esc(L2('gasten', 'guests')) : '1'}" style="max-width:70px" aria-label="${esc(L2('Aantal', 'Quantity'))}">
         <input name="pr_price" value="${x.price != null ? esc(String(x.price).replace('.', ',')) : ''}" inputmode="decimal" placeholder="€ incl." style="max-width:96px" aria-label="${esc(L2('Prijs incl. btw', 'Price incl. VAT'))}">
         <select name="pr_vat" aria-label="${L2('Btw', 'VAT')}">${VAT_RATES.map((r) => `<option value="${r}" ${Number(x.vat) === r ? 'selected' : ''}>${Math.round(r * 100)}%</option>`).join('')}</select>
-        ${x.room_id && (x.owner || (rooms.rooms.find((r) => r.id === x.room_id) || {}).owner || 'landlord') === 'landlord' ? `<label class="ev-ext"><input type="checkbox" name="pr_ext" ${x.billed_by_landlord ? 'checked' : ''}> ${esc(L2(`${rooms.landlord} factureert dit zelf`, `${rooms.landlord} invoices this herself`))}</label>` : ''}
         <button type="button" class="btn-sm btn-ghost" data-del="price|${i}" aria-label="${t('delete')}">&#10005;</button></div>`).join('');
-      $$('[name=pr_per], [name=pr_ext]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
+      $$('[name=pr_per]').forEach((s2) => (s2.onchange = () => { readRows(); drawRows(); persist(); }));
       showTotal();
     }
     $$('[data-del]').forEach((b) => (b.onclick = () => { const [l, i] = b.dataset.del.split('|'); readRows(); lists[l].splice(Number(i), 1); drawRows(); persist(); }));
@@ -526,7 +529,7 @@ function renderEditor(ev, date = null) {
   const readRows = () => {
     if ($('#rows-price')) lists.price = $$('#rows-price [data-i]').map((r) => {
       const per = r.querySelector('[name=pr_per]').value;
-      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value), ...(r.dataset.roomLine ? { room_id: r.dataset.roomLine, owner: (lists.price[Number(r.dataset.i)] || {}).owner || (rooms.rooms.find((x) => x.id === r.dataset.roomLine) || {}).owner || 'landlord', billed_by_landlord: !!(r.querySelector('[name=pr_ext]') && r.querySelector('[name=pr_ext]').checked) } : {}) };
+      return { label: r.querySelector('[name=pr_label]').value.trim(), per, qty: per === 'pp' ? null : parseNum(r.querySelector('[name=pr_qty]').value), price: parseNum(r.querySelector('[name=pr_price]').value), vat: Number(r.querySelector('[name=pr_vat]').value), ...(r.dataset.roomLine ? { room_id: r.dataset.roomLine, owner: (lists.price[Number(r.dataset.i)] || {}).owner || (rooms.rooms.find((x) => x.id === r.dataset.roomLine) || {}).owner || 'landlord' } : {}) };
     });
     lists.timeline = $$('#rows-timeline [data-i]').map((r) => ({ time: r.querySelector('[name=tl_time]').value.trim(), what: r.querySelector('[name=tl_what]').value.trim() }));
     lists.dietary = $$('#rows-dietary [data-i]').map((r) => ({ count: parseNum(r.querySelector('[name=di_count]').value), type: r.querySelector('[name=di_type]').value.trim(), who: r.querySelector('[name=di_who]').value.trim() }));
@@ -551,7 +554,9 @@ function renderEditor(ev, date = null) {
     out.service_style = out.service_style ? toCode(out.service_style, STYLES) : null;
     if (uvhOn) {
       const ct = f.querySelector('[name=client_type]:checked'); out.client_type = ct ? ct.value : null;
-      out.price_lines = lists.price.filter((x) => x.label || x.price != null);
+      const qb = f.querySelector('[name=quote_by]:checked'); out.quote_by = qb && qb.value === 'landlord' ? 'landlord' : 'restaurant';
+      // a quote of the landlord: all of it is hers (Finance shows it under "invoices herself"); otherwise all of it is ours
+      out.price_lines = lists.price.filter((x) => x.label || x.price != null).map((x) => ({ ...x, billed_by_landlord: out.quote_by === 'landlord' || undefined }));
       out.agreement_kind = out.agreement_kind || null;
     } else UVH_KEYS.forEach((k) => delete out[k]);
     out.timeline = lists.timeline.filter((x) => x.time || x.what).sort((a, b) => (a.time || '').localeCompare(b.time || ''));
@@ -567,6 +572,7 @@ function renderEditor(ev, date = null) {
     const rows = $$('#rows-price [data-i]'); const last = rows[rows.length - 1]; if (last) last.querySelector(label ? '[name=pr_price]' : '[name=pr_label]').focus();
   }));
   $$('.ev-ct input').forEach((r) => (r.onchange = () => { $$('.ev-ct label').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked)); }));
+  $$('.ev-qb input').forEach((r) => (r.onchange = () => { $$('.ev-qb label').forEach((x) => x.classList.toggle('on', x.querySelector('input').checked)); persist(); }));
   // rooms: ticked when their hire line is there or their name is in the area text
   const areaEl = () => $('#ev-form').elements.area;
   const roomTicks = $$('[data-room]');
@@ -671,7 +677,10 @@ function clientHtml(ev, l) {
   const money = (n) => (n == null ? '' : new Intl.NumberFormat(l === 'nl' ? 'nl-NL' : 'en-GB', { style: 'currency', currency: 'EUR' }).format(Number(n)));
   const g = guestsOf(ev);
   const business = ev.client_type !== 'private';
-  const ps = priceSummary(ev, g);
+  // a quote of the landlord (room only): her name and details, her lines as the prices, no menu or food texts
+  const byLandlord = ev.quote_by === 'landlord';
+  const ll = rooms.info || {};
+  const ps = priceSummary(byLandlord ? { ...ev, price_lines: (ev.price_lines || []).map((x) => ({ ...x, billed_by_landlord: false })) } : ev, g);
   const isQuote = ev.status === 'option';
   const docTitle = docName(ev, l);
   const c = company || {};
@@ -680,10 +689,13 @@ function clientHtml(ev, l) {
   const pct = (r) => `${Math.round(r * 100)}%`;
   // our details: on every quote, and required on an invoice
   // under the logo: Cantonspark, Baarn; then the legal name and address once they are filled in (never the same name twice)
-  const brandName = c.trade_name || 'Wintertuin';
-  const us = ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city, [c.phone, c.email].filter(Boolean).join(' · '), c.website && c.website !== 'https://' ? c.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : '']
+  const brandName = byLandlord ? rooms.landlord : (c.trade_name || 'Wintertuin');
+  const us = byLandlord
+    ? [T('Ruimteverhuur in de Wintertuin, Cantonspark Baarn', 'Room hire at the Wintertuin, Cantonspark Baarn'), ll.address, ll.postcode_city, [ll.phone, ll.email].filter(Boolean).join(' · ')].filter(Boolean).map(esc).join('<br>')
+    : ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city, [c.phone, c.email].filter(Boolean).join(' · '), c.website && c.website !== 'https://' ? c.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : '']
     .filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).map(esc).join('<br>');
-  const ids = [c.kvk ? `KVK ${esc(c.kvk)}` : '', c.vat_id ? `${T('Btw', 'VAT')} ${esc(c.vat_id)}` : '', c.iban ? `IBAN ${esc(c.iban)}` : ''].filter(Boolean).join('<br>');
+  const idSrc = byLandlord ? ll : c;
+  const ids = [idSrc.kvk ? `KVK ${esc(idSrc.kvk)}` : '', idSrc.vat_id ? `${T('Btw', 'VAT')} ${esc(idSrc.vat_id)}` : '', idSrc.iban ? `IBAN ${esc(idSrc.iban)}` : ''].filter(Boolean).join('<br>');
   // price table: business clients see amounts excluding VAT plus VAT per rate, private clients amounts including VAT
   const priceTable = ps.lines.length ? `<table class="pt"><tr><th>${T('Omschrijving', 'Description')}</th><th class="n">${T('Aantal', 'Qty')}</th><th class="n">${business ? T('Prijs excl.', 'Price excl.') : T('Prijs', 'Price')}</th><th class="n">${T('Btw', 'VAT')}</th><th class="n">${business ? T('Totaal excl.', 'Total excl.') : T('Totaal', 'Total')}</th></tr>
       ${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? tt('ev_room_hire') : tt('ev_price_pp')))}${x.per === 'pp' && !/p\.p\.|per pers/i.test(x.label || '') ? ` <span class="small">(${T('per persoon', 'per person')})</span>` : ''}</td><td class="n">${x.qty}</td><td class="n">${money(business ? x.priceEx : x.price)}</td><td class="n">${pct(x.vat)}</td><td class="n">${money(business ? x.ex : x.total)}</td></tr>`).join('')}
@@ -709,7 +721,7 @@ function clientHtml(ev, l) {
     .beo .uvh { border: 1px solid #bbb; border-radius: 6px; padding: 7px 10px; margin-top: 10px; font-size: 9pt; }
     .beo .doc { font-size: 15pt; font-weight: 700; }
   </style><div class="beo">
-    <div class="top"><div class="q-brand"><img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt=""><div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
+    <div class="top"><div class="q-brand">${byLandlord ? '' : `<img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt="">`}<div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
       <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
     <p class="intro">${esc(qt(l, isQuote ? 'intro_quote' : 'intro_confirm', { voornaam: (ev.client_name || '').trim().split(/\s+/)[0] || '', event: ev.title }))}</p>
@@ -722,9 +734,9 @@ function clientHtml(ev, l) {
         [tt('ev_guests'), g != null ? `${g}${ev.children ? ` (${tt('ev_children')}: ${ev.children})` : ''}` : ''],
         [tt('ev_guarantee_deadline'), ev.guarantee_deadline ? esc(dateIn(ev.guarantee_deadline, l)) : '']])}</div></div>
     ${(() => { const tl = guestTimeline(ev); return tl.length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml({ ...ev, timeline: tl })}` : ''; })()}
-    ${(ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
-    <h2>${tt('ev_dietary')}</h2>${(ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
-    <p class="small">${esc(qt(l, 'allergy'))}</p>
+    ${!byLandlord && (ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
+    ${byLandlord ? '' : `<h2>${tt('ev_dietary')}</h2>`}${byLandlord ? '' : (ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
+    ${byLandlord ? '' : `<p class="small">${esc(qt(l, 'allergy'))}</p>`}
     ${ev.setup || ev.drinks || ev.extras ? `<h2>${tt('ev_sec_setup')}</h2>${kv([[tt('ev_setup'), ev.setup ? `<span class="pre">${esc(ev.setup)}</span>` : ''], [tt('ev_drinks'), ev.drinks ? `<span class="pre">${esc(ev.drinks)}</span>` : ''], [tt('ev_extras'), ev.extras ? `<span class="pre">${esc(ev.extras)}</span>` : '']])}` : ''}
     <h2>${tt('ev_sec_money')}</h2>${priceTable}
     ${ps.external.length ? `<table class="pt" style="margin-top:8px">${ps.external.map((x) => `<tr><td>${esc(x.label || tt('ev_room_hire'))}</td><td class="n">${money(x.total)} ${T('incl. btw', 'incl. VAT')}</td></tr>`).join('')}</table>
@@ -734,12 +746,12 @@ function clientHtml(ev, l) {
       [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur.', 'Deducted from the final invoice.')}` : ''],
       [tt('ev_corkage'), ev.corkage ? esc(ev.corkage) : ''],
       [T('Betaling', 'Payment'), `${T(`Binnen ${payDays} dagen na factuurdatum`, `Within ${payDays} days of the invoice date`)}${c.iban ? ` ${T('op', 'to')} ${esc(c.iban)}` : ''}.${ev.payment_terms ? ` <span class="pre">${esc(ev.payment_terms)}</span>` : ''}`]])}
-    <div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>
+    ${byLandlord ? '' : `<div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>`}
     ${ev.deviations || ev.cancellation_terms ? `<h2>${T('Aanvullende afspraken', 'Additional arrangements')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
-    <div class="uvh">${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
+    <div class="uvh" ${byLandlord ? 'hidden style="display:none"' : ''}>${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${esc(qt(l, 'approval'))}</p>
-    <p class="small consent">${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
-    <p class="small"><strong>${T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
+    <p class="small consent" ${byLandlord ? 'style="display:none"' : ''}>${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
+    <p class="small"><strong>${byLandlord ? T('Getekend voor akkoord.', 'Signed for agreement.') : T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
 }

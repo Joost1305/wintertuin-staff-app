@@ -440,21 +440,22 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.screenshot({ path: `${OUT}/print-menu-phone.png` });
       await p.click('h1'); await p.setViewportSize({ width: 1280, height: 900 });
       if (r[0] < 0 || r[1] > r[2]) throw new Error('dropdown off screen ' + r.join(',')); });
-    await step('rooms: a room of the landlord can be invoiced by her; it stays out of our total and is shown apart on the quote', async () => {
+    await step('rooms: a room-only quote from the landlord: her name, only room hire, no menu or UVH; Finance sees it as hers', async () => {
       const id = await p.evaluate(() => window.__mockdb.events[0].id);
+      await p.goto(BASE + '#/settings/rooms'); await p.waitForSelector('#rm-landlord');
+      await p.click('.rm-ll summary'); await p.fill('#ll-iban', 'NL00TEST0123456789'); await p.click('#rm-save'); await p.waitForSelector('.toast:has-text("Saved")');
       await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room');
-      await p.click('.ev-room:has-text("Glazen kas")'); 
-      await p.waitForSelector('#rows-price [data-room-line] [name=pr_ext]');
-      const before = await p.textContent('#price-total');
-      await p.check('#rows-price [data-room-line] [name=pr_ext]'); await p.waitForTimeout(200);
-      const after = await p.textContent('#price-total'); if (!/not in our total|niet in ons totaal/.test(after) || after === before) throw new Error(after);
+      await p.click('.ev-room:has-text("Glazen kas")'); await p.waitForSelector('#rows-price [data-room-line]');
+      await p.click('.ev-qb label:has-text("room hire only")');
       await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")');
       const ev = await p.evaluate((i) => window.__mockdb.events.find((e) => e.id === i), id);
-      const line = ev.price_lines.find((x) => x.room_id); if (!line.billed_by_landlord || line.owner !== 'landlord') throw new Error(JSON.stringify(line));
+      if (ev.quote_by !== 'landlord' || !ev.price_lines.every((x) => x.billed_by_landlord)) throw new Error(JSON.stringify([ev.quote_by, ev.price_lines]));
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
-      if (!/factureert .* rechtstreeks aan jou/.test(html)) throw new Error('no landlord note on the quote');
+      if (!/Mette te Velde/.test(html) || !/NL00TEST0123456789/.test(html) || /img\/logo\.png/.test(html) || /<h2>Menu<\/h2>/.test(html)) throw new Error('landlord quote wrong');
+      // back to a restaurant quote, without the room
       await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room.on'); await p.click('.ev-room:has-text("Glazen kas")');
+      await p.click('.ev-qb label:has-text("food, drinks")');
       await p.click('#ev-form button[type=submit]'); await p.waitForSelector('summary:has-text("Print")'); });
     await step('settings: the texts on the quote can be changed', async () => {
       await p.goto(BASE + '#/settings/quotetexts'); await p.waitForSelector('#qt-intro_quote');

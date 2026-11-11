@@ -1,7 +1,7 @@
 // The handbook: how every part of the Team app and Wintertuin Finance works.
 // KEEP THIS UP TO DATE: every change to a feature also changes the matching chapter here (and UPDATED).
 // Format per section: [title, html]. Keep the language plain: what you see, what you tap, what happens.
-export const UPDATED = '2026-11-10';
+export const UPDATED = '2026-11-11';
 
 const ul = (...items) => `<ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 const ol = (...items) => `<ol>${items.map((x) => `<li>${x}</li>`).join('')}</ol>`;
@@ -61,8 +61,9 @@ export const CHAPTERS = [
   { id: 'events', app: 'team', title: 'Events', routes: ['events'], sections: [
     ['Overzicht', p('Events staan in een lijst of een kalender. Een event is eerst een <strong>Optie</strong> (offerte) en daarna <strong>Bevestigd</strong>. Elk event heeft een BEO: één plek voor gast, gasten, menu, draaiboek, opstelling en geld. Bij elke wijziging bewaart de app een nieuwe versie (v1, v2…), met de wijzigingen erbij.')],
     ['Een event maken', ol('Tik op <strong>+ Nieuw event</strong>.', 'Vul de gast in: naam, bedrijf, telefoon, e-mail, factuurgegevens. Kies <strong>zakelijk</strong> of <strong>particulier</strong> (bepaalt hoe de btw op de offerte staat).', 'Vul datum, tijden, soort event en het aantal gasten in (verwacht, gegarandeerd, definitief).', 'Sla op. Wat je nog niet weet, vul je later in.') + tip('De app bewaart wat je typt als concept. Ga je per ongeluk weg, dan staat het er de volgende keer nog.')],
-    ['Ruimtes en zaalhuur', p('Bij <strong>Ruimte en opstelling</strong> vink je de ruimtes aan. Bij elke ruimte komt de zaalhuur vanzelf bij de prijzen (21% btw); uitvinken haalt hem weg. Namen en standaardprijzen staan onder Instellingen, Ruimtes.') + p('Ruimtes van Mette: meestal factureren wij alles en factureert Mette ons daarna de zaalhuur. Factureert Mette de gast zelf, vink dan bij die zaalhuurregel <strong>Mette factureert dit zelf</strong> aan. De zaalhuur staat dan apart op de offerte en telt niet mee in ons totaal.')],
+    ['Ruimtes en zaalhuur', p('Bij <strong>Ruimte en opstelling</strong> vink je de ruimtes aan. Bij elke ruimte komt de zaalhuur vanzelf bij de prijzen (21% btw); uitvinken haalt hem weg. Namen en standaardprijzen staan onder Instellingen, Ruimtes.') + p('Ruimtes van Mette: bij een event met eten en drinken factureren wij alles, ook de zaal. Mette factureert ons daarna de zaalhuur; dat bedrag zie je in Finance onder Zaalhuur voor Mette.')],
     ['Menu: eten en drinken', ol('Kies <strong>Gerecht toevoegen</strong> (eten) of <strong>Drank toevoegen</strong>.', 'Kies eerst de categorie. Bovenaan staan de categorieën uit het menu, daaronder andere gangen (zoals Borrel).', 'Kies daarna het gerecht. Je ziet alleen de gerechten uit die categorie; de allergenen komen vanzelf mee.', 'Of typ zelf een gerecht. Controleer dan zelf de allergenen.', 'Sleep regels aan het greepje (⠿) in de goede volgorde.') + p('De gangen pas je aan onder Instellingen, Gangen voor events.')],
+    ['Alleen een zaal: offerte van Mette', p('Wil iemand alleen een ruimte huren, zonder eten en drinken? Kies bij Prijs en voorwaarden <strong>Offerte van: Mette te Velde, alleen zaalhuur</strong>. De offerte komt dan op haar naam en met haar gegevens, zonder ons logo, menu, allergieën en UVH. De mail is door haar ondertekend. Zij factureert zelf; in Finance telt het niet als onze omzet. Haar gegevens (adres, IBAN, KVK) vul je in onder Instellingen, Ruimtes.')],
     ['Dieetwensen en allergieën', p('Per wens: aantal, soort en eventueel voor wie. Namen bij allergieën staan op de keukenlijst, niet op de offerte. Ruim namen na het event op.')],
     ['Draaiboek', p('Tijden en wat er gebeurt, ook opbouw en afsluiten. De gast ziet op de offerte alleen de tijden tussen begin en einde van het event; het team ziet alles.')],
     ['Prijzen', p('Prijsregels zijn inclusief btw: eten en alcoholvrij 9%, alcohol en zaalhuur 21%. <strong>p.p.</strong> rekent met het aantal gasten. Met de knoppen (Diner p.p., Wijnarrangement p.p., Zaalhuur…) zet je snel een regel neer. Verder: minimale besteding, aanbetaling met datum, kurkengeld en extra betalingsafspraken.')],
@@ -96,7 +97,7 @@ export const CHAPTERS = [
     ['Vaste diensten', p('Diensten die je vaak plant, met tijden en afdeling.')],
     ['Volgorde gerechten', p('Volgorde op de menupagina en het gerecht van de maand.')],
     ['Gangen voor events', p('De gangen bij het menu van een event: een lijst voor eten en een voor drinken, één per regel.')],
-    ['Ruimtes', p('Naam, standaard zaalhuur (incl. 21% btw), maximaal aantal gasten en van wie de ruimte is: van Mette of van het restaurant. Ook de naam van de verhuurder.')],
+    ['Ruimtes', p('Naam, standaard zaalhuur (incl. 21% btw), maximaal aantal gasten en van wie de ruimte is: van Mette of van het restaurant. Ook de naam en gegevens van de verhuurder (adres, e-mail, telefoon, KVK, btw-nummer, IBAN), voor haar eigen offertes.')],
     ['Teksten offerte', p('De vaste teksten op offerte, bevestiging en in de mail, in het Nederlands en Engels. Woorden tussen accolades vult de app in: {voornaam}, {event}, {datum}, {de_offerte}, {geldig_tot}, {uvh_link}. Met Standaardtekst zet je een tekst terug.')],
     ['HACCP, Volgorde van de pagina\'s, Links', p('Welke HACCP-lijsten je gebruikt en het archief; de volgorde van de pagina\'s in de balk; de links voor iedereen.')],
     ['Systeemcheck en back-up', p('De systeemcheck test of alles werkt. Elke nacht komt er een back-up per mail (met wachtwoord): één van de Wintertuin-apps en één van de receptenapp.')],
@@ -112,7 +113,7 @@ export const CHAPTERS = [
   { id: 'fin-month', app: 'finance', title: 'Finance: maand en week', routes: ['fin:month'], sections: [
     ['Maand', p('Het maandoverzicht: omzet, food cost en beverage cost (met de voorraadtelling), personeelskosten, prime cost, per dag, en vergelijking met andere maanden. Vul aan het einde van de maand de voorraadtelling in.')],
     ['Week', p('Met <strong>Maand | Week</strong> zie je één week: samenvatting, vergelijking met vorige week en dezelfde week vorig jaar, en de dagen. Food- en drankkosten per week zijn een schatting op basis van de inkopen.')],
-    ['Zaalhuur voor Mette', p('Onder de maand staat <strong>Zaalhuur voor Mette</strong>: per event in haar ruimtes de zaalhuur. Bovenaan wat via ons gaat (Mette factureert ons dat bedrag), daaronder wat Mette zelf aan de gast factureert (niet onze omzet). Haar factuur aan ons is een inkoopfactuur, straks in Moneybird.')],
+    ['Zaalhuur voor Mette', p('Onder de maand staat <strong>Zaalhuur voor Mette</strong>: per event in haar ruimtes de zaalhuur. Bovenaan wat via ons gaat (Mette factureert ons dat bedrag), daaronder de offertes die Mette zelf maakt voor alleen een zaal (niet onze omzet). Haar factuur aan ons is een inkoopfactuur, straks in Moneybird.')],
   ] },
   { id: 'fin-dashboard', app: 'finance', title: 'Finance: dashboard en btw', routes: ['fin:dashboard', 'fin:vat'], sections: [
     ['Dashboard', p('De komende dagen (verwachte omzet en personeelskosten), events met aanbetalingen die nog moeten komen, de trend per maand, en kosten, break-even en budget.')],

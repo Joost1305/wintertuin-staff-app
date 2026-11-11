@@ -18,13 +18,13 @@ const withOwner = (r) => ({ ...r, owner: r.owner || (/restaurant/i.test(r.name |
 export async function loadRooms() {
   try {
     const { data } = await sb.from('team_settings').select('value').eq('key', 'rooms').maybeSingle();
-    if (data && data.value && Array.isArray(data.value.rooms)) return { rooms: data.value.rooms.map(withOwner), landlord: data.value.landlord || DEFAULT_LANDLORD, example: false };
+    if (data && data.value && Array.isArray(data.value.rooms)) return { rooms: data.value.rooms.map(withOwner), landlord: data.value.landlord || DEFAULT_LANDLORD, info: data.value.landlord_info || {}, example: false };
   } catch { /* not there yet */ }
-  return { rooms: EXAMPLE_ROOMS.map((r) => ({ ...r })), landlord: DEFAULT_LANDLORD, example: true };
+  return { rooms: EXAMPLE_ROOMS.map((r) => ({ ...r })), landlord: DEFAULT_LANDLORD, info: {}, example: true };
 }
-export async function saveRooms(rooms, landlord = DEFAULT_LANDLORD) {
+export async function saveRooms(rooms, landlord = DEFAULT_LANDLORD, info = {}) {
   const clean = rooms.map((r, i) => ({ id: r.id || `r${Date.now().toString(36)}${i}`, name: String(r.name || '').trim(), hire: r.hire == null || r.hire === '' ? null : Number(r.hire), capacity: r.capacity ? Number(r.capacity) : null, owner: r.owner === 'restaurant' ? 'restaurant' : 'landlord' })).filter((r) => r.name);
-  const { error } = await sb.from('team_settings').upsert({ key: 'rooms', value: { rooms: clean, landlord: String(landlord || '').trim() || DEFAULT_LANDLORD }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  const { error } = await sb.from('team_settings').upsert({ key: 'rooms', value: { rooms: clean, landlord: String(landlord || '').trim() || DEFAULT_LANDLORD, landlord_info: info }, updated_by: state.me.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   if (error) throw error;
   return clean;
 }
