@@ -4,6 +4,7 @@
 // Cards are kept in team_settings 'menu_cards' (readable by everyone, written by managers).
 import { state, isManager, app, esc, toast, toastError, $, $$, confirmDialog, printHtml } from '../core.js';
 import { lang } from '../i18n.js';
+import { isDesktop, whatsappDesktop } from '../sheet.js';
 import { SEASONS, seasonName, fitsSeason, seasonPills } from '../seasons.js';
 import { sb } from '../data.js';
 import { ALLERGENS, editDish } from './menu.js';
@@ -226,6 +227,7 @@ function drawViewer() {
       <nav class="mcv-tabs">${cards.filter((x) => x === c || cardState(x) === 'current').map((x) => `<a class="mcv-tab ${x === c ? 'on' : ''}" href="#/menucard/${x.id}">${esc(x.name || x.title)}${x === c && cardState(x) !== 'current' ? ` <small>(${esc(validLine(x))})</small>` : ''}</a>`).join('')}</nav>
       <div class="mcv-tools">
         <button type="button" class="mcv-btn" id="mcv-share" aria-label="${L({ en: 'Share', nl: 'Delen' })}"><i class="ic ic-share" aria-hidden="true"></i><span>${L({ en: 'Share', nl: 'Delen' })}</span></button>
+        ${isDesktop() ? `<button type="button" class="mcv-btn" id="mcv-wa" aria-label="WhatsApp"><i class="ic ic-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></button>` : ''}
         <button type="button" class="mcv-btn" id="mcv-pdf" aria-label="${L({ en: 'Download PDF', nl: 'Pdf downloaden' })}"><i class="ic ic-download" aria-hidden="true"></i><span>PDF</span></button>
         <button type="button" class="mcv-btn mcv-wide" id="mc-print" aria-label="${L({ en: 'Print', nl: 'Printen' })}"><i class="ic ic-printer" aria-hidden="true"></i><span>${L({ en: 'Print', nl: 'Printen' })}</span></button>
         ${mgr ? `<a class="mcv-btn" href="#/menucard/${c.id}/edit" id="mcv-edit" aria-label="${L({ en: 'Edit this card', nl: 'Deze kaart bewerken' })}" title="${L({ en: 'Edit', nl: 'Bewerken' })}"><i class="ic ic-pencil" aria-hidden="true"></i></a>` : ''}
@@ -237,6 +239,8 @@ function drawViewer() {
   $('#mc-print').onclick = () => printHtml(cardSheet(c, menu, lib));
   $('#mcv-pdf').onclick = () => withPdf($('#mcv-pdf'), (file) => download(file));
   $('#mcv-share').onclick = () => withPdf($('#mcv-share'), (file) => shareFile(file));
+  // on a computer: download the PDF and open WhatsApp (once the PDF is ready the window opens straight from the click)
+  const wa = $('#mcv-wa'); if (wa) wa.onclick = () => withPdf(wa, (file) => whatsappDesktop(file, { text: c.name || c.title || '' }));
   // make the PDF in the background, so "Share" opens WhatsApp at once (phones only allow sharing straight after a tap)
   pdfJob = null;
   setTimeout(() => { if ($('.mc-viewer') && cur === c) startPdf(c); }, 900);

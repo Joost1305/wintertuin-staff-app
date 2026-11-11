@@ -11,6 +11,24 @@ const T = (n, e) => (nl() ? n : e);
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const standalone = () => navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
 export const canPrint = () => !(isIOS() && standalone());
+// A computer (mouse, no touch screen): its share sheet has no WhatsApp, so it gets its own WhatsApp button
+export const isDesktop = () => !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+// 06-12345678 / +31 6 ... -> 31612345678 (wa.me wants the number without + or leading zeros)
+export function waNumber(phone) {
+  let d = String(phone || '').replace(/[^0-9+]/g, '');
+  if (!d) return '';
+  if (d.startsWith('+')) d = d.slice(1); else if (d.startsWith('00')) d = d.slice(2); else if (d.startsWith('0')) d = '31' + d.slice(1);
+  return d.replace(/\D/g, '');
+}
+// WhatsApp on a computer: a browser cannot hand a file to WhatsApp, so the PDF is downloaded and
+// WhatsApp opens (the desktop app, or WhatsApp Web) with the text ready; drag the PDF into the chat.
+// Call this straight from the click, with the PDF already made, or the browser blocks the new window.
+export function whatsappDesktop(file, { text = '', phone = '' } = {}) {
+  if (file) download(file);
+  const url = `https://wa.me/${waNumber(phone)}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+  if (window.__waHook) window.__waHook(url); else window.open(url, '_blank', 'noopener');
+  toast(T('De pdf staat in je downloads. Sleep hem in het WhatsApp-gesprek.', 'The PDF is in your downloads. Drag it into the WhatsApp chat.'));
+}
 
 const BASE_CSS = `html,body{margin:0;background:#fff;color:#000;-webkit-text-size-adjust:none;text-size-adjust:none}
   body{font:10.5pt/1.4 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -102,7 +120,7 @@ export async function sheetPdf(html, name) {
   } finally { fr.remove(); }
 }
 
-function download(file) {
+export function download(file) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
@@ -121,7 +139,7 @@ async function share(file) {
 }
 
 // The full-screen view of a sheet. runPrint prints #printArea (filled by printHtml).
-export function openSheet(html, name, runPrint) {
+export function openSheet(html, name, runPrint, wa = {}) {
   document.getElementById('sheet-view')?.remove();
   const full = /mc-page/.test(html);
   const pageW = Math.round(210 * MM);
@@ -131,6 +149,7 @@ export function openSheet(html, name, runPrint) {
       <button type="button" class="sv-x" aria-label="${T('Sluiten', 'Close')}"><i class="ic ic-x" aria-hidden="true"></i></button>
       <div class="sv-btns">
         <button type="button" class="btn-primary btn-sm" id="sv-share" disabled><i class="ic ic-share" aria-hidden="true"></i> <span>${T('Pdf maken…', 'Making PDF…')}</span></button>
+        ${isDesktop() ? `<button type="button" class="btn btn-sm" id="sv-wa" disabled><i class="ic ic-whatsapp" aria-hidden="true"></i> WhatsApp</button>` : ''}
         <button type="button" class="btn btn-sm" id="sv-pdf" disabled><i class="ic ic-download" aria-hidden="true"></i> PDF</button>
         ${canPrint() ? `<button type="button" class="btn btn-sm" id="sv-print"><i class="ic ic-printer" aria-hidden="true"></i> ${T('Printen', 'Print')}</button>` : ''}
       </div></div>
@@ -156,14 +175,15 @@ export function openSheet(html, name, runPrint) {
   window.addEventListener('resize', fit);
 
   let file = null;
-  const shareBtn = v.querySelector('#sv-share'); const pdfBtn = v.querySelector('#sv-pdf');
+  const shareBtn = v.querySelector('#sv-share'); const pdfBtn = v.querySelector('#sv-pdf'); const waBtn = v.querySelector('#sv-wa');
   const job = sheetPdf(html, name).then((f) => {
-    file = f; shareBtn.disabled = false; pdfBtn.disabled = false;
+    file = f; shareBtn.disabled = false; pdfBtn.disabled = false; if (waBtn) waBtn.disabled = false;
     shareBtn.querySelector('span').textContent = T('Delen', 'Share');
     return f;
   }).catch((e) => { shareBtn.querySelector('span').textContent = T('Pdf lukt niet', 'PDF failed'); toastError(e); return null; });
   shareBtn.onclick = async () => { const f = file || (await job); if (f) share(f); };
   pdfBtn.onclick = async () => { const f = file || (await job); if (f) download(f); };
+  if (waBtn) waBtn.onclick = () => { if (file) whatsappDesktop(file, { text: wa.text || file.name.replace(/\.pdf$/, ''), phone: wa.phone }); };
   const pr = v.querySelector('#sv-print'); if (pr) pr.onclick = () => runPrint();
 
   const close = () => { v.remove(); document.body.classList.remove('sheet-open'); window.removeEventListener('resize', fit); document.removeEventListener('keydown', esc_); window.removeEventListener('hashchange', close); };

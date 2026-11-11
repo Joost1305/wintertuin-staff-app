@@ -502,6 +502,11 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const shared = await p.evaluate(async () => { let got = null; navigator.canShare = () => true; navigator.share = async (d) => { got = d.files[0].name; };
         document.getElementById('sv-share').click(); await new Promise((r) => setTimeout(r, 300)); return got; });
       if (!/\.pdf$/.test(shared || '')) throw new Error('not shared: ' + shared);
+      // a computer: the WhatsApp button downloads the PDF and opens wa.me with the text
+      const wa = await p.evaluate(async () => { let url = null; window.__waHook = (u) => { url = u; }; const b = document.getElementById('sv-wa'); if (!b) return 'no button'; b.click(); await new Promise((r) => setTimeout(r, 100)); delete window.__waHook; return url; });
+      if (!/^https:\/\/wa\.me\/\?text=.+/.test(wa || '')) throw new Error('whatsapp: ' + wa);
+      const nr = await p.evaluate(async () => { const { waNumber } = await import('./js/sheet.js'); return [waNumber('06-21566474'), waNumber('+31 626 534 331'), waNumber('0031 6 1')].join(','); });
+      if (nr !== '31621566474,31626534331,3161') throw new Error('waNumber ' + nr);
       const n1 = await p.evaluate(() => window.__printed || 0); await p.click('#sv-print');
       if ((await p.evaluate(() => window.__printed || 0)) < n1 + 1 || n1 < n0 + 1) throw new Error('print');
       await p.screenshot({ path: `${OUT}/haccp-sheet.png` });

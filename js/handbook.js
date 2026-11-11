@@ -55,7 +55,7 @@ export const CHAPTERS = [
     ['Volgorde en gerecht van de maand', p('Onder Instellingen, Volgorde gerechten nummer je de gerechten (1 staat bovenaan) en kies je het gerecht van de maand.')],
   ] },
   { id: 'menucard', app: 'team', title: 'Menukaarten', routes: ['menucard'], sections: [
-    ['Bekijken en delen', p('Tik op een menukaart (bijvoorbeeld lunch of diner) om hem schermvullend te zien. Met <strong>Delen</strong> stuur je de pdf via WhatsApp of mail, met <strong>PDF</strong> download je hem.')],
+    ['Bekijken en delen', p('Tik op een menukaart (bijvoorbeeld lunch of diner) om hem schermvullend te zien. Met <strong>Delen</strong> stuur je de pdf via WhatsApp of mail, met <strong>PDF</strong> download je hem. Op een computer is er ook een knop <strong>WhatsApp</strong>: de pdf wordt gedownload en WhatsApp opent, sleep de pdf dan in het gesprek.')],
     ['Een kaart samenstellen (managers)', ol('Tik op het potlood.', 'Kies per onderdeel gerechten uit de database. Uitvinken haalt een gerecht echt weg.', 'Sleep gerechten in de goede volgorde.', 'Vul eventueel <strong>geldig van</strong> en <strong>tot</strong> in. Verlopen kaarten gaan naar het archief.') + tip('Pas je de naam van een gerecht aan, dan verandert hij op alle kaarten mee. Op de computer scrollen de kaart en het bewerkdeel los van elkaar.')],
   ] },
   { id: 'events', app: 'team', title: 'Events', routes: ['events'], sections: [
@@ -87,6 +87,7 @@ export const CHAPTERS = [
   ] },
   { id: 'print', app: 'team', title: 'Printen, pdf en delen', routes: [], sections: [
     ['Zo werkt elke printknop', p('Elke printknop opent het blad schermvullend, met <strong>Delen</strong> (pdf via WhatsApp, mail of Bestanden), <strong>PDF</strong> (downloaden) en <strong>Printen</strong>. Op de iPhone-app print je via Delen, Afdrukken.')],
+    ['WhatsApp op de computer', p('Op een computer staat er ook een knop <strong>WhatsApp</strong>, want daar zit WhatsApp niet in het deelmenu. De pdf wordt gedownload en WhatsApp opent (de app of WhatsApp Web) met de tekst al klaar. Sleep de pdf uit je downloads in het gesprek. Bij een offerte of bevestiging opent meteen het gesprek met de klant, als het telefoonnummer is ingevuld.')],
     ['Opmaak', p('Een kop staat nooit alleen onderaan een pagina, en tabelregels worden niet doormidden gesneden.')],
     ['Tik nog een keer', p('Zegt de app "De pdf is klaar. Tik nog een keer", dan wil de iPhone een verse tik. Tik dan nog een keer op dezelfde knop.')],
   ] },

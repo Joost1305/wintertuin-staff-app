@@ -764,7 +764,7 @@ function guestTimeline(ev) {
   return tl.filter((x) => { const v2 = m(x.time); if (v2 == null || b == null) return v2 == null || v2 >= a; return b >= a ? v2 >= a && v2 <= b : v2 >= a || v2 <= b; }); // also past midnight
 }
 const quoteFileName = (ev, l) => `${docName(ev, l)} ${ev.title}`;
-function printClient(ev, l) { printHtml(clientHtml(ev, l), { name: quoteFileName(ev, l) }); }
+function printClient(ev, l) { printHtml(clientHtml(ev, l), { name: quoteFileName(ev, l), wa: { phone: ev.client_phone, text: `${docName(ev, l)} ${ev.title}, ${dateIn(ev.event_date, l)}` } }); }
 
 function printKitchen(ev) {
   const g = guestsOf(ev);

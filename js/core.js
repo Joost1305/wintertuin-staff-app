@@ -201,7 +201,7 @@ export function printHtml(html, opts = {}) {
   }
   const run = window.__printHook || (() => window.print()); // tests swap in a counter
   // the sheet opens full screen: share as PDF (WhatsApp, mail), download, or print
-  const v = openSheet(html, opts.name, run);
+  const v = openSheet(html, opts.name, run, opts.wa); // opts.wa: { phone, text } for the WhatsApp button on a computer
   if (window.__printHook) setTimeout(() => { run(); if (!window.__keepSheet) v.querySelector('.sv-x').click(); }, 60); // tests: act as if Print was tapped
   return v;
 }
