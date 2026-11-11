@@ -525,6 +525,8 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const b64 = await p.evaluate(async () => { const f = await document.getElementById('sheet-view').__job; const buf = new Uint8Array(await f.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i++) s += String.fromCharCode(buf[i]); return btoa(s); });
       require('fs').writeFileSync(`${OUT}/haccp-week.pdf`, Buffer.from(b64, 'base64'));
       if (!pdf || pdf.type !== 'application/pdf' || pdf.size < 5000 || !/HACCP/.test(pdf.name)) throw new Error(JSON.stringify(pdf));
+      const marks = await p.evaluate(async () => { const v = document.getElementById('sheet-view'); const f = await v.__job; await new Promise((r) => setTimeout(r, 200)); return { pages: f.pages.length, marks: v.querySelector('iframe').contentDocument.querySelectorAll('.sv-break').length }; });
+      if (marks.pages < 2 || marks.marks !== marks.pages - 1) throw new Error('page marks ' + JSON.stringify(marks));
       const shared = await p.evaluate(async () => { let got = null; navigator.canShare = () => true; navigator.share = async (d) => { got = d.files[0].name; };
         document.getElementById('sv-share').click(); await new Promise((r) => setTimeout(r, 300)); return got; });
       if (!/\.pdf$/.test(shared || '')) throw new Error('not shared: ' + shared);

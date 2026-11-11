@@ -117,7 +117,9 @@ export async function sheetPdf(html, name) {
       if (full) { pdf.setFillColor(255, 253, 240); pdf.rect(0, 0, 210, 297, 'F'); }
       pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, 210 - 2 * margin, (b - a) / MM);
     }
-    return new File([pdf.output('blob')], fileName(html, name), { type: 'application/pdf' });
+    const out = new File([pdf.output('blob')], fileName(html, name), { type: 'application/pdf' });
+    out.pages = pages; // where each page starts and ends, for the marks in the preview
+    return out;
   } finally { fr.remove(); }
 }
 
@@ -169,16 +171,30 @@ export function openSheet(html, name, runPrint, wa = {}) {
   fr.onload = () => {
     // show where a new page starts
     const d = fr.contentDocument; const w = fr.contentWindow;
-    if (!full) [...d.body.querySelectorAll('*')].forEach((el) => { const cs = w.getComputedStyle(el); if (cs.breakBefore === 'page' || cs.pageBreakBefore === 'always') el.style.cssText += ';margin-top:36px;padding-top:28px;border-top:2px dashed #c8cdca'; });
+    if (pagesOf) markPages(pagesOf);
     fit(); setTimeout(fit, 300);
   };
   fr.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><base href="${location.href.split('#')[0]}"><style>${BASE_CSS}body{padding:${full ? 0 : Math.round(14 * MM)}px}</style></head><body>${html}</body></html>`;
   window.addEventListener('resize', fit);
 
+  // show where the PDF goes to a new page: a dashed line with the page number, at the same place as in the PDF
+  let pagesOf = null;
+  const markPages = (pages) => {
+    pagesOf = pages;
+    const d = fr.contentDocument; if (full || !d || !d.body || pages.length < 2) return;
+    d.querySelectorAll('.sv-break').forEach((x) => x.remove());
+    const pad = Math.round(14 * MM);
+    pages.slice(1).forEach(([y], i) => {
+      const m = d.createElement('div'); m.className = 'sv-break';
+      m.style.cssText = `position:absolute;left:0;right:0;top:${y + pad}px;border-top:2px dashed #9aa5a0;pointer-events:none`;
+      m.innerHTML = `<span style="position:absolute;right:8px;top:-11px;background:#fff;padding:0 6px;font:600 9pt -apple-system,Segoe UI,Arial,sans-serif;color:#6b7570">${T('Pagina', 'Page')} ${i + 2}</span>`;
+      d.body.appendChild(m);
+    });
+  };
   let file = null;
   const shareBtn = v.querySelector('#sv-share'); const pdfBtn = v.querySelector('#sv-pdf'); const waBtn = v.querySelector('#sv-wa');
   const job = sheetPdf(html, name).then((f) => {
-    file = f; shareBtn.disabled = false; pdfBtn.disabled = false; if (waBtn) waBtn.disabled = false;
+    file = f; if (f.pages) markPages(f.pages); shareBtn.disabled = false; pdfBtn.disabled = false; if (waBtn) waBtn.disabled = false;
     shareBtn.querySelector('span').textContent = T('Delen', 'Share');
     return f;
   }).catch((e) => { shareBtn.querySelector('span').textContent = T('Pdf lukt niet', 'PDF failed'); toastError(e); return null; });
