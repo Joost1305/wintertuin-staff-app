@@ -21,7 +21,7 @@ export const CHAPTERS = [
     ['Nieuwe versie', p('De app werkt zichzelf bij. Zie je een aanpassing nog niet, sluit de app dan één keer helemaal af en open hem opnieuw.')],
   ] },
   { id: 'today', app: 'team', title: 'Vandaag', routes: ['today'], sections: [
-    ['Wat je ziet', ul('Je volgende dienst en wanneer je daarna weer werkt.', 'De knop <strong>Inklokken</strong> of <strong>Uitklokken</strong>.', 'Een smalle regel met het event van vandaag of het eerstvolgende event. Tik erop om het te openen.', 'Ruilverzoeken die op je wachten.', '<strong>Vandaag aan het werk</strong>: wie er vandaag staat, met foto.', '<strong>Checklists vandaag</strong>: hoe ver elke lijst is.', 'Snelkoppelingen naar Menu, HACCP, Events en Links.')],
+    ['Wat je ziet', ul('Je volgende dienst en wanneer je daarna weer werkt.', 'De knop <strong>Inklokken</strong> of <strong>Uitklokken</strong>.', 'Smalle regels met de events van vandaag en de eerstvolgende, tot drie. Tik erop om een event te openen.', 'Ruilverzoeken die op je wachten.', '<strong>Vandaag aan het werk</strong>: wie er vandaag staat, met foto.', '<strong>Checklists vandaag</strong>: hoe ver elke lijst is.', 'Snelkoppelingen naar Menu, HACCP, Events en Links.')],
     ['Inklokken', p('Tik bij het begin van je dienst op Inklokken en aan het einde op Uitklokken. De tijden komen in de urenregistratie en in Finance.')],
   ] },
   { id: 'roster', app: 'team', title: 'Rooster', routes: ['roster'], sections: [

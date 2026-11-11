@@ -48,9 +48,6 @@ export async function renderHome() {
   // events: today's, then always the next day that has events, then a short line with what comes after
   const evs = (events || []).filter((e) => e.status !== 'done');
   const evToday = evs.filter((e) => e.event_date === today);
-  const nextDay = (evs.find((e) => e.event_date > today) || {}).event_date;
-  const evNext = nextDay ? evs.filter((e) => e.event_date === nextDay) : [];
-  const evLater = evs.filter((e) => nextDay && e.event_date > nextDay).slice(0, 3);
   const guests = (e) => e.guests_final || e.guests_guaranteed || e.guests_expected;
 
   const shiftBlock = next ? `
@@ -80,15 +77,15 @@ export async function renderHome() {
       : L({ en: `${swaps} shift swap update${swaps > 1 ? 's' : ''}`, nl: `Nieuws over ${swaps > 1 ? `${swaps} ruilverzoeken` : 'je ruilverzoek'}` })}</span><i class="ic ic-next" aria-hidden="true"></i></a>` : ''}
 
     ${(() => {
-      // a small nudge, no card: today's events, otherwise the next one; one tap opens it
-      const list = evToday.length ? evToday : evNext.slice(0, 1);
+      // small nudges, no card: today's events and the next ones, up to three; one tap opens the event
+      const list = evToday.concat(evs.filter((e) => e.event_date > today)).slice(0, Math.max(3, evToday.length));
       if (!list.length) return '';
-      const e = list[0];
-      const when = evToday.length ? L({ en: 'Today', nl: 'Vandaag' }) : relDay(e.event_date);
-      const more = evToday.length > 1 ? ` <span class="hn-more">+${evToday.length - 1}</span>` : '';
-      const href = evToday.length > 1 ? '#/events' : `#/events/${e.id}`;
-      return `<a class="home-nudge ${evToday.length ? 'is-today' : ''}" href="${href}"><i class="ic ic-party" aria-hidden="true"></i>
-        <span class="hn-txt"><strong>${esc(when)}${e.start_time ? ` ${esc(fmt.time(e.start_time))}` : ''}</strong> ${esc(e.title)}${guests(e) ? ` <span class="hn-g">· ${guests(e)}</span>` : ''}</span>${more}<i class="ic ic-next" aria-hidden="true"></i></a>`;
+      return `<div class="home-nudges">${list.map((e) => {
+        const isToday = e.event_date === today;
+        const when = isToday ? L({ en: 'Today', nl: 'Vandaag' }) : relDay(e.event_date);
+        return `<a class="home-nudge ${isToday ? 'is-today' : ''}" href="#/events/${e.id}"><i class="ic ic-party" aria-hidden="true"></i>
+        <span class="hn-txt"><strong>${esc(when)}${e.start_time ? ` ${esc(fmt.time(e.start_time))}` : ''}</strong> ${esc(e.title)}${guests(e) ? ` <span class="hn-g">· ${guests(e)}</span>` : ''}</span><i class="ic ic-next" aria-hidden="true"></i></a>`;
+      }).join('')}</div>`;
     })()}
 
     <div class="home-cols">

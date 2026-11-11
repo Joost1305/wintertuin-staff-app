@@ -1629,3 +1629,6 @@ body.sheet-open { overflow: hidden; }
 .rm-ll { margin: 0 0 14px; } .rm-ll summary { cursor: pointer; font-weight: 600; color: var(--primary); }
 
 .ev-summary { font-weight: 600; color: var(--ink-2, inherit); margin: 2px 0 2px; }
+
+.home-nudges { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+.home-nudges .home-nudge { margin: 0; }
