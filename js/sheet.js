@@ -97,13 +97,18 @@ export async function sheetPdf(html, name) {
     });
     const cuts = [...new Set(els.map((el) => Math.round(top(el) + el.getBoundingClientRect().height)).concat(els.map((el) => Math.round(top(el)))))].sort((a, b) => a - b);
     const free = (y) => !atomic.some(([a, b]) => a < y - 1 && y + 1 < b);
+    // a section that does not fit any more moves whole to the next page, heading and all
+    const heads = full ? [] : [...body.querySelectorAll('h2, .sec-title')].map((h) => Math.round(top(h))).sort((a, b) => a - b);
     const pages = []; let s = 0;
     while (s < total - 2) {
       const f = [...forced].filter((y) => y > s + 4 && y <= s + H).sort((a, b) => a - b)[0];
       let e;
       if (f) e = f;
       else if (s + H >= total) e = total;
-      else e = cuts.filter((y) => y > s + H * 0.4 && y <= s + H && free(y)).pop() || s + H;
+      else {
+        const h = heads.filter((y) => y > s + H * 0.4 && y <= s + H).pop();
+        e = h || cuts.filter((y) => y > s + H * 0.4 && y <= s + H && free(y)).pop() || s + H;
+      }
       pages.push([s, e]); s = e;
     }
     window.__sheetCuts = pages; // for the tests
@@ -116,6 +121,8 @@ export async function sheetPdf(html, name) {
       if (i) pdf.addPage();
       if (full) { pdf.setFillColor(255, 253, 240); pdf.rect(0, 0, 210, 297, 'F'); }
       pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, 210 - 2 * margin, (b - a) / MM);
+      // "1 van 2" bottom right, in the margin
+      if (!full && pages.length > 1) { pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(110, 117, 112); pdf.text(`${i + 1} ${T('van', 'of')} ${pages.length}`, 210 - margin, 297 - 7, { align: 'right' }); }
     }
     const out = new File([pdf.output('blob')], fileName(html, name), { type: 'application/pdf' });
     out.pages = pages; // where each page starts and ends, for the marks in the preview
@@ -184,10 +191,11 @@ export function openSheet(html, name, runPrint, wa = {}) {
     const d = fr.contentDocument; if (full || !d || !d.body || pages.length < 2) return;
     d.querySelectorAll('.sv-break').forEach((x) => x.remove());
     const pad = Math.round(14 * MM);
-    pages.slice(1).forEach(([y], i) => {
-      const m = d.createElement('div'); m.className = 'sv-break';
-      m.style.cssText = `position:absolute;left:0;right:0;top:${y + pad}px;border-top:2px dashed #9aa5a0;pointer-events:none`;
-      m.innerHTML = `<span style="position:absolute;right:8px;top:-11px;background:#fff;padding:0 6px;font:600 9pt -apple-system,Segoe UI,Arial,sans-serif;color:#6b7570">${T('Pagina', 'Page')} ${i + 2}</span>`;
+    const n = pages.length; const lbl = 'position:absolute;right:8px;font:600 8pt -apple-system,Segoe UI,Arial,sans-serif;color:#6b7570';
+    pages.forEach(([, y], i) => {
+      const m = d.createElement('div'); m.className = i < n - 1 ? 'sv-break' : 'sv-pageno';
+      m.style.cssText = `position:absolute;left:0;right:0;top:${y + pad}px;${i < n - 1 ? 'border-top:2px dashed #9aa5a0;' : ''}pointer-events:none`;
+      m.innerHTML = `<span style="${lbl};top:-22px">${i + 1} ${T('van', 'of')} ${n}</span>`;
       d.body.appendChild(m);
     });
   };
