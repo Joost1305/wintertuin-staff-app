@@ -794,7 +794,7 @@ function clientHtml(ev, l) {
     ${ev.deviations || ev.cancellation_terms ? `<h2>${T('Aanvullende afspraken', 'Additional arrangements')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
     <div class="uvh" ${byLandlord || !uvhOn ? 'hidden style="display:none"' : ''}>${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${esc(qt(l, 'approval'))}</p>
-    <p class="small consent" ${byLandlord ? 'style="display:none"' : ''}>${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
+    <p class="small consent" ${byLandlord || !c.newsletter_on ? 'style="display:none"' : ''}>${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
     <p class="small"><strong>${byLandlord || !uvhOn ? T('Getekend voor akkoord.', 'Signed for agreement.') : T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);

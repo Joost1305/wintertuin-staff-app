@@ -52,6 +52,7 @@ export async function renderCompanySettings(el) {
         <div class="field"><label for="co-pay">${L({ nl: 'Betaaltermijn factuur (dagen)', en: 'Invoice payment term (days)' })}</label><input id="co-pay" name="pay_days" inputmode="numeric" value="${esc(String(c.pay_days ?? 14))}"></div></div>
     </form>
     <h3 style="margin:18px 0 4px">${L({ nl: 'Uniforme Voorwaarden Horeca (UVH)', en: 'Uniform Conditions for the Hospitality Industry (UVH)' })}</h3>
+    <label class="small" style="display:flex;gap:8px;align-items:center;margin:12px 0 0"><input type="checkbox" id="co-nl-on" ${c.newsletter_on ? 'checked' : ''}> ${L({ nl: 'Vakje voor de nieuwsbrief op offertes en bevestigingen', en: 'Newsletter box on quotes and confirmations' })}</label>
     <label class="small" style="display:flex;gap:8px;align-items:center;margin:4px 0 8px"><input type="checkbox" id="co-uvh-on" ${c.uvh_on ? 'checked' : ''}> ${L({ nl: 'UVH op offertes en bevestigingen zetten', en: 'Put the UVH on quotes and confirmations' })}</label>
     <p class="small muted">${L({ nl: 'De UVH gaan als pdf mee met elke offerte. Zet hier de pdf die je als KHN-lid hebt gedownload.', en: 'The UVH go along with every quote as a PDF. Upload the PDF you downloaded as a KHN member.' })}</p>
     <div class="co-uvh">${c.uvh_url ? `<a class="btn btn-sm" href="${esc(c.uvh_url)}" target="_blank" rel="noopener"><i class="ic ic-book" aria-hidden="true"></i> ${L({ nl: 'UVH bekijken', en: 'View UVH' })}</a> <span class="small muted">${esc(c.uvh_version || '')}</span>` : `<span class="small muted">${L({ nl: 'Nog geen UVH-pdf.', en: 'No UVH PDF yet.' })}</span>`}
@@ -64,6 +65,7 @@ export async function renderCompanySettings(el) {
     out.quote_days = Math.max(1, parseInt(f.elements.quote_days.value, 10) || 14);
     out.pay_days = Math.max(1, parseInt(f.elements.pay_days.value, 10) || 14);
     out.uvh_on = !!(document.getElementById('co-uvh-on') || {}).checked;
+    out.newsletter_on = !!(document.getElementById('co-nl-on') || {}).checked;
     return out;
   };
   $('#co-save').onclick = async () => {
