@@ -807,7 +807,7 @@ function guestTimeline(ev) {
   if (a == null) return tl;
   return tl.filter((x) => { const v2 = m(x.time); if (v2 == null || b == null) return v2 == null || v2 >= a; return b >= a ? v2 >= a && v2 <= b : v2 >= a || v2 <= b; }); // also past midnight
 }
-const quoteFileName = (ev, l) => `${docName(ev, l)} ${ev.title}`;
+const quoteFileName = (ev, l) => `${docName(ev, l)} ${ev.title} ${ev.event_date}`; // the event's date, not today's
 function printClient(ev, l) { printHtml(clientHtml(ev, l), { name: quoteFileName(ev, l), wa: { phone: ev.client_phone, text: `${docName(ev, l)} ${ev.title}, ${dateIn(ev.event_date, l)}` } }); }
 
 function printKitchen(ev) {
@@ -823,7 +823,7 @@ function printKitchen(ev) {
     ${unknown.length ? `<div class="small">${t('ev_free_text_warning')}</div>` : ''}
     ${(ev.timeline || []).length ? `<h2>${t('ev_timeline')}</h2>${timelineHtml(ev)}` : ''}
     ${ev.notes_kitchen ? `<h2>${t('ev_notes_kitchen')}</h2><div class="pre">${esc(ev.notes_kitchen)}</div>` : ''}
-  </div>`);
+  </div>`, { name: `${t('ev_print_kitchen')} ${ev.title} ${ev.event_date}` });
 }
 
 // The full BEO for ourselves: every field that is filled in, with the internal and department notes, prices and staff
@@ -848,7 +848,7 @@ function printInternal(ev, shifts) {
       + rows(['prices_incl_vat', 'client_type', 'min_spend', 'deposit', 'deposit_due', 'deposit_paid', 'quote_valid_until', 'corkage', 'payment_terms', 'deviations', 'cancellation_terms', 'uvh_sent_at']))}
     ${sec(t('ev_sec_departments'), rows(['notes_kitchen', 'notes_bar', 'notes_service', 'notes_cleaning']))}
     ${sec(t('ev_sec_internal'), rows(['notes_internal', 'client_confirmed_at', 'client_confirmed_by']))}
-  </div>`, { name: `BEO intern ${ev.title}` });
+  </div>`, { name: `BEO intern ${ev.title} ${ev.event_date}` });
 }
 function printService(ev, shifts) {
   const g = guestsOf(ev);
@@ -867,7 +867,7 @@ function printService(ev, shifts) {
     ${ev.notes_service ? `<h2>${t('ev_notes_service')}</h2><div class="pre">${esc(ev.notes_service)}</div>` : ''}
     ${ev.notes_bar ? `<h2>${t('ev_notes_bar')}</h2><div class="pre">${esc(ev.notes_bar)}</div>` : ''}
     ${ev.notes_cleaning ? `<h2>${t('ev_notes_cleaning')}</h2><div class="pre">${esc(ev.notes_cleaning)}</div>` : ''}
-  </div>`);
+  </div>`, { name: `${t('ev_print_service')} ${ev.title} ${ev.event_date}` });
 }
 
 

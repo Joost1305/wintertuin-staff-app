@@ -55,8 +55,11 @@ function mainFonts() {
 const fileName = (html, name) => {
   let n = name;
   if (!n) { const d = document.createElement('div'); d.innerHTML = html; const h = d.querySelector('h1'); n = h ? h.textContent : 'Wintertuin'; }
-  n = String(n).trim().replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').slice(0, 80) || 'Wintertuin';
-  return `${/wintertuin/i.test(n) ? '' : 'Wintertuin '}${n} ${todayIso()}.pdf`;
+  const dm = String(n).trim().match(/ (\d{4}-\d{2}-\d{2})$/); // keep a date at the end when the name is shortened
+  n = String(n).trim().replace(/ \d{4}-\d{2}-\d{2}$/, '').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').slice(0, 80) || 'Wintertuin';
+  if (dm) n += ` ${dm[1]}`;
+  // a name that already has a date (an event's date) keeps it; otherwise today's date
+  return `${/wintertuin/i.test(n) ? '' : 'Wintertuin '}${n}${/\d{4}-\d{2}-\d{2}$/.test(n) ? '' : ` ${todayIso()}`}.pdf`;
 };
 
 // Make a PDF of the sheet: drawn page by page, cut between rows and never through a row, a heading or a block that must stay whole

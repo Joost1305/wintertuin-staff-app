@@ -320,9 +320,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.evaluate(() => { const e = window.__mockdb.events[0]; e.notes_internal = 'INTERNAL-ONLY-XYZ'; });
       await p.goto(BASE + '#/events'); await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
       await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
+      await p.evaluate(() => { window.__keepSheet = true; });
       await p.click('summary:has-text("Print")'); await p.click('[data-print=internal]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
       if (!/INTERNAL-ONLY-XYZ/.test(html) || !/Bread warm/.test(html)) throw new Error('full internal BEO');
+      const nm = await p.evaluate(async () => { const v = document.getElementById('sheet-view'); const f = await v.__job; const e = window.__mockdb.events[0]; return [f.name, e.event_date]; });
+      if (!nm[0].endsWith(`${nm[1]}.pdf`)) throw new Error('file name should carry the event date: ' + nm.join(' / '));
+      await p.click('.sv-x'); await p.evaluate(() => { window.__keepSheet = false; });
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       if (/INTERNAL-ONLY-XYZ/.test(await p.evaluate(() => window.__printed))) throw new Error('internal note on the guest PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
