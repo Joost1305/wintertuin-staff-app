@@ -18,7 +18,7 @@ export const QT_DEFAULTS = {
     intro_quote: 'Beste {voornaam}, fijn dat je {event} bij ons in de Wintertuin wilt vieren. Hieronder staat ons voorstel; laat gerust weten als je iets anders wilt.',
     intro_confirm: 'Beste {voornaam}, fijn dat je bij ons in de Wintertuin viert. Hieronder staat alles wat we samen hebben afgesproken.',
     allergy: 'Laat allergieën en dieetwensen op tijd weten, dan houden we er graag rekening mee. Sporen van andere ingrediënten kunnen we helaas niet helemaal uitsluiten.',
-    final_count: 'We factureren het definitieve aantal gasten, met het gegarandeerde aantal als minimum.',
+    final_count: '', // off by default; a manager can still write one under Settings
     uvh: 'Op deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing, gedeponeerd bij de Kamer van Koophandel. Daarin staan onder meer de afspraken over annuleren en wijzigen.',
     approval: 'Met je handtekening bevestig je dit event en de voorwaarden hierboven. Wijzigingen na de bevestiging geef je schriftelijk door; daarvan maken we een nieuwe versie.',
     mail: 'Beste {voornaam},\n\nHierbij {de_offerte} voor {event} op {datum}. Je vindt hem als pdf in de bijlage.\n{geldig_tot}\n\nOp deze overeenkomst zijn de Uniforme Voorwaarden Horeca (UVH) van toepassing. {uvh_link}\n\nLaat je ons weten of alles klopt? Dan zetten we het vast.\n\nHartelijke groet,\nHet Wintertuin team',
@@ -27,7 +27,7 @@ export const QT_DEFAULTS = {
     intro_quote: 'Dear {voornaam}, thank you for thinking of the Wintertuin for {event}. Below is our proposal; just let us know if you would like anything changed.',
     intro_confirm: 'Dear {voornaam}, we are glad you are celebrating with us at the Wintertuin. Below is everything we agreed together.',
     allergy: 'Let us know about allergies and dietary needs in good time and we will gladly take them into account. We cannot fully rule out traces of other ingredients.',
-    final_count: 'We invoice the final number of guests, with the guaranteed number as a minimum.',
+    final_count: '',
     uvh: 'The Uniform Conditions for the Hospitality Industry (UVH) apply to this agreement, filed with the Chamber of Commerce. They include the rules on cancelling and changes.',
     approval: 'With your signature you confirm this event and the conditions above. Please send changes after the confirmation in writing; we then make a new version.',
     mail: 'Dear {voornaam},\n\nPlease find {de_offerte} for {event} on {datum} attached as a PDF.\n{geldig_tot}\n\nThe Uniform Conditions for the Hospitality Industry (UVH) apply to this agreement. {uvh_link}\n\nCould you let us know if everything is right? Then we will confirm it.\n\nKind regards,\nThe Wintertuin team',

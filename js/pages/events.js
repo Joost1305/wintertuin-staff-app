@@ -784,7 +784,7 @@ function clientHtml(ev, l) {
       [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur.', 'Deducted from the final invoice.')}` : ''],
       [tt('ev_corkage'), ev.corkage ? esc(ev.corkage) : ''],
       [T('Betaling', 'Payment'), `${T(`Binnen ${payDays} dagen na factuurdatum`, `Within ${payDays} days of the invoice date`)}${c.iban ? ` ${T('op', 'to')} ${esc(c.iban)}` : ''}.${ev.payment_terms ? ` <span class="pre">${esc(ev.payment_terms)}</span>` : ''}`]])}
-    ${byLandlord ? '' : `<div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>`}
+    ${byLandlord || !qt(l, 'final_count') ? '' : `<div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>`}
     ${ev.deviations || ev.cancellation_terms ? `<h2>${T('Aanvullende afspraken', 'Additional arrangements')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
     <div class="uvh" ${byLandlord ? 'hidden style="display:none"' : ''}>${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${esc(qt(l, 'approval'))}</p>
