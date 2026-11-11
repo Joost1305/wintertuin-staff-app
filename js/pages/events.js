@@ -22,7 +22,7 @@ const STYLES = ['style_seated', 'style_family', 'style_buffet', 'style_walking',
 
 // Field groups, used for the editor, the history and the prints
 const SIMPLE = [
-  ['title', 'ev_title'], ['event_type', 'ev_type'], ['event_date', 'ev_date'], ['start_time', 'ev_start'], ['end_time', 'ev_end'],
+  ['title', 'ev_title'], ['event_type', 'ev_type'], ['summary', 'ev_summary'], ['event_date', 'ev_date'], ['start_time', 'ev_start'], ['end_time', 'ev_end'],
   ['status', 'ev_status'], ['option_until', 'ev_option_until'], ['sold_by', 'ev_sold_by'],
   ['client_name', 'ev_client_name'], ['client_company', 'ev_client_company'], ['client_phone', 'ev_phone'], ['client_email', 'ev_email'], ['newsletter_ok', 'ev_newsletter_ok'],
   ['day_contact_name', 'ev_day_contact'], ['day_contact_phone', 'ev_day_contact_phone'], ['invoice_details', 'ev_invoice'], ['reference', 'ev_reference'],
@@ -89,9 +89,24 @@ export async function renderEvents(args = []) {
 }
 
 // ------------------------------------------------------------------ list
+// "13:30" or "08:30–17:30"
+const timeSpan = (e) => (e.start_time ? `${fmt.time(e.start_time)}${e.end_time ? `–${fmt.time(e.end_time)}` : ''}` : '');
+// A short line about what it is, for example "3-gangen lunch" or "Hele dag met lunch"
+export function autoSummary(e) {
+  const nl = lang() !== 'en';
+  const mins = (x) => { const [h, m] = String(x || '').split(':').map(Number); return h * 60 + (m || 0); };
+  const start = e.start_time ? mins(e.start_time) : null;
+  const long = start != null && e.end_time && mins(e.end_time) - start >= 360;
+  const courses = new Set((e.menu || []).filter((x) => (x.group || 'food') === 'food' && ['course_starter', 'course_soup', 'course_main', 'course_dessert', 'course_cheese', 'course_amuse', 'course_intermediate'].includes(x.course)).map((x) => x.course)).size;
+  const meal = start == null ? '' : start < 660 ? (nl ? 'ontbijt' : 'breakfast') : start < 960 ? 'lunch' : (nl ? 'diner' : 'dinner');
+  if (long) return (e.menu || []).length ? (nl ? 'Hele dag met lunch' : 'Full day with lunch') : (nl ? 'Hele dag' : 'Full day');
+  if (courses >= 2 && meal) return nl ? `${courses}-gangen ${meal}` : `${courses}-course ${meal}`;
+  if ((e.menu || []).some((x) => x.course === 'course_bites' || /borrel/i.test(x.course || ''))) return nl ? 'Borrel met hapjes' : 'Drinks with bites';
+  return e.event_type || (meal ? meal.charAt(0).toUpperCase() + meal.slice(1) : '');
+}
 async function renderList(filter = 'upcoming') {
   const today = todayIso();
-  let q = sb.from('events').select('id, title, event_type, event_date, start_time, end_time, status, client_name, client_company, guests_expected, guests_guaranteed, guests_final, area, version');
+  let q = sb.from('events').select('id, title, event_type, summary, event_date, start_time, end_time, status, client_name, client_company, guests_expected, guests_guaranteed, guests_final, area, version');
   if (filter === 'upcoming') q = q.gte('event_date', today).order('event_date').order('start_time');
   else if (filter === 'past') q = q.lt('event_date', today).order('event_date', { ascending: false });
   else q = q.order('event_date', { ascending: false });
@@ -103,7 +118,7 @@ async function renderList(filter = 'upcoming') {
       <a class="card ev-row ${e.status === 'cancelled' ? 'is-cancelled' : ''}" href="#/events/${e.id}">
         <div class="ev-date"><span class="d">${new Date(`${e.event_date}T12:00:00`).getDate()}</span><span class="m">${esc(new Intl.DateTimeFormat(lang() === 'en' ? 'en-GB' : 'nl-NL', { month: 'short' }).format(new Date(`${e.event_date}T12:00:00`)))}</span></div>
         <div class="ev-main"><div class="ev-title">${esc(e.title)}</div>
-          <div class="small muted">${esc(fmt.date(e.event_date))}${e.start_time ? ` · ${fmt.time(e.start_time)}${e.end_time ? `–${fmt.time(e.end_time)}` : ''}` : ''}${e.client_company || e.client_name ? ` · ${esc(e.client_company || e.client_name)}` : ''}${e.area ? ` · ${esc(e.area)}` : ''}</div></div>
+          <div class="small muted">${[e.summary || autoSummary(e), timeSpan(e)].filter(Boolean).map(esc).join(' · ')}</div></div>
         <div class="ev-side">${statusTag(e.status)}${guestsOf(e) ? `<span class="ev-guests">${guestsOf(e)} ${t('ev_p')}</span>` : ''}</div>
       </a>`).join('')}</div>`}`;
   $$('[data-blank]').forEach((b) => (b.onclick = () => { b.closest('details').open = false; printBlank(b.dataset.blank); }));
@@ -135,7 +150,7 @@ async function renderCalendar(month) {
   while (days.length > 35 && days[35].slice(0, 7) !== ym) days.length = 35; // 5 weeks when the 6th is all next month
   const from = days[0]; const to = days[days.length - 1];
   const [rows, calRes] = await Promise.all([
-    sb.from('events').select('id, title, event_date, start_time, end_time, status, client_name, client_company, guests_expected, guests_guaranteed, guests_final, area')
+    sb.from('events').select('id, title, event_type, summary, event_date, start_time, end_time, status, client_name, client_company, guests_expected, guests_guaranteed, guests_final, area')
       .gte('event_date', from).lte('event_date', to).order('event_date').order('start_time'),
     sb.rpc('fin_public_calendar', { p_from: from, p_to: to }).then((r) => r, () => ({ data: [] })),
   ]);
@@ -174,7 +189,7 @@ async function renderCalendar(month) {
     $('#ev-mlist').innerHTML = `<div class="ev-mhead"><strong>${esc(fmt.dateLong(calSel))}</strong>${closed(calSel) ? ` <span class="tag">${t('ev_closed_day')}</span>` : ''}</div>
       ${dayNote(calSel) ? `<div class="ev-note">${esc(dayNote(calSel))}</div>` : ''}
       ${list.length ? list.map((e) => `<a class="ev-mrow ev-${esc(e.status)}" href="#/events/${e.id}"><span class="t">${e.start_time ? fmt.time(e.start_time) : ''}</span>
-        <span class="n"><strong>${esc(e.title)}</strong><span class="small muted">${[e.client_company || e.client_name, e.area].filter(Boolean).map(esc).join(' · ')}</span></span>
+        <span class="n"><strong>${esc(e.title)}</strong><span class="small muted">${[e.summary || autoSummary(e), timeSpan(e)].filter(Boolean).map(esc).join(' · ')}</span></span>
         <span class="s">${statusTag(e.status)}${guestsOf(e) ? `<span class="small">${guestsOf(e)} ${t('ev_p')}</span>` : ''}</span></a>`).join('')
         : `<div class="small muted" style="padding:8px 0">${t('ev_none_day')}</div>`}
       ${mgr ? `<a class="btn btn-sm" href="#/events/new/${calSel}" style="margin-top:8px">+ ${t('ev_new_on')} ${esc(fmt.date(calSel))}</a>` : ''}`;
@@ -198,6 +213,7 @@ async function renderView(ev) {
   app().innerHTML = `
     <a class="settings-back" href="#/events" style="display:inline-block;margin-bottom:8px"><i class="ic ic-prev" aria-hidden="true"></i> ${t('nav_events')}</a>
     <div class="page-head"><div><h1>${esc(ev.title)}</h1>
+        ${ev.summary ? `<div class="ev-summary">${esc(ev.summary)}</div>` : ''}
         <div class="muted small">${esc(fmt.dateLong(ev.event_date))}${ev.start_time ? ` · ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''} · ${statusTag(ev.status)}
           <a href="#/events/${ev.id}/history" class="small" style="margin-left:6px">v${ev.version} · ${t('ev_history')}</a></div></div>
       <div class="page-actions">
@@ -402,6 +418,7 @@ function renderEditor(ev, date = null) {
     <form id="ev-form" autocomplete="off">${courseList}${dietList}${styleList}
       ${sec(t('ev_sec_event'), grid(
         inp('title', 'text', 'required maxlength="120"'), inp('event_type', 'text', `placeholder="${esc(t('ev_type_ph'))}"`),
+        `<div class="field" style="grid-column:1/-1"><label for="f-summary">${t('ev_summary')}</label><input id="f-summary" name="summary" type="text" maxlength="80" value="${esc(v.summary || '')}" placeholder="${esc(t('ev_summary_ph'))}"><div class="hint">${t('ev_summary_hint')}</div></div>`,
         inp('event_date', 'date', 'required'), inp('start_time', 'time'), inp('end_time', 'time'),
         `<div class="field"><label for="f-status">${t('ev_status')}</label><select id="f-status" name="status">${STATUSES.map((s) => `<option value="${s}" ${v.status === s ? 'selected' : ''}>${t('evs_' + s)}</option>`).join('')}</select></div>`,
         inp('option_until', 'date'),
@@ -633,6 +650,7 @@ function renderEditor(ev, date = null) {
     e.preventDefault();
     const row = collect();
     if (!row.title || !row.event_date) { toastError(new Error(t('ev_need_title_date'))); return; }
+    if (!row.summary) row.summary = autoSummary(row) || null; // a short line for the list, made from the menu and the times
     const btn = e.submitter || $('#ev-form button[type=submit]'); btn.disabled = true;
     try {
       let saved;

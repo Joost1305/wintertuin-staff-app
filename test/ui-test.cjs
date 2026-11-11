@@ -418,6 +418,16 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('#ev-wa'); await p.waitForFunction(() => window.__waUrl, null, { timeout: 30000 });
       const u = await p.evaluate(() => { const x = window.__waUrl; delete window.__waHook; return x; });
       if (!/^https:\/\/wa\.me\/31621566474\?text=.+/.test(u) || !/bijlage/.test(decodeURIComponent(u))) throw new Error(u); });
+    await step('events: a short line under the title; left empty it is made on save from the menu and times', async () => {
+      await p.goto(BASE + '#/events/new'); await p.waitForSelector('#f-summary');
+      await p.fill('[name=title]', 'Lunch Summary Test'); await p.fill('[name=event_date]', '2099-01-05'); await p.fill('[name=start_time]', '13:30');
+      await p.click('#ev-form button[type=submit]'); await p.waitForFunction(() => /#\/events\/[^/]+$/.test(location.hash) && !/new/.test(location.hash));
+      const ev = await p.evaluate(() => window.__mockdb.events.find((e) => e.title === 'Lunch Summary Test'));
+      if (ev.summary !== 'Lunch') throw new Error('auto summary: ' + ev.summary);
+      await p.evaluate(() => { window.__mockdb.events.find((e) => e.title === 'Lunch Summary Test').summary = '3-gangen lunch'; });
+      await p.goto(BASE + '#/events/list/upcoming'); await p.waitForSelector('.ev-row');
+      const line = await p.$eval('.ev-row:has-text("Lunch Summary Test") .small', (x) => x.textContent);
+      if (!/3-gangen lunch · 13:30/.test(line) || /2099|jan/i.test(line)) throw new Error('list line: ' + line); });
     await step('rooms: name them in Settings, tick one on an event and its room hire goes on the quote', async () => {
       await p.goto(BASE + '#/settings/rooms'); await p.waitForSelector('#rm-rows [name=rm_name]');
       if (!(await p.$('.note:has-text("examples")'))) throw new Error('example note missing');

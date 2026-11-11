@@ -1627,3 +1627,5 @@ body.sheet-open { overflow: hidden; }
 .hb-tip { background: var(--primary-soft); padding: 8px 12px; border-radius: 10px; font-size: .92rem; }
 .hb-flash { box-shadow: 0 0 0 3px var(--primary); background: var(--primary-soft); }
 .rm-ll { margin: 0 0 14px; } .rm-ll summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+
+.ev-summary { font-weight: 600; color: var(--ink-2, inherit); margin: 2px 0 2px; }
