@@ -411,6 +411,13 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       const sh = await p.evaluate(() => window.__shared);
       require('fs').writeFileSync(`${OUT}/quote.pdf`, Buffer.from(await p.evaluate(() => window.__pdf64), 'base64'));
       if (sh.type !== 'application/pdf' || sh.size < 5000 || !/klant@example\.test/.test(sh.text) || !/bijlage/.test(sh.text)) throw new Error(JSON.stringify(sh)); });
+    await step('events: on a computer, quote via WhatsApp downloads the PDF and opens the chat with the client', async () => {
+      const id = await p.evaluate(() => { const e = window.__mockdb.events[0]; e.client_phone = '06-21566474'; return e.id; });
+      await p.goto(BASE + '#/events'); await p.goto(BASE + `#/events/${id}`); await p.waitForSelector('#ev-wa');
+      await p.evaluate(() => { window.__waUrl = null; window.__waHook = (u) => { window.__waUrl = u; }; });
+      await p.click('#ev-wa'); await p.waitForFunction(() => window.__waUrl, null, { timeout: 30000 });
+      const u = await p.evaluate(() => { const x = window.__waUrl; delete window.__waHook; return x; });
+      if (!/^https:\/\/wa\.me\/31621566474\?text=.+/.test(u) || !/bijlage/.test(decodeURIComponent(u))) throw new Error(u); });
     await step('rooms: name them in Settings, tick one on an event and its room hire goes on the quote', async () => {
       await p.goto(BASE + '#/settings/rooms'); await p.waitForSelector('#rm-rows [name=rm_name]');
       if (!(await p.$('.note:has-text("examples")'))) throw new Error('example note missing');

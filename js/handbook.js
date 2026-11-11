@@ -87,7 +87,7 @@ export const CHAPTERS = [
   ] },
   { id: 'print', app: 'team', title: 'Printen, pdf en delen', routes: [], sections: [
     ['Zo werkt elke printknop', p('Elke printknop opent het blad schermvullend, met <strong>Delen</strong> (pdf via WhatsApp, mail of Bestanden), <strong>PDF</strong> (downloaden) en <strong>Printen</strong>. Op de iPhone-app print je via Delen, Afdrukken.')],
-    ['WhatsApp op de computer', p('Op een computer staat er ook een knop <strong>WhatsApp</strong>, want daar zit WhatsApp niet in het deelmenu. De pdf wordt gedownload en WhatsApp opent (de app of WhatsApp Web) met de tekst al klaar. Sleep de pdf uit je downloads in het gesprek. Bij een offerte of bevestiging opent meteen het gesprek met de klant, als het telefoonnummer is ingevuld.')],
+    ['WhatsApp op de computer', p('Op een computer staat er ook een knop <strong>WhatsApp</strong>, want daar zit WhatsApp niet in het deelmenu. De pdf wordt gedownload en WhatsApp opent (de app of WhatsApp Web) met de tekst al klaar. Sleep de pdf uit je downloads in het gesprek. Bij een event staat bovenaan ook de knop <strong>Offerte via WhatsApp</strong> (of Bevestiging): die maakt de pdf, opent meteen het gesprek met de klant met de tekst klaar, en de pdf sleep je erin. De knop verschijnt als het telefoonnummer van de klant is ingevuld.')],
     ['Opmaak', p('Een kop staat nooit alleen onderaan een pagina, en tabelregels worden niet doormidden gesneden.')],
     ['Tik nog een keer', p('Zegt de app "De pdf is klaar. Tik nog een keer", dan wil de iPhone een verse tik. Tik dan nog een keer op dezelfde knop.')],
   ] },

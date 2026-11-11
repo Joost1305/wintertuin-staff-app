@@ -23,10 +23,11 @@ export function waNumber(phone) {
 // WhatsApp on a computer: a browser cannot hand a file to WhatsApp, so the PDF is downloaded and
 // WhatsApp opens (the desktop app, or WhatsApp Web) with the text ready; drag the PDF into the chat.
 // Call this straight from the click, with the PDF already made, or the browser blocks the new window.
-export function whatsappDesktop(file, { text = '', phone = '' } = {}) {
+// win: a window opened earlier from the click, when the PDF still had to be made
+export function whatsappDesktop(file, { text = '', phone = '', win = null } = {}) {
   if (file) download(file);
   const url = `https://wa.me/${waNumber(phone)}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
-  if (window.__waHook) window.__waHook(url); else window.open(url, '_blank', 'noopener');
+  if (window.__waHook) window.__waHook(url); else if (win) win.location.href = url; else window.open(url, '_blank', 'noopener');
   toast(T('De pdf staat in je downloads. Sleep hem in het WhatsApp-gesprek.', 'The PDF is in your downloads. Drag it into the WhatsApp chat.'));
 }
 

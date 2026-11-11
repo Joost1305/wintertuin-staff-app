@@ -8,7 +8,7 @@ import { t, tIn, lang } from '../i18n.js';
 import { sb, check } from '../data.js';
 import { ALLERGENS } from './menu.js';
 import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKind, KIND_LABEL, uvhL, VAT_RATES } from '../uvh.js';
-import { sheetPdf } from '../sheet.js';
+import { sheetPdf, isDesktop, whatsappDesktop } from '../sheet.js';
 import { loadCourses, DRINK_CODES } from '../courses.js';
 import { loadRooms } from '../rooms.js';
 import { loadQuoteTexts, qt } from '../quotetexts.js';
@@ -202,6 +202,7 @@ async function renderView(ev) {
           <a href="#/events/${ev.id}/history" class="small" style="margin-left:6px">v${ev.version} · ${t('ev_history')}</a></div></div>
       <div class="page-actions">
         <a class="btn btn-primary btn-sm" href="#/events/${ev.id}/edit">${t('edit')}</a>
+        ${ev.client_phone && isDesktop() ? `<button type="button" class="btn-sm" id="ev-wa"><i class="ic ic-whatsapp" aria-hidden="true"></i> ${L2(`${docName(ev, 'nl')} via WhatsApp`, `${docName(ev, 'en')} via WhatsApp`)}</button>` : ''}
         ${ev.client_email ? `<button type="button" class="btn-sm" id="ev-mail"><i class="ic ic-share" aria-hidden="true"></i> ${L2(`${docName(ev, 'nl')} mailen`, `E-mail the ${docName(ev, 'en').toLowerCase()}`)}</button>` : ''}
         <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:240px;padding:10px">
@@ -249,6 +250,7 @@ async function renderView(ev) {
     if (pendingShare) { const ps = pendingShare; pendingShare = null; try { await navigator.share({ files: [ps.file], title: ps.subject, text: ps.text }); } catch { /* closed */ } return; }
     mailQuote(ev, mail);
   };
+  const waBtn = $('#ev-wa'); if (waBtn) waBtn.onclick = () => whatsappQuote(ev, waBtn);
   const del = $('#del');
   if (del) del.onclick = async () => {
     if (!(await confirmDialog(t('ev_confirm_delete'), t('delete')))) return;
@@ -292,7 +294,20 @@ function scheduleHtml(ev, l) {
 // Mail the quote: the PDF goes along as an attachment through the share sheet of the phone (Gmail, Mail),
 // so it is sent from the account chosen there (for example wintertuinrestaurant@gmail.com).
 // Where a browser cannot share files: the PDF is downloaded and the mail opens, to attach it by hand.
-async function mailQuote(ev, btn) {
+// On a computer: the PDF is downloaded and WhatsApp opens the chat with the client, with the quote text ready.
+// The window opens straight from the click (else the browser blocks it) and gets its address once the PDF is made.
+async function whatsappQuote(ev, btn) {
+  const { body } = quoteMessage(ev);
+  const w = window.__waHook ? null : window.open('about:blank', '_blank');
+  const label = btn.innerHTML; btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${esc(L({ en: 'Making PDF…', nl: 'Pdf maken…' }))}`;
+  let file = null;
+  try { file = await sheetPdf(clientHtml(ev, 'nl'), quoteFileName(ev, 'nl')); } catch (e) { toastError(e); }
+  finally { btn.disabled = false; btn.innerHTML = label; }
+  if (!file) { if (w) w.close(); return; }
+  whatsappDesktop(file, { text: body, phone: ev.client_phone, win: w });
+  if (hasUvhCols && !ev.uvh_sent_at) { try { check(await sb.from('events').update({ uvh_sent_at: todayIso() }).eq('id', ev.id)); ev.uvh_sent_at = todayIso(); } catch { /* sent anyway */ } }
+}
+function quoteMessage(ev) {
   const l = 'nl';
   const name = docName(ev, l);
   const subject = `${name} ${ev.title}, ${dateIn(ev.event_date, l)}`;
@@ -304,6 +319,11 @@ async function mailQuote(ev, btn) {
   });
   // a quote of the landlord: signed by her, without the UVH (those are for the restaurant)
   if (ev.quote_by === 'landlord') body = body.split('\n').filter((x) => !/UVH/.test(x)).join('\n').replace(/Het Wintertuin team|The Wintertuin team/, rooms.landlord).replace(/\n{3,}/g, '\n\n');
+  return { name, subject, body };
+}
+async function mailQuote(ev, btn) {
+  const l = 'nl';
+  const { subject, body } = quoteMessage(ev);
   const label = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> ${esc(L({ en: 'Making PDF…', nl: 'Pdf maken…' }))}`; }
   let file = null;
