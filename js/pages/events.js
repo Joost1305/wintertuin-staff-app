@@ -207,8 +207,8 @@ async function renderView(ev) {
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:240px;padding:10px">
             <button type="button" class="btn-sm" data-print="client-nl">${docName(ev, 'nl')} (NL)</button>
             <button type="button" class="btn-sm" data-print="client-en">${docName(ev, 'en')} (EN)</button>
-            <button type="button" class="btn-sm" data-print="kitchen">${t('ev_print_kitchen')}</button>
-            <button type="button" class="btn-sm" data-print="service">${t('ev_print_service')}</button>
+            ${ev.quote_by === 'landlord' ? '' : `<button type="button" class="btn-sm" data-print="kitchen">${t('ev_print_kitchen')}</button>
+            <button type="button" class="btn-sm" data-print="service">${t('ev_print_service')}</button>`}
           </div></details>
         ${isManager() ? `<button type="button" class="btn-sm btn-ghost btn-danger" id="del">${t('delete')}</button>` : ''}</div></div>
     ${ev.status === 'option' && ev.option_until ? `<div class="note" style="margin:0 0 12px">${t('ev_option_note', { d: esc(fmt.dateLong(ev.option_until)) })}</div>` : ''}
