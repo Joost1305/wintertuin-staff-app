@@ -286,7 +286,7 @@ function uvhWarnings(ev) {
   const w = [];
   if (hasUvhCols && !ev.client_type) w.push(L2('kies zakelijk of particulier', 'choose business or private'));
   if (companyGaps(company).length) w.push(`<a href="#/settings/company">${L2('bedrijfsgegevens invullen', 'fill in the company details')}</a>`);
-  if (!company.uvh_url) w.push(`<a href="#/settings/company">${L2('UVH-pdf toevoegen', 'add the UVH PDF')}</a>`);
+  if (company.uvh_on && !company.uvh_url) w.push(`<a href="#/settings/company">${L2('UVH-pdf toevoegen', 'add the UVH PDF')}</a>`);
   if (!priceSummary(ev, guestsOf(ev)).lines.length) w.push(L2('prijsregels invullen', 'add price lines'));
   return w.length ? `<div class="note ev-uvh-note" style="margin:0 0 12px"><strong>${L2('Voor de offerte nog', 'Before the quote')}:</strong> ${w.join(', ')}.</div>` : '';
 }
@@ -334,7 +334,8 @@ function quoteMessage(ev) {
     uvh_link: company.uvh_url ? `Je kunt ze hier lezen en opslaan: ${company.uvh_url}` : '',
   });
   // a quote of the landlord: signed by her, without the UVH (those are for the restaurant)
-  if (ev.quote_by === 'landlord') body = body.split('\n').filter((x) => !/UVH/.test(x)).join('\n').replace(/Het Wintertuin team|The Wintertuin team/, rooms.landlord).replace(/\n{3,}/g, '\n\n');
+  if (ev.quote_by === 'landlord' || !company.uvh_on) body = body.split('\n').filter((x) => !/UVH/.test(x)).join('\n').replace(/\n{3,}/g, '\n\n'); // UVH off for now (Settings)
+  if (ev.quote_by === 'landlord') body = body.replace(/Het Wintertuin team|The Wintertuin team/, rooms.landlord);
   return { name, subject, body };
 }
 async function mailQuote(ev, btn) {
@@ -739,13 +740,16 @@ function clientHtml(ev, l) {
       ${ps.lines.map((x) => `<tr><td>${esc(x.label || (x.room ? tt('ev_room_hire') : tt('ev_price_pp')))}${x.per === 'pp' && !/p\.p\.|per pers/i.test(x.label || '') ? ` <span class="small">(${T('per persoon', 'per person')})</span>` : ''}</td><td class="n">${x.qty}</td><td class="n">${money(business ? x.priceEx : x.price)}</td><td class="n">${pct(x.vat)}</td><td class="n">${money(business ? x.ex : x.total)}</td></tr>`).join('')}
       ${business ? ps.byRate.map((r) => `<tr class="sub"><td colspan="4">${T('Btw', 'VAT')} ${pct(r.rate)} ${T('over', 'on')} ${money(r.ex)}</td><td class="n">${money(r.vat)}</td></tr>`).join('') : ''}
       <tr class="tot"><td colspan="4">${T('Totaal inclusief btw', 'Total including VAT')}</td><td class="n">${money(ps.total)}</td></tr>
-      ${g && ps.total ? `<tr class="sub"><td colspan="4">${T(`Dat is per persoon (${g} gasten)`, `That is per person (${g} guests)`)}</td><td class="n">${money(ps.total / g)}</td></tr>` : ''}
       ${!business && ps.byRate.length ? `<tr class="sub"><td colspan="5">${T('Waarvan btw', 'Of which VAT')}: ${ps.byRate.map((r) => `${pct(r.rate)} ${money(r.vat)}`).join(', ')}</td></tr>` : ''}</table>` : '';
   const sch = cancellationSchedule(ev, ps.value, l);
   const schHtml = !sch ? '' : sch.kind === 'private' ? `<p class="small">${esc(sch.text)}</p>`
     : `<table>${sch.rows.map((r) => `<tr><td class="k" style="width:58%">${esc(r.when)}</td><td>${r.pct ? `${r.pct}% ${T('van de reserveringswaarde', 'of the booking value')}${r.amountText ? ` (${esc(r.amountText)})` : ''}` : T('kosteloos', 'free of charge')}</td></tr>`).join('')}</table>
       ${(sch.rules || []).map((x) => `<p class="small" style="margin:3px 0 0">${esc(x)}</p>`).join('')}`;
   const payDays = Number(c.pay_days) || 14;
+  const uvhOn = !!c.uvh_on; // the UVH on quotes: off for now, switched on under Settings, Company details
+  // "one week before ... with a minimum of 25": the guaranteed number, else the expected; without a number that part goes
+  const minG = ev.guests_guaranteed || ev.guests_expected;
+  const finalCount = minG ? qt(l, 'final_count', { minimum: minG }) : qt(l, 'final_count').replace(/,?[^,.]*\{minimum\}/, '').trim();
   return (`${sheetCss}<style>
     .beo .intro { margin: 10px 0 4px; font-size: 10.5pt; line-height: 1.5; }
     .beo .q-brand { display: flex; align-items: center; gap: 10px; } .beo .q-brand img { width: 46px; height: auto; display: block; }
@@ -784,12 +788,12 @@ function clientHtml(ev, l) {
       [T('Aanbetaling', 'Deposit'), ev.deposit != null ? `${money(ev.deposit)}${ev.deposit_due ? `, ${tt('ev_before')} ${esc(dateIn(ev.deposit_due, l))}` : ''}${ev.deposit_paid ? ` (${tt('ev_paid')})` : ''}. ${T('Wordt verrekend met de eindfactuur.', 'Deducted from the final invoice.')}` : ''],
       [tt('ev_corkage'), ev.corkage ? esc(ev.corkage) : ''],
       [T('Betaling', 'Payment'), `${T(`Binnen ${payDays} dagen na factuurdatum`, `Within ${payDays} days of the invoice date`)}${c.iban ? ` ${T('op', 'to')} ${esc(c.iban)}` : ''}.${ev.payment_terms ? ` <span class="pre">${esc(ev.payment_terms)}</span>` : ''}`]])}
-    ${byLandlord || !qt(l, 'final_count') ? '' : `<div class="small" style="margin-top:4px">${esc(qt(l, 'final_count'))}</div>`}
+    ${byLandlord || !finalCount ? '' : `<div class="small" style="margin-top:4px">${esc(finalCount)}</div>`}
     ${ev.deviations || ev.cancellation_terms ? `<h2>${T('Aanvullende afspraken', 'Additional arrangements')}</h2><p class="small pre">${esc([ev.deviations, ev.cancellation_terms].filter(Boolean).join('\n'))}</p>` : ''}
-    <div class="uvh" ${byLandlord ? 'hidden style="display:none"' : ''}>${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
+    <div class="uvh" ${byLandlord || !uvhOn ? 'hidden style="display:none"' : ''}>${esc(qt(l, 'uvh')).replace(/(Uniforme Voorwaarden Horeca \(UVH\)|Uniform Conditions for the Hospitality Industry \(UVH\))/, '<strong>$1</strong>')} ${T('Je ontvangt ze bij deze', 'You receive them with this')} ${docTitle.toLowerCase()}${c.uvh_url ? `${T('; ook te lezen en op te slaan via', '; also available to read and save at')} ${esc(c.uvh_url)}` : ''}.${c.house_rules ? ` ${T('Daarnaast gelden onze huisregels', 'Our house rules also apply')}: ${esc(c.house_rules)}` : ''}</div>
     <h2>${tt('ev_approval')}</h2><p class="small">${esc(qt(l, 'approval'))}</p>
     <p class="small consent" ${byLandlord ? 'style="display:none"' : ''}>${ev.newsletter_ok ? '&#9746;' : '&#9744;'} ${tt('ev_newsletter_consent')}</p>
-    <p class="small"><strong>${byLandlord ? T('Getekend voor akkoord.', 'Signed for agreement.') : T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
+    <p class="small"><strong>${byLandlord || !uvhOn ? T('Getekend voor akkoord.', 'Signed for agreement.') : T('Getekend voor akkoord en voor ontvangst van de Uniforme Voorwaarden Horeca (UVH).', 'Signed for agreement and for receipt of the Uniform Conditions for the Hospitality Industry (UVH).')}</strong></p>
     <div class="sign"><div>${tt('ev_sign_name')}</div><div>${tt('ev_sign_date')}</div><div>${tt('ev_sign_signature')}</div></div>
   </div>`);
 }

@@ -310,11 +310,12 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       let html = await p.evaluate(() => window.__printed);
       if (!/>Bevestiging</.test(html) || !/bakery/.test(html) || !/Handtekening/.test(html)) throw new Error('client NL');
-      if (!/Uniforme Voorwaarden Horeca/.test(html) || !/ontvangst van de Uniforme Voorwaarden Horeca/.test(html)) throw new Error('no UVH on the confirmation');
+      if (/ontvangst van de Uniforme Voorwaarden Horeca/.test(html) || !/<div class="uvh" hidden/.test(html) || !/Getekend voor akkoord\./.test(html)) throw new Error('UVH should be off on the confirmation for now');
+      if (!/een week van tevoren het definitieve aantal gasten, met een minimum van \d+/.test(html)) throw new Error('final number line');
       if (!/Btw 9% over/.test(html) || !/Btw 21% over/.test(html) || !/7\.560,00/.test(html)) throw new Error('VAT per rate');
       if (/Soort gast|Client type/.test(html)) throw new Error('client type on the guest PDF');
-      if (!/per persoon/.test(html) || !/class="intro"/.test(html)) throw new Error('no per person or opening');
-      if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html) || !/annuleren en wijzigen/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');
+      if (/Dat is per persoon/.test(html) || !/class="intro"/.test(html)) throw new Error('per person total should be gone; opening needed');
+      if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
