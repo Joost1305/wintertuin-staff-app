@@ -222,8 +222,9 @@ async function renderView(ev) {
         ${ev.client_email ? `<button type="button" class="btn-sm" id="ev-mail"><i class="ic ic-share" aria-hidden="true"></i> ${L2(`${docName(ev, 'nl')} mailen`, `E-mail the ${docName(ev, 'en').toLowerCase()}`)}</button>` : ''}
         <details class="export-menu" style="position:relative"><summary class="btn btn-sm"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')} &#9662;</summary>
           <div class="card" style="position:absolute;right:0;top:110%;z-index:10;display:flex;flex-direction:column;gap:6px;min-width:240px;padding:10px">
-            <button type="button" class="btn-sm" data-print="client-nl">${docName(ev, 'nl')} (NL)</button>
-            <button type="button" class="btn-sm" data-print="client-en">${docName(ev, 'en')} (EN)</button>
+            <button type="button" class="btn-sm" data-print="internal">${t('ev_print_internal')}</button>
+            <button type="button" class="btn-sm" data-print="client-nl">${L2(`${docName(ev, 'nl')} voor de gast (NL)`, `${docName(ev, 'en')} for the guest (NL)`)}</button>
+            <button type="button" class="btn-sm" data-print="client-en">${L2(`${docName(ev, 'nl')} voor de gast (EN)`, `${docName(ev, 'en')} for the guest (EN)`)}</button>
             ${ev.quote_by === 'landlord' ? '' : `<button type="button" class="btn-sm" data-print="kitchen">${t('ev_print_kitchen')}</button>
             <button type="button" class="btn-sm" data-print="service">${t('ev_print_service')}</button>`}
           </div></details>
@@ -259,6 +260,7 @@ async function renderView(ev) {
     const k = b.dataset.print;
     if (k.startsWith('client')) printClient(ev, k.slice(7));
     else if (k === 'kitchen') printKitchen(ev);
+    else if (k === 'internal') printInternal(ev, shifts);
     else printService(ev, shifts);
   }));
   const mail = $('#ev-mail'); if (mail) mail.onclick = async () => {
@@ -777,7 +779,7 @@ function clientHtml(ev, l) {
         [tt('ev_guarantee_deadline'), ev.guarantee_deadline ? esc(dateIn(ev.guarantee_deadline, l)) : '']])}</div></div>
     ${(() => { const tl = guestTimeline(ev); return tl.length ? `<h2>${tt('ev_timeline')}</h2>${timelineHtml({ ...ev, timeline: tl })}` : ''; })()}
     ${!byLandlord && (ev.menu || []).length ? `<h2>${tt('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:22%">${esc(courseOf(m.course))}</td><td>${esc(m.name || '')}</td></tr>`).join('')}</table>` : ''}
-    ${byLandlord ? '' : `<h2>${tt('ev_dietary')}</h2>`}${byLandlord ? '' : (ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${esc(String(d.count ?? ''))}×</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
+    ${byLandlord ? '' : `<h2>${tt('ev_dietary')}</h2>`}${byLandlord ? '' : (ev.dietary || []).length ? `<table>${ev.dietary.map((d) => `<tr><td class="k" style="width:10%">${d.count != null ? `${esc(String(d.count))}×` : ''}</td><td>${esc(dietOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}</td></tr>`).join('')}</table>` : ''}
     ${byLandlord ? '' : `<p class="small">${esc(qt(l, 'allergy'))}</p>`}
     ${ev.setup || ev.drinks || ev.extras ? `<h2>${tt('ev_sec_setup')}</h2>${kv([[tt('ev_setup'), ev.setup ? `<span class="pre">${esc(ev.setup)}</span>` : ''], [tt('ev_drinks'), ev.drinks ? `<span class="pre">${esc(ev.drinks)}</span>` : ''], [tt('ev_extras'), ev.extras ? `<span class="pre">${esc(ev.extras)}</span>` : '']])}` : ''}
     <h2>${tt('ev_sec_money')}</h2>${priceTable}
@@ -824,6 +826,30 @@ function printKitchen(ev) {
   </div>`);
 }
 
+// The full BEO for ourselves: every field that is filled in, with the internal and department notes, prices and staff
+function printInternal(ev, shifts) {
+  const g = guestsOf(ev);
+  const rows = (keys) => kv(keys.filter((k) => !(ev[k] == null || ev[k] === '' || ev[k] === false)).map((k) => [t(LABEL[k]), display(k, ev[k])]));
+  const sec = (title, html) => (html && html.replace(/<table><\/table>/g, '').trim() ? `<h2>${title}</h2>${html}` : '');
+  const ps = priceSummary(ev, g);
+  printHtml(`${sheetCss}<div class="beo">
+    <div class="top"><div><div class="brand">${t('ev_print_internal')}</div><div class="small">v${ev.version} · ${esc(fmt.stamp())} · ${esc(t('evs_' + ev.status))}</div></div><div class="big">${g ?? '?'} ${t('ev_p')}</div></div>
+    <h1>${esc(ev.title)}</h1><div class="big">${esc(fmt.dateLong(ev.event_date))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
+    ${ev.summary ? `<p><strong>${esc(ev.summary)}</strong></p>` : ''}
+    ${sec(t('ev_sec_event'), rows(['event_type', 'status', 'option_until', 'sold_by']))}
+    ${sec(t('ev_sec_client'), rows(['client_name', 'client_company', 'client_phone', 'client_email', 'newsletter_ok', 'day_contact_name', 'day_contact_phone', 'reference', 'invoice_details']))}
+    ${sec(t('ev_guests'), rows(['guests_expected', 'guests_guaranteed', 'guarantee_deadline', 'guests_final', 'children']))}
+    ${(ev.dietary || []).length ? `<div class="warn"><strong>${t('ev_dietary')}</strong><br>${ev.dietary.map((d) => `${d.count != null ? `${esc(String(d.count))}× ` : ''}${esc(labelOf(d.type))}${d.who ? ` (${esc(d.who)})` : ''}`).join('<br>')}</div>` : ''}
+    ${(ev.timeline || []).length ? `<h2>${t('ev_timeline')}</h2>${timelineHtml(ev)}` : ''}
+    ${(ev.menu || []).length ? `<h2>${t('ev_menu')}</h2><table>${ev.menu.map((m) => `<tr><td class="k" style="width:20%">${esc(labelOf(m.course))}</td><td>${esc(m.name || '')}${(m.allergens || []).length ? ` <span class="al">(${m.allergens.map((a) => esc(t('al_' + a))).join(', ')})</span>` : ''}</td></tr>`).join('')}</table>` : ''}
+    ${sec(t('ev_sec_setup'), rows(['area', 'exclusive', 'service_style', 'setup', 'drinks', 'extras']))}
+    ${sec(t('ev_sec_staff'), rows(['staff_needed', 'staffing']) + (shifts.length ? `<table>${shifts.map((x) => `<tr><td class="k" style="width:18%">${fmt.time(x.start_time)}–${fmt.time(x.end_time)}</td><td>${esc(x.profiles ? x.profiles.full_name : '')}${x.section ? ` · ${esc(x.section)}` : ''}</td></tr>`).join('')}</table>` : ''))}
+    ${sec(t('ev_sec_money'), (ps.lines.length ? `<table>${ps.lines.map((x) => `<tr><td>${esc(x.label || t('ev_price_pp'))}</td><td>${x.qty} × ${esc(euro(x.price))}</td><td>${Math.round(x.vat * 100)}%</td><td style="text-align:right">${esc(euro(x.total))}</td></tr>`).join('')}<tr><td colspan="3"><strong>${L2('Totaal incl. btw', 'Total incl. VAT')}</strong></td><td style="text-align:right"><strong>${esc(euro(ps.total))}</strong></td></tr></table>` : '')
+      + rows(['prices_incl_vat', 'client_type', 'min_spend', 'deposit', 'deposit_due', 'deposit_paid', 'quote_valid_until', 'corkage', 'payment_terms', 'deviations', 'cancellation_terms', 'uvh_sent_at']))}
+    ${sec(t('ev_sec_departments'), rows(['notes_kitchen', 'notes_bar', 'notes_service', 'notes_cleaning']))}
+    ${sec(t('ev_sec_internal'), rows(['notes_internal', 'client_confirmed_at', 'client_confirmed_by']))}
+  </div>`, { name: `BEO intern ${ev.title}` });
+}
 function printService(ev, shifts) {
   const g = guestsOf(ev);
   printHtml(`${sheetCss}<div class="beo">

@@ -317,6 +317,14 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (/Dat is per persoon/.test(html) || !/class="intro"/.test(html)) throw new Error('per person total should be gone; opening needed');
       if (/van de reserveringswaarde/.test(html) || /UVH art\./.test(html) || !/Sporen van andere ingrediënten/.test(html)) throw new Error('quote should refer to the UVH, not spell it out');
       if (/Bread warm/.test(html)) throw new Error('kitchen note on client PDF');
+      await p.evaluate(() => { const e = window.__mockdb.events[0]; e.notes_internal = 'INTERNAL-ONLY-XYZ'; });
+      await p.goto(BASE + '#/events'); await p.goto(BASE + '#/events/' + id); await p.waitForSelector('summary:has-text("Print")');
+      await p.evaluate(() => { window.print = () => { window.__printed = document.getElementById('printArea').innerHTML; }; });
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=internal]'); await p.waitForTimeout(400);
+      html = await p.evaluate(() => window.__printed);
+      if (!/INTERNAL-ONLY-XYZ/.test(html) || !/Bread warm/.test(html)) throw new Error('full internal BEO');
+      await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
+      if (/INTERNAL-ONLY-XYZ/.test(await p.evaluate(() => window.__printed))) throw new Error('internal note on the guest PDF');
       await p.click('summary:has-text("Print")'); await p.click('[data-print=kitchen]'); await p.waitForTimeout(400);
       html = await p.evaluate(() => window.__printed);
       if (!/Gluten/i.test(html) || !/Bread warm/.test(html) || !/Vegetarian/.test(html)) throw new Error('kitchen sheet'); });
