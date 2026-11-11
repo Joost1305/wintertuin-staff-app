@@ -452,7 +452,7 @@ const login = async (p) => { await p.goto(BASE); await p.waitForSelector('#login
       if (ev.quote_by !== 'landlord' || !ev.price_lines.every((x) => x.billed_by_landlord)) throw new Error(JSON.stringify([ev.quote_by, ev.price_lines]));
       await p.click('summary:has-text("Print")'); await p.click('[data-print=client-nl]'); await p.waitForTimeout(400);
       const html = await p.evaluate(() => document.getElementById('printArea').innerHTML);
-      if (!/Mette te Velde/.test(html) || !/NL00TEST0123456789/.test(html) || /img\/logo\.png/.test(html) || /<h2>Menu<\/h2>/.test(html)) throw new Error('landlord quote wrong');
+      if (!/Mette te Velde/.test(html) || !/NL00TEST0123456789/.test(html) || !/img\/logo\.png/.test(html) || !/Verhuur: Mette te Velde/.test(html) || /<h2>Menu<\/h2>/.test(html)) throw new Error('landlord quote wrong');
       // back to a restaurant quote, without the room
       await p.goto(BASE + '#/events/' + id + '/edit'); await p.waitForSelector('.ev-room.on'); await p.click('.ev-room:has-text("Glazen kas")');
       await p.click('.ev-qb label:has-text("food, drinks")');

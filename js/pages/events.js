@@ -689,9 +689,9 @@ function clientHtml(ev, l) {
   const pct = (r) => `${Math.round(r * 100)}%`;
   // our details: on every quote, and required on an invoice
   // under the logo: Cantonspark, Baarn; then the legal name and address once they are filled in (never the same name twice)
-  const brandName = byLandlord ? rooms.landlord : (c.trade_name || 'Wintertuin');
+  const brandName = c.trade_name || 'Wintertuin'; // the same heading on every quote, also on the landlord's
   const us = byLandlord
-    ? [T('Ruimteverhuur in de Wintertuin, Cantonspark Baarn', 'Room hire at the Wintertuin, Cantonspark Baarn'), ll.address, ll.postcode_city, [ll.phone, ll.email].filter(Boolean).join(' · ')].filter(Boolean).map(esc).join('<br>')
+    ? ['Cantonspark, Baarn', `${T('Verhuur', 'Room hire')}: ${rooms.landlord}`, ll.address, ll.postcode_city, [ll.phone, ll.email].filter(Boolean).join(' · ')].filter(Boolean).map(esc).join('<br>')
     : ['Cantonspark, Baarn', c.legal_name && c.legal_name.trim().toLowerCase() !== brandName.trim().toLowerCase() ? c.legal_name : '', c.address, c.postcode_city, [c.phone, c.email].filter(Boolean).join(' · '), c.website && c.website !== 'https://' ? c.website.replace(/^https?:\/\//, '').replace(/\/$/, '') : '']
     .filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).map(esc).join('<br>');
   const idSrc = byLandlord ? ll : c;
@@ -721,7 +721,7 @@ function clientHtml(ev, l) {
     .beo .uvh { border: 1px solid #bbb; border-radius: 6px; padding: 7px 10px; margin-top: 10px; font-size: 9pt; }
     .beo .doc { font-size: 15pt; font-weight: 700; }
   </style><div class="beo">
-    <div class="top"><div class="q-brand">${byLandlord ? '' : `<img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt="">`}<div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
+    <div class="top"><div class="q-brand"><img src="${new URL('img/logo.png', location.href.split('#')[0]).href}" alt=""><div><div class="brand">${esc(brandName)}</div><div class="small">${us}</div></div></div>
       <div class="us"><div class="doc">${docTitle}</div>${tt('ev_ref_no')} ${esc(ev.id.slice(0, 8).toUpperCase())} · v${ev.version}<br>${esc(dateIn(todayIso(), l))}<br>${ids}</div></div>
     <h1>${esc(ev.title)}</h1><div class="big">${esc(dateIn(ev.event_date, l))}${ev.start_time ? `, ${fmt.time(ev.start_time)}${ev.end_time ? `–${fmt.time(ev.end_time)}` : ''}` : ''}</div>
     <p class="intro">${esc(qt(l, isQuote ? 'intro_quote' : 'intro_confirm', { voornaam: (ev.client_name || '').trim().split(/\s+/)[0] || '', event: ev.title }))}</p>
