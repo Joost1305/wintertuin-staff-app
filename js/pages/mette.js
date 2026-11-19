@@ -22,7 +22,7 @@ export const DEFAULTS = {
 const COUNTED = ['confirmed', 'invoiced', 'paid'];
 const STATUS = () => ({ option: L({ en: 'Option', nl: 'Optie' }), confirmed: L({ en: 'Confirmed', nl: 'Bevestigd' }), invoiced: L({ en: 'Invoiced', nl: 'Gefactureerd' }), paid: L({ en: 'Paid', nl: 'Betaald' }), cancelled: L({ en: 'Cancelled', nl: 'Geannuleerd' }) });
 const STATUS_TAG = { option: 'ev-option', confirmed: 'ev-confirmed', invoiced: 'claimed', paid: 'approved', cancelled: 'ev-cancelled' };
-const CHANNEL = () => ({ wintertuin: L({ en: 'Via Wintertuin', nl: 'Via Wintertuin' }), direct: L({ en: 'Direct', nl: 'Direct' }) });
+const CHANNEL = () => ({ wintertuin: L({ en: 'Via the restaurant', nl: 'Via restaurant' }), direct: L({ en: 'Direct', nl: 'Direct' }) });
 
 // ------------------------------------------------------------------ access
 export async function loadHireRole() {
@@ -140,7 +140,7 @@ function drawOverview(body) {
     </div>
     <div class="grid grid-kpi" style="margin-top:12px">
       <div class="card kpi"><div class="label">${L({ en: 'Options', nl: 'Opties' })}</div><div class="value">${fmt.money(s.options)}</div><div class="delta muted">${L({ en: 'not yet confirmed', nl: 'nog niet bevestigd' })}</div></div>
-      <div class="card kpi"><div class="label">${L({ en: 'To invoice Wintertuin', nl: 'Te factureren aan Wintertuin' })}</div><div class="value">${fmt.money(s.toInvoiceWt)}</div><div class="delta muted">${L({ en: 'confirmed, date passed', nl: 'bevestigd, datum geweest' })}</div></div>
+      <div class="card kpi"><div class="label">${L({ en: 'To invoice the restaurant', nl: 'Te factureren aan restaurant' })}</div><div class="value">${fmt.money(s.toInvoiceWt)}</div><div class="delta muted">${L({ en: 'confirmed, date passed', nl: 'bevestigd, datum geweest' })}</div></div>
       <div class="card kpi"><div class="label">${L({ en: 'Still to receive', nl: 'Nog te ontvangen' })}</div><div class="value">${fmt.money(s.outstanding)}</div><div class="delta muted">${L({ en: 'invoiced, incl. VAT', nl: 'gefactureerd, incl. btw' })}</div></div>
       <div class="card kpi"><div class="label">${L({ en: 'VAT on revenue', nl: 'Btw over omzet' })}</div><div class="value">${fmt.money(s.vat)}</div><div class="delta muted">${esc(period)}</div></div>
     </div>
@@ -266,7 +266,7 @@ function openBooking(b, copy = false) {
         <div class="ro-views"><button type="button" data-unit="daypart" class="${v.unit !== 'day' ? 'on' : ''}">${L({ en: 'Daypart(s)', nl: 'Dagdeel' })}</button><button type="button" data-unit="day" class="${v.unit === 'day' ? 'on' : ''}">${L({ en: 'Whole day', nl: 'Hele dag' })}</button></div>
         <div class="chips mt-dps" style="margin-top:8px" ${v.unit === 'day' ? 'hidden' : ''}>${D.settings.dayparts.map((d) => `<label class="chip mt-dp ${(v.dayparts || []).includes(d.id) ? 'on' : ''}"><input type="checkbox" value="${esc(d.id)}" ${(v.dayparts || []).includes(d.id) ? 'checked' : ''} hidden>${esc(d.name)} <span class="tiny">${esc(d.from)}–${esc(d.to)}</span></label>`).join('')}</div></div>
       <div class="field-row"><div class="field"><label>${L({ en: 'Client', nl: 'Klant' })}</label><input name="client" value="${esc(v.client || '')}"></div>
-        <div class="field"><label>${L({ en: 'Booked', nl: 'Geboekt' })}</label><select name="channel">${Object.entries(C).map(([k, l]) => `<option value="${k}" ${v.channel === k ? 'selected' : ''}>${k === 'wintertuin' ? L({ en: 'Via Wintertuin (you invoice the restaurant)', nl: 'Via Wintertuin (jij factureert het restaurant)' }) : L({ en: 'Direct (room only, you invoice the guest)', nl: 'Direct (alleen zaal, jij factureert de gast)' })}</option>`).join('')}</select></div></div>
+        <div class="field"><label>${L({ en: 'Booked', nl: 'Geboekt' })}</label><select name="channel">${Object.entries(C).map(([k, l]) => `<option value="${k}" ${v.channel === k ? 'selected' : ''}>${k === 'wintertuin' ? L({ en: 'Via the restaurant (you invoice the restaurant)', nl: 'Via restaurant (jij factureert het restaurant)' }) : L({ en: 'Direct (room only, you invoice the guest)', nl: 'Direct (alleen zaal, jij factureert de gast)' })}</option>`).join('')}</select></div></div>
       <div class="field-row"><div class="field"><label>${L({ en: 'Amount', nl: 'Bedrag' })} <span class="tiny muted">${inclLabel()}</span></label><input name="amount" inputmode="decimal" value="${esc(showMoney(typed(v.amount_excl, v.vat_rate)))}"><div class="tiny muted" id="mt-calc"></div></div>
         <div class="field"><label>${L({ en: 'VAT', nl: 'Btw' })}</label><select name="vat_rate">${vatOptions(v.vat_rate)}</select></div>
         <div class="field"><label>Status</label><select name="status">${Object.entries(S).map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
