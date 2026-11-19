@@ -117,8 +117,8 @@ function renderShell() {
   const nav = $('#nav');
   const visible = routes.filter((r) => r.nav && r.show());
   const sorted = orderPaths(visible.map((r) => r.path), state.navOrder).map((p) => visible.find((r) => r.path === p));
-  // Mette (the owner of the room hire) gets her part straight after Today, also in the phone tabs
-  if (state.hireRole === 'owner') { const i = sorted.findIndex((r) => r.path === 'mette'); if (i > 1) sorted.splice(1, 0, ...sorted.splice(i, 1)); }
+  // Whoever has access to Mette's room hire gets it straight after Today, also in the phone tabs
+  if (state.hireRole) { const i = sorted.findIndex((r) => r.path === 'mette'); if (i > 1) sorted.splice(1, 0, ...sorted.splice(i, 1)); }
   const link = (r) => `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${r.icon ? `<i class="ic ic-${r.icon} nav-ic" aria-hidden="true"></i>` : ''}${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`;
   // Computer: the first seven in the bar, the rest under More. Phone: everything in the More sheet.
   const MAIN = 7;

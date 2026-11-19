@@ -549,16 +549,15 @@ async function drawSettings(body) {
 // Access: only the owner sees and changes the list; a helper sees that Mette decides
 async function accessCard(el, owner) {
   const head = `<h2>${L({ en: 'Who has access', nl: 'Wie heeft toegang' })}</h2>`;
-  if (!owner) { el.innerHTML = `${head}<p class="small muted">${L({ en: 'Mette decides who sees this part. You have access as a helper.', nl: 'Mette bepaalt wie dit deel ziet. Jij hebt toegang als helper.' })}</p>`; return; }
   try {
     const [acc, people] = await Promise.all([sb.from('hire_access').select('user_id, role'), sb.rpc('hire_people')]);
     const list = check(acc) || []; const ppl = check(people) || [];
     const name = (id) => (ppl.find((p) => p.id === id) || {}).full_name || '?';
     const others = ppl.filter((p) => !list.some((a) => a.user_id === p.id));
-    el.innerHTML = `${head}<p class="small muted">${L({ en: 'Only these people see your rooms and figures. Being a manager in the Team app is not enough.', nl: 'Alleen deze mensen zien je zalen en cijfers. Manager zijn in de Team-app is niet genoeg.' })}</p>
+    el.innerHTML = `${head}<p class="small muted">${owner ? L({ en: 'Only these people see your rooms and figures. Being a manager in the Team app is not enough.', nl: 'Alleen deze mensen zien je zalen en cijfers. Manager zijn in de Team-app is niet genoeg.' }) : L({ en: 'Only these people see this part. Mette decides who is on the list.', nl: 'Alleen deze mensen zien dit deel. Mette bepaalt wie erop staat.' })}</p>
       ${list.map((a) => `<div class="mt-hrow"><span class="mt-hname">${esc(name(a.user_id))}</span><span class="tag">${a.role === 'owner' ? L({ en: 'owner', nl: 'eigenaar' }) : L({ en: 'helper', nl: 'helper' })}</span>
-        ${a.user_id === state.me.id ? '<span></span>' : `<button type="button" class="btn-sm btn-ghost btn-danger" data-arm="${a.user_id}">${L({ en: 'Remove', nl: 'Weghalen' })}</button>`}</div>`).join('')}
-      ${others.length ? `<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><select id="mt-aadd">${others.map((p) => `<option value="${p.id}">${esc(p.full_name)}</option>`).join('')}</select><button type="button" class="btn-sm" id="mt-aaddb">+ ${L({ en: 'Give access', nl: 'Toegang geven' })}</button></div>` : ''}`;
+        ${a.user_id === state.me.id || !owner ? '<span></span>' : `<button type="button" class="btn-sm btn-ghost btn-danger" data-arm="${a.user_id}">${L({ en: 'Remove', nl: 'Weghalen' })}</button>`}</div>`).join('')}
+      ${owner && others.length ? `<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap"><select id="mt-aadd">${others.map((p) => `<option value="${p.id}">${esc(p.full_name)}</option>`).join('')}</select><button type="button" class="btn-sm" id="mt-aaddb">+ ${L({ en: 'Give access', nl: 'Toegang geven' })}</button></div>` : ''}`;
     $$('[data-arm]', el).forEach((b) => (b.onclick = async () => {
       if (!(await confirmDialog(L({ en: `Remove access for ${name(b.dataset.arm)}?`, nl: `Toegang weghalen voor ${name(b.dataset.arm)}?` }), L({ en: 'Remove', nl: 'Weghalen' })))) return;
       try { check(await sb.from('hire_access').delete().eq('user_id', b.dataset.arm)); accessCard(el, owner); } catch (e) { toastError(e); }
