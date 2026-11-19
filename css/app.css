@@ -1670,3 +1670,25 @@ body.sheet-open { overflow: hidden; }
 @media (max-width: 600px) { .mt-cols { height: 150px; gap: 1px; } .mt-x { font-size: .62rem; } .mt-hrow { grid-template-columns: 1fr 1fr auto; } }
 .mt-filters select { width: auto; }
 .mt-room input[type=time] { width: 130px; flex: 0 0 auto; }
+
+/* Follow-up from Mette (pop-up and on the event) */
+.fu-list { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow: auto; }
+.fu-item { border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; background: var(--surface); }
+.fu-contact { margin-top: 8px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--primary-soft); }
+.fu-agreed { margin-top: 6px; font-size: .9rem; }
+.fu-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.fu-box { margin: 0 0 12px; border-left: 4px solid var(--accent); }
+.ev-busy { margin-top: 8px; }
+.ev-busy.warn { background: #FBF0D9; color: #8a5f1a; }
+.mt-room .mt-team { width: 170px; }
+.mt-calwrap { overflow-x: auto; }
+.mt-cal { border-collapse: collapse; font-size: .74rem; min-width: 100%; }
+.mt-cal th, .mt-cal td { padding: 3px 2px; text-align: center; border-bottom: 1px solid var(--line); }
+.mt-cal tbody th { text-align: left; white-space: nowrap; padding: 6px 8px; font-size: .82rem; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.mt-cal .we { background: var(--glaze); }
+.mt-cal td.td { outline: 2px solid var(--primary); outline-offset: -2px; border-radius: 4px; }
+.mt-cal td { cursor: pointer; min-width: 22px; }
+.mt-cps { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.mt-cp { display: block; width: 14px; height: 6px; border-radius: 2px; background: var(--surface-2); }
+.mt-cp.on { background: var(--c); }
+.mt-cp.opt { background: var(--c); opacity: .4; }

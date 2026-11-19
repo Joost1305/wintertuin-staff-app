@@ -11,6 +11,7 @@ import { loadCompany, companyGaps, priceSummary, cancellationSchedule, suggestKi
 import { sheetPdf, isDesktop, whatsappDesktop } from '../sheet.js';
 import { loadCourses, DRINK_CODES } from '../courses.js';
 import { loadRooms } from '../rooms.js';
+import { followUpBox, bindFollowUpBox, busyOn } from '../followup.js';
 import { loadQuoteTexts, qt } from '../quotetexts.js';
 const L = (o) => o[lang()] || o.en;
 
@@ -230,6 +231,7 @@ async function renderView(ev) {
           </div></details>
         ${isManager() ? `<button type="button" class="btn-sm btn-ghost btn-danger" id="del">${t('delete')}</button>` : ''}</div></div>
     ${ev.status === 'option' && ev.option_until ? `<div class="note" style="margin:0 0 12px">${t('ev_option_note', { d: esc(fmt.dateLong(ev.option_until)) })}</div>` : ''}
+    ${followUpBox(ev)}
     ${uvhWarnings(ev)}
     ${ev.guarantee_deadline && !ev.guests_final && ev.status !== 'cancelled' ? `<div class="note" style="margin:0 0 12px">${t('ev_guarantee_note', { d: esc(fmt.dateLong(ev.guarantee_deadline)) })}</div>` : ''}
     <div class="ev-kpis">
@@ -269,6 +271,7 @@ async function renderView(ev) {
     mailQuote(ev, mail);
   };
   const waBtn = $('#ev-wa'); if (waBtn) waBtn.onclick = () => whatsappQuote(ev, waBtn);
+  bindFollowUpBox(ev, () => renderEvents([ev.id]));
   const del = $('#del');
   if (del) del.onclick = async () => {
     if (!(await confirmDialog(t('ev_confirm_delete'), t('delete')))) return;
@@ -432,6 +435,7 @@ function renderEditor(ev, date = null) {
       ${sec(t('ev_guests'), grid(inp('guests_expected', 'number'), inp('guests_guaranteed', 'number'), inp('guarantee_deadline', 'date'), inp('guests_final', 'number'), inp('children', 'number')), L2('<strong>Gegarandeerd</strong> is het minimum op de offerte: "… met een minimum van 28". Leeg: dan geldt het verwachte aantal.', '<strong>Guaranteed</strong> is the minimum on the quote: "… with a minimum of 28". Empty: the expected number applies.'))}
       ${sec(t('ev_dietary'), `<div id="rows-dietary"></div><button type="button" class="btn-sm" data-addrow="dietary">+ ${t('ev_add_diet')}</button>`, t('ev_dietary_hint'))}
       ${sec(t('ev_sec_setup'), `<div class="field"><span class="lbl-like">${L2('Ruimtes', 'Rooms')}</span><div class="ev-rooms">${rooms.rooms.map((r) => `<label class="ev-room"><input type="checkbox" data-room="${esc(r.id)}"> <span>${esc(r.name)}${r.hire != null ? ` <span class="tiny muted">${euro(r.hire)}</span>` : ''}</span></label>`).join('')}</div>
+        <div id="ev-busy" class="note ev-busy" hidden></div>
         <div class="hint">${L2('Een ruimte aanvinken zet de zaalhuur bij de prijzen (21% btw); uitvinken haalt hem weg.', 'Ticking a room adds its room hire to the prices (21% VAT); unticking removes it.')} ${isManager() ? L2(`Namen en prijzen pas je aan onder <a href="#/settings/rooms">Instellingen, Ruimtes</a>.${rooms.example ? ' <strong>Dit zijn nog voorbeelden.</strong>' : ''}`, `Names and prices are set under <a href="#/settings/rooms">Settings, Rooms</a>.${rooms.example ? ' <strong>These are still examples.</strong>' : ''}`) : ''}</div></div>` + grid(inp('area', 'text', `placeholder="${esc(t('ev_area_ph'))}"`), inp('service_style', 'text', 'list="ev-styles"')) + chk('exclusive') + area('setup', 3, t('ev_setup_ph')))}
       ${sec(t('ev_timeline'), `<div id="rows-timeline"></div><button type="button" class="btn-sm" data-addrow="timeline">+ ${t('ev_add_time')}</button>`, t('ev_timeline_hint'))}
       ${sec(t('ev_menu'), `<h3 class="ev-mh">${t('group_food')}</h3><div id="rows-menu-food" class="rows-menu"></div><button type="button" class="btn-sm" data-addmenu="food">+ ${L2('Gerecht toevoegen', 'Add dish')}</button>
@@ -634,6 +638,22 @@ function renderEditor(ev, date = null) {
       persist();
     };
   });
+  // Double bookings: Mette's room calendar on this date (her own bookings and other events), checked against the ticked rooms
+  const checkBusy = async () => {
+    const box = $('#ev-busy'); const f = $('#ev-form'); if (!box || !f) return;
+    const date = f.elements.event_date.value;
+    const rows = (await busyOn(date)).filter((x) => !ev || x.event_id !== ev.id);
+    const ticked = rooms.rooms.filter((r) => roomTicks.some((c) => c.dataset.room === r.id && c.checked));
+    const same = (x, r) => (x.team_room_id && x.team_room_id === r.id) || String(x.room_name || '').toLowerCase() === String(r.name || '').toLowerCase();
+    const clash = rows.filter((x) => ticked.some((r) => same(x, r)));
+    const st = { option: L2('optie', 'option'), confirmed: L2('bevestigd', 'confirmed'), invoiced: L2('bevestigd', 'confirmed'), paid: L2('bevestigd', 'confirmed') };
+    const line = (x) => `${esc(x.room_name)}: ${esc(x.daypart_names || '')} (${esc(st[x.status] || x.status)}${x.event_id ? `, ${L2('event', 'event')}` : `, ${L2('verhuur Mette', 'Mette\'s hire')}`})`;
+    if (clash.length) { box.className = 'note ev-busy warn'; box.innerHTML = `<strong>${L2('Let op, dubbele boeking?', 'Watch out, double booking?')}</strong> ${L2('Op deze dag is al verhuurd', 'Already booked on this day')}: ${clash.map(line).join('; ')}. ${L2('Check de tijden en overleg met Mette.', 'Check the times and talk to Mette.')}`; box.hidden = false; }
+    else if (rows.length) { box.className = 'note ev-busy'; box.innerHTML = `${L2('Op deze dag al verhuurd', 'Already booked on this day')}: ${rows.map(line).join('; ')}.`; box.hidden = false; }
+    else box.hidden = true;
+  };
+  $('#ev-form').addEventListener('change', (e) => { if (['event_date', 'start_time', 'end_time'].includes(e.target.name) || e.target.dataset.room !== undefined) checkBusy(); });
+  checkBusy();
   $$('[data-addmenu]').forEach((b) => (b.onclick = () => {
     readRows(); const g = b.dataset.addmenu;
     lists.menu.push({ group: g, course: '', item_id: null, name: '', allergens: [] }); drawRows();

@@ -22,6 +22,7 @@ import { renderNewsletter } from './pages/newsletter.js';
 import { renderMenuCard } from './pages/menucard.js';
 import { renderHelp } from './pages/help.js';
 import { renderMette, loadHireRole, hasHire } from './pages/mette.js';
+import { checkFollowUps } from './followup.js';
 import { chapterFor } from './handbook.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
@@ -87,7 +88,7 @@ async function ensureSession() {
     await Promise.all([refreshProfiles(), loadNavOrder(), loadHireRole()]);
     refreshBadge();
     clearInterval(badgeTimer);
-    badgeTimer = setInterval(refreshBadge, 60000);
+    badgeTimer = setInterval(() => { refreshBadge(); checkFollowUps().catch(() => {}); }, 60000);
     return true;
   } catch (e) {
     if (e.status !== 401) toastError(e);
@@ -246,6 +247,8 @@ async function route() {
   app().className = 'app';
   window.scrollTo(0, 0);
   try { await r.render(rest); } catch (e) { toastError(e); }
+  // requests and changes from Mette: a pop-up for managers until somebody follows them up
+  if (!r.bare) checkFollowUps().catch(() => {});
 }
 
 window.addEventListener('hashchange', route);

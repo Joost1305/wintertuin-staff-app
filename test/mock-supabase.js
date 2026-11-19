@@ -70,6 +70,7 @@
     eq(k, v) { this.f.push((r) => String(r[k]) === String(v)); return this; }
     neq(k, v) { this.f.push((r) => String(r[k]) !== String(v)); return this; }
     is(k, v) { this.f.push((r) => (r[k] ?? null) === v); return this; }
+    not(k, op, v) { this.f.push((r) => (op === 'is' ? (r[k] ?? null) !== v : String(r[k]) !== String(v))); return this; }
     in(k, vs) { this.f.push((r) => vs.includes(r[k])); return this; }
     gte(k, v) { this.f.push((r) => r[k] >= v); return this; }
     lte(k, v) { this.f.push((r) => r[k] <= v); return this; }
@@ -130,6 +131,8 @@
       // Mette's room hire: in the mock the signed-in manager helps (owner with window.__MOCK_HIRE = 'owner')
       if (name === 'hire_role') return { data: role === 'manager' ? (window.__MOCK_HIRE || 'helper') : null, error: null };
       if (name === 'hire_people') return { data: db.profiles.map((p) => ({ id: p.id, full_name: p.full_name, email: p.email })), error: null };
+      if (name === 'hire_busy') return { data: (db.hire_bookings || []).filter((b) => b.booking_date >= args.p_from && b.booking_date <= args.p_to && b.status !== 'cancelled').map((b) => ({ booking_date: b.booking_date, room_name: ((db.hire_rooms || []).find((r) => r.id === b.room_id) || {}).name, team_room_id: null, unit: b.unit, dayparts: b.dayparts, daypart_names: b.unit === 'day' ? 'hele dag' : (b.dayparts || []).join(', '), status: b.status, event_id: b.event_id || null })), error: null };
+      if (name === 'event_follow_up_done') { const e = db.events.find((x) => x.id === args.p_event); if (e) Object.assign(e, { follow_up: null, follow_up_note: null, follow_up_at: null }); return { data: null, error: null }; }
       if (name === 'check_my_kiosk_pin') return { data: args.p_pin === '1234', error: null };
       if (name === 'has_kiosk_pin') return { data: !!db.__pinSet, error: null };
       if (name === 'set_my_kiosk_pin') { db.__pinSet = true; return { data: null, error: null }; }

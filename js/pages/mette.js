@@ -32,7 +32,7 @@ export const hasHire = () => !!state.hireRole;
 
 // ------------------------------------------------------------------ data
 let D = null; // { settings, rooms, bookings, costs }
-const view = { tab: 'overview', year: new Date().getFullYear(), month: null, listMonth: todayIso().slice(0, 7), q: '', status: 'all' };
+const view = { mode: 'list', tab: 'overview', year: new Date().getFullYear(), month: null, listMonth: todayIso().slice(0, 7), q: '', status: 'all' };
 
 async function load() {
   const [s, r, b, c] = await Promise.all([
@@ -229,22 +229,58 @@ function drawBookings(body) {
     && (!q || [b.client, b.notes, b.invoice_no, (roomOf(b.room_id) || {}).name].some((v) => String(v || '').toLowerCase().includes(q))))
     .sort((a, b) => String(a.booking_date).localeCompare(b.booking_date));
   const total = list.filter((b) => b.status !== 'cancelled').reduce((a, b) => a + (Number(b.amount_excl) || 0), 0);
-  body.innerHTML = `${view.status === 'toinvoice' ? '' : monthNav('mt-mn')}
+  const modeBar = `<div class="ro-views" style="margin:0 0 10px">${[['list', L({ en: 'List', nl: 'Lijst' })], ['cal', L({ en: 'Calendar', nl: 'Kalender' })]].map(([k, l]) => `<button type="button" data-mode="${k}" class="${view.mode === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  if (view.mode === 'cal') { drawCalendar(body, modeBar); return; }
+  body.innerHTML = `${modeBar}${view.status === 'toinvoice' ? '' : monthNav('mt-mn')}
     <div class="g-tools"><input type="search" id="mt-q" value="${esc(view.q)}" placeholder="${L({ en: 'Search client, room, invoice', nl: 'Zoek op klant, zaal of factuur' })}">
       <div class="chips">${filters.map(([k, l]) => `<button type="button" class="chip ${view.status === k ? 'on' : ''}" data-st="${k}">${esc(l)}</button>`).join('')}</div></div>
     <div class="card" style="padding:0">${list.length ? `<div class="table-wrap"><table class="stack mt-list"><thead><tr><th>${L({ en: 'Date', nl: 'Datum' })}</th><th>${L({ en: 'Room', nl: 'Zaal' })}</th><th>${L({ en: 'When', nl: 'Wanneer' })}</th><th>${L({ en: 'Client', nl: 'Klant' })}</th><th>${L({ en: 'Status', nl: 'Status' })}</th><th class="num">${L({ en: 'Amount excl.', nl: 'Bedrag excl.' })}</th></tr></thead><tbody>
       ${list.map((b) => `<tr data-b="${b.id}" class="mt-click"><td data-label="${L({ en: 'Date', nl: 'Datum' })}">${esc(fmt.date(b.booking_date))}</td>
         <td data-label="${L({ en: 'Room', nl: 'Zaal' })}"><span class="mt-dot" style="background:${colorOf(b.room_id)}"></span>${esc((roomOf(b.room_id) || {}).name || '?')}</td>
         <td data-label="${L({ en: 'When', nl: 'Wanneer' })}" class="small">${esc(whenOf(b))}</td>
-        <td data-label="${L({ en: 'Client', nl: 'Klant' })}">${esc(b.client || '–')}<div class="tiny muted">${esc(CHANNEL()[b.channel])}${b.invoice_no ? `, ${L({ en: 'invoice', nl: 'factuur' })} ${esc(b.invoice_no)}` : ''}</div></td>
+        <td data-label="${L({ en: 'Client', nl: 'Klant' })}">${esc(b.client || '–')}<div class="tiny muted">${esc(CHANNEL()[b.channel])}${b.invoice_no ? `, ${L({ en: 'invoice', nl: 'factuur' })} ${esc(b.invoice_no)}` : ''}</div>
+          ${b.source === 'event' ? `<span class="tag claimed">${L({ en: 'from the restaurant', nl: 'uit het restaurant' })}</span>` : b.with_fnb ? `<span class="tag ev-option">${L({ en: 'food and drinks', nl: 'met eten en drinken' })}</span>` : ''}</td>
         <td data-label="Status"><span class="tag ${STATUS_TAG[b.status]}">${esc(S[b.status])}</span></td>
         <td data-label="${L({ en: 'Amount excl.', nl: 'Bedrag excl.' })}" class="num">${fmt.money(b.amount_excl)}</td></tr>`).join('')}
       </tbody><tfoot><tr><td colspan="5"><strong>${L({ en: 'Total (without cancelled)', nl: 'Totaal (zonder geannuleerd)' })}</strong></td><td class="num"><strong>${fmt.money(total)}</strong></td></tr></tfoot></table></div>`
       : `<div class="empty">${L({ en: 'Nothing here.', nl: 'Niets in deze lijst.' })}</div>`}</div>`;
   bindMonthNav(body, () => drawBookings(body));
+  $$('[data-mode]', body).forEach((x) => (x.onclick = () => { view.mode = x.dataset.mode; if (view.listMonth === 'all') view.listMonth = todayIso().slice(0, 7); drawBookings(body); }));
   const qi = $('#mt-q', body); qi.oninput = () => { view.q = qi.value; const pos = qi.selectionStart; drawBookings(body); const n = $('#mt-q', body); n.focus(); n.setSelectionRange(pos, pos); };
   $$('[data-st]', body).forEach((b) => (b.onclick = () => { view.status = b.dataset.st; drawBookings(body); }));
   $$('[data-b]', body).forEach((r) => (r.onclick = () => openBooking(D.bookings.find((b) => b.id === r.dataset.b))));
+}
+
+// Calendar: one row per room, one column per day; each day shows its dayparts (filled = rented)
+function drawCalendar(body, modeBar) {
+  if (view.listMonth === 'all') view.listMonth = todayIso().slice(0, 7);
+  const [y, m] = view.listMonth.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  const dps = D.settings.dayparts;
+  const iso = (d) => `${view.listMonth}-${String(d).padStart(2, '0')}`;
+  const wd = (d) => new Date(y, m - 1, d).getDay();
+  const today = todayIso();
+  const rooms = D.rooms.filter((r) => r.active || D.bookings.some((b) => b.room_id === r.id && String(b.booking_date).startsWith(view.listMonth)));
+  const cell = (r, d) => {
+    const bs = D.bookings.filter((b) => b.room_id === r.id && b.booking_date === iso(d) && b.status !== 'cancelled');
+    const parts = dps.map((p) => { const b = bs.find((x) => x.unit === 'day' || (x.dayparts || []).includes(p.id));
+      return `<span class="mt-cp ${b ? (b.status === 'option' ? 'opt' : 'on') : ''}" ${b ? `data-bk="${b.id}" style="--c:${colorOf(r.id)}"` : ''}></span>`; }).join('');
+    const tip = bs.map((b) => `${whenOf(b)}: ${b.client || '?'} (${STATUS()[b.status]})`).join(' · ');
+    return `<td class="${wd(d) === 0 || wd(d) === 6 ? 'we' : ''} ${iso(d) === today ? 'td' : ''}" ${tip ? `data-tip="${esc(`${fmt.date(iso(d))}, ${r.name}: ${tip}`)}"` : ''} data-new="${r.id}|${iso(d)}"><div class="mt-cps">${parts}</div></td>`;
+  };
+  body.innerHTML = `${modeBar}${monthNav('mt-mn')}
+    <div class="card" style="padding:0"><div class="table-wrap mt-calwrap"><table class="mt-cal"><thead><tr><th></th>${Array.from({ length: days }, (_, i) => `<th class="${wd(i + 1) === 0 || wd(i + 1) === 6 ? 'we' : ''}">${i + 1}</th>`).join('')}</tr></thead>
+      <tbody>${rooms.map((r) => `<tr><th><span class="mt-dot" style="background:${colorOf(r.id)}"></span>${esc(r.name)}</th>${Array.from({ length: days }, (_, i) => cell(r, i + 1)).join('')}</tr>`).join('') || `<tr><td class="empty">${L({ en: 'No rooms yet.', nl: 'Nog geen zalen.' })}</td></tr>`}</tbody></table></div></div>
+    <p class="small muted" style="margin-top:8px">${L({ en: `Each day shows the dayparts (${dps.map((d) => d.name).join(', ')}). Full colour is rented, light is an option. Tap a rented daypart to open it, an empty day to add a booking.`, nl: `Elke dag toont de dagdelen (${dps.map((d) => d.name).join(', ')}). Vol gekleurd is verhuurd, licht is een optie. Tik op een verhuurd dagdeel om het te openen, op een lege dag om verhuur toe te voegen.` })}</p>`;
+  bindMonthNav(body, () => drawBookings(body));
+  $$('[data-mode]', body).forEach((x) => (x.onclick = () => { view.mode = x.dataset.mode; drawBookings(body); }));
+  $$('[data-new]', body).forEach((td) => (td.onclick = (e) => {
+    const bk = e.target.closest('[data-bk]');
+    if (bk) return openBooking(D.bookings.find((b) => b.id === bk.dataset.bk));
+    const [rid, date] = td.dataset.new.split('|'); const r = roomOf(rid);
+    openBooking({ room_id: rid, booking_date: date, unit: 'daypart', dayparts: [dps[0] && dps[0].id], channel: 'direct', status: 'confirmed', vat_rate: r.vat_rate, amount_excl: null }, true);
+  }));
+  tips(body);
 }
 
 const vatOptions = (sel) => [...new Set([...D.settings.vat_rates.map(Number), Number(sel)].filter((x) => !Number.isNaN(x)))].sort((a, b) => b - a)
@@ -255,24 +291,38 @@ function openBooking(b, copy = false) {
   const rooms = D.rooms.filter((r) => r.active || (b && r.id === b.room_id));
   const first = rooms[0];
   const v = b ? { ...b } : { room_id: first.id, booking_date: todayIso(), unit: 'daypart', dayparts: [D.settings.dayparts[0] && D.settings.dayparts[0].id], channel: 'direct', status: 'confirmed', vat_rate: first.vat_rate, amount_excl: null };
-  if (copy) { v.id = null; v.status = 'confirmed'; v.invoice_no = ''; }
+  if (copy) { v.id = null; v.status = 'confirmed'; v.invoice_no = ''; v.event_id = null; v.source = 'mette'; }
   const S = STATUS(); const C = CHANNEL();
   let manual = !!(b && !copy);
+  const fromEvent = !!(b && !copy && b.source === 'event'); // made by an event of the restaurant: the event leads
+  const lock = fromEvent ? 'disabled' : '';
+  const linked = !!(b && !copy && b.source !== 'event' && b.event_id);
   openModal(`<h2>${b && !copy ? L({ en: 'Booking', nl: 'Verhuur' }) : L({ en: 'New booking', nl: 'Nieuwe verhuur' })}</h2>
+    ${fromEvent ? `<div class="note" style="margin:0 0 12px">${L({ en: 'This comes from an event of the restaurant. Date, room, times and amount follow the event; here you keep the status, invoice number and notes.', nl: 'Dit komt uit een event van het restaurant. Datum, zaal, tijden en bedrag volgen het event; hier houd je de status, het factuurnummer en notities bij.' })}</div>` : ''}
+    ${linked ? `<div class="note" style="margin:0 0 12px">${L({ en: 'Passed on to the restaurant (food and drinks). Changes you make here reach them as a follow-up.', nl: 'Doorgezet naar het restaurant (eten en drinken). Wat je hier wijzigt, krijgen zij als melding om op te volgen.' })}</div>` : ''}
     <form id="mt-bf" autocomplete="off">
-      <div class="field-row"><div class="field"><label>${L({ en: 'Room', nl: 'Zaal of ruimte' })}</label><select name="room_id">${rooms.map((r) => `<option value="${r.id}" ${r.id === v.room_id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
-        <div class="field"><label>${L({ en: 'Date', nl: 'Datum' })}</label><input type="date" name="booking_date" value="${esc(v.booking_date)}" required></div></div>
+      <div class="field-row"><div class="field"><label>${L({ en: 'Room', nl: 'Zaal of ruimte' })}</label><select name="room_id" ${lock}>${rooms.map((r) => `<option value="${r.id}" ${r.id === v.room_id ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>
+        <div class="field"><label>${L({ en: 'Date', nl: 'Datum' })}</label><input type="date" name="booking_date" value="${esc(v.booking_date)}" required ${lock}></div></div>
       <div class="field"><label>${L({ en: 'Per daypart or per day', nl: 'Per dagdeel of per dag' })}</label>
-        <div class="ro-views"><button type="button" data-unit="daypart" class="${v.unit !== 'day' ? 'on' : ''}">${L({ en: 'Daypart(s)', nl: 'Dagdeel' })}</button><button type="button" data-unit="day" class="${v.unit === 'day' ? 'on' : ''}">${L({ en: 'Whole day', nl: 'Hele dag' })}</button></div>
-        <div class="chips mt-dps" style="margin-top:8px" ${v.unit === 'day' ? 'hidden' : ''}>${D.settings.dayparts.map((d) => `<label class="chip mt-dp ${(v.dayparts || []).includes(d.id) ? 'on' : ''}"><input type="checkbox" value="${esc(d.id)}" ${(v.dayparts || []).includes(d.id) ? 'checked' : ''} hidden>${esc(d.name)} <span class="tiny">${esc(d.from)}–${esc(d.to)}</span></label>`).join('')}</div></div>
-      <div class="field-row"><div class="field"><label>${L({ en: 'Client', nl: 'Klant' })}</label><input name="client" value="${esc(v.client || '')}"></div>
-        <div class="field"><label>${L({ en: 'Booked', nl: 'Geboekt' })}</label><select name="channel">${Object.entries(C).map(([k, l]) => `<option value="${k}" ${v.channel === k ? 'selected' : ''}>${k === 'wintertuin' ? L({ en: 'Via the restaurant (you invoice the restaurant)', nl: 'Via restaurant (jij factureert het restaurant)' }) : L({ en: 'Direct (room only, you invoice the guest)', nl: 'Direct (alleen zaal, jij factureert de gast)' })}</option>`).join('')}</select></div></div>
-      <div class="field-row"><div class="field"><label>${L({ en: 'Amount', nl: 'Bedrag' })} <span class="tiny muted">${inclLabel()}</span></label><input name="amount" inputmode="decimal" value="${esc(showMoney(typed(v.amount_excl, v.vat_rate)))}"><div class="tiny muted" id="mt-calc"></div></div>
-        <div class="field"><label>${L({ en: 'VAT', nl: 'Btw' })}</label><select name="vat_rate">${vatOptions(v.vat_rate)}</select></div>
+        <div class="ro-views" ${fromEvent ? 'style="pointer-events:none;opacity:.6"' : ''}><button type="button" data-unit="daypart" class="${v.unit !== 'day' ? 'on' : ''}">${L({ en: 'Daypart(s)', nl: 'Dagdeel' })}</button><button type="button" data-unit="day" class="${v.unit === 'day' ? 'on' : ''}">${L({ en: 'Whole day', nl: 'Hele dag' })}</button></div>
+        <div class="chips mt-dps" style="margin-top:8px;${fromEvent ? 'pointer-events:none;opacity:.6' : ''}" ${v.unit === 'day' ? 'hidden' : ''}>${D.settings.dayparts.map((d) => `<label class="chip mt-dp ${(v.dayparts || []).includes(d.id) ? 'on' : ''}"><input type="checkbox" value="${esc(d.id)}" ${(v.dayparts || []).includes(d.id) ? 'checked' : ''} hidden>${esc(d.name)} <span class="tiny">${esc(d.from)}–${esc(d.to)}</span></label>`).join('')}</div></div>
+      <div class="field-row"><div class="field"><label>${L({ en: 'Client', nl: 'Klant' })}</label><input name="client" value="${esc(v.client || '')}" ${lock}></div>
+        <div class="field"><label>${L({ en: 'Booked', nl: 'Geboekt' })}</label><select name="channel" ${lock}>${Object.entries(C).map(([k, l]) => `<option value="${k}" ${v.channel === k ? 'selected' : ''}>${k === 'wintertuin' ? L({ en: 'Via the restaurant (you invoice the restaurant)', nl: 'Via restaurant (jij factureert het restaurant)' }) : L({ en: 'Direct (room only, you invoice the guest)', nl: 'Direct (alleen zaal, jij factureert de gast)' })}</option>`).join('')}</select></div></div>
+      <div class="field-row"><div class="field"><label>${L({ en: 'Amount', nl: 'Bedrag' })} <span class="tiny muted">${inclLabel()}</span></label><input name="amount" inputmode="decimal" value="${esc(showMoney(typed(v.amount_excl, v.vat_rate)))}" ${lock}><div class="tiny muted" id="mt-calc"></div></div>
+        <div class="field"><label>${L({ en: 'VAT', nl: 'Btw' })}</label><select name="vat_rate" ${lock}>${vatOptions(v.vat_rate)}</select></div>
         <div class="field"><label>Status</label><select name="status">${Object.entries(S).map(([k, l]) => `<option value="${k}" ${v.status === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div></div>
+      <div id="mt-clash" class="note ev-busy warn" hidden></div>
+      ${fromEvent ? '' : `<div class="field mt-fnb"><label class="check"><input type="checkbox" name="with_fnb" ${v.with_fnb ? 'checked' : ''}> <strong>${L({ en: 'With food and drinks by the restaurant', nl: 'Met eten en drinken van het restaurant' })}</strong></label>
+        <div class="tiny muted">${L({ en: 'The restaurant gets this as a request with a pop-up to contact the guest. They make the quote and the BEO; you invoice the room to the restaurant.', nl: 'Het restaurant krijgt dit als aanvraag, met een melding om contact op te nemen met de gast. Zij maken de offerte en de BEO; jij factureert de zaal aan het restaurant.' })}</div></div>
+      <div class="mt-fnbx" ${v.with_fnb ? '' : 'hidden'}>
+        <div class="field-row"><div class="field"><label>${L({ en: 'Contact person', nl: 'Contactpersoon' })}</label><input name="contact_name" value="${esc(v.contact_name || '')}"></div>
+          <div class="field"><label>${L({ en: 'Phone', nl: 'Telefoon' })}</label><input name="contact_phone" type="tel" value="${esc(v.contact_phone || '')}"></div>
+          <div class="field"><label>${L({ en: 'Email', nl: 'E-mail' })}</label><input name="contact_email" type="email" value="${esc(v.contact_email || '')}"></div></div>
+        <div class="field-row"><div class="field"><label>${L({ en: 'Guests (about)', nl: 'Aantal gasten (ongeveer)' })}</label><input name="guests" inputmode="numeric" value="${esc(v.guests ?? '')}"></div></div>
+        <div class="field"><label>${L({ en: 'What you already agreed', nl: 'Wat is er al afgesproken' })}</label><textarea name="agreed" rows="3" placeholder="${L({ en: 'e.g. drinks at 5 pm, then a walking dinner, budget about €45 p.p., two vegetarians', nl: 'bijv. borrel om 17.00 uur, daarna walking dinner, budget rond €45 p.p., twee vegetariërs' })}">${esc(v.agreed || '')}</textarea></div></div>`}
       <div class="field-row"><div class="field"><label>${L({ en: 'Invoice number', nl: 'Factuurnummer' })}</label><input name="invoice_no" value="${esc(v.invoice_no || '')}"></div></div>
       <div class="field"><label>${L({ en: 'Notes', nl: 'Notities' })}</label><textarea name="notes" rows="2">${esc(v.notes || '')}</textarea></div>
-      <div class="modal-actions">${b && !copy ? `<button type="button" class="btn btn-danger" id="mt-bdel">${L({ en: 'Delete', nl: 'Verwijderen' })}</button><button type="button" class="btn" id="mt-bcopy">${L({ en: 'Copy', nl: 'Kopiëren' })}</button>` : ''}
+      <div class="modal-actions">${b && !copy && !fromEvent ? `<button type="button" class="btn btn-danger" id="mt-bdel">${L({ en: 'Delete', nl: 'Verwijderen' })}</button><button type="button" class="btn" id="mt-bcopy">${L({ en: 'Copy', nl: 'Kopiëren' })}</button>` : ''}
         <span style="flex:1"></span><button type="button" class="btn" data-close>${L({ en: 'Close', nl: 'Sluiten' })}</button><button type="submit" class="btn-primary">${L({ en: 'Save', nl: 'Opslaan' })}</button></div>
     </form>`, (root) => {
     const f = $('#mt-bf', root);
@@ -287,8 +337,21 @@ function openBooking(b, copy = false) {
     const refresh = () => {
       const c = calc(); const vat = Number(f.vat_rate.value);
       $('#mt-calc', root).textContent = c != null ? `${L({ en: 'Room price', nl: 'Prijs volgens zaal' })}: ${fmt.money(typed(c, vat))}${manual && fromTyped(parseMoney(f.amount.value), vat) !== c ? ` · ${L({ en: 'tap to use', nl: 'tik om te gebruiken' })}` : ''}` : '';
-      if (!manual && c != null) f.amount.value = showMoney(typed(c, vat));
+      if (!manual && c != null && !fromEvent) f.amount.value = showMoney(typed(c, vat));
+      clash();
     };
+    // double bookings: the same room on the same day with an overlapping daypart
+    const clash = () => {
+      const box = $('#mt-clash', root); const me = b && !copy ? b.id : null;
+      const mine = unit === 'day' ? D.settings.dayparts.map((d) => d.id) : picked();
+      const hits = D.bookings.filter((x) => x.id !== me && x.status !== 'cancelled' && x.room_id === f.room_id.value && x.booking_date === f.booking_date.value
+        && (x.unit === 'day' || unit === 'day' || (x.dayparts || []).some((d) => mine.includes(d))));
+      box.hidden = !hits.length;
+      if (hits.length) box.innerHTML = `<strong>${L({ en: 'Watch out, double booking?', nl: 'Let op, dubbele boeking?' })}</strong> ${hits.map((x) => `${esc(whenOf(x))}: ${esc(x.client || '?')} (${esc(STATUS()[x.status])}${x.source === 'event' ? `, ${L({ en: 'restaurant', nl: 'restaurant' })}` : ''})`).join('; ')}`;
+    };
+    const fnb = f.with_fnb;
+    if (fnb) fnb.onchange = () => { $('.mt-fnbx', root).hidden = !fnb.checked; if (fnb.checked) f.channel.value = 'wintertuin'; };
+    f.booking_date.addEventListener('change', clash); f.room_id.addEventListener('change', clash);
     $('#mt-calc', root).onclick = () => { manual = false; refresh(); };
     f.amount.oninput = () => { manual = true; refresh(); };
     f.room_id.onchange = () => { const r = roomOf(f.room_id.value); if (r) f.vat_rate.innerHTML = vatOptions(r.vat_rate); refresh(); };
@@ -301,7 +364,16 @@ function openBooking(b, copy = false) {
       if (unit === 'daypart' && !picked().length) return toastError(new Error(L({ en: 'Choose at least one daypart.', nl: 'Kies minstens één dagdeel.' })));
       const vat = Number(f.vat_rate.value);
       const amt = fromTyped(parseMoney(f.amount.value), vat);
-      const row = { room_id: f.room_id.value, booking_date: f.booking_date.value, unit, dayparts: unit === 'day' ? [] : picked(), client: f.client.value.trim() || null, channel: f.channel.value,
+      if (fromEvent) {
+        try { check(await sb.from('hire_bookings').update({ status: f.status.value, invoice_no: f.invoice_no.value.trim() || null, notes: f.notes.value.trim() || null, updated_at: new Date().toISOString() }).eq('id', b.id));
+          closeModal(); toast(L({ en: 'Saved', nl: 'Opgeslagen' })); await load(); draw(); } catch (err) { toastError(err); }
+        return;
+      }
+      const withFnb = !!(f.with_fnb && f.with_fnb.checked);
+      if (withFnb && !(f.contact_phone.value.trim() || f.contact_email.value.trim())) return toastError(new Error(L({ en: 'For the restaurant: fill in a phone number or email of the guest.', nl: 'Voor het restaurant: vul een telefoonnummer of e-mailadres van de gast in.' })));
+      const extra = withFnb || (b && b.with_fnb) ? { with_fnb: withFnb, contact_name: f.contact_name.value.trim() || null, contact_phone: f.contact_phone.value.trim() || null,
+        contact_email: f.contact_email.value.trim() || null, guests: f.guests.value.trim() ? Number(f.guests.value) : null, agreed: f.agreed.value.trim() || null } : { with_fnb: false };
+      const row = { ...extra, room_id: f.room_id.value, booking_date: f.booking_date.value, unit, dayparts: unit === 'day' ? [] : picked(), client: f.client.value.trim() || null, channel: f.channel.value,
         status: f.status.value, amount_excl: amt || 0, vat_rate: vat, invoice_no: f.invoice_no.value.trim() || null, notes: f.notes.value.trim() || null, updated_at: new Date().toISOString() };
       try {
         if (b && !copy) check(await sb.from('hire_bookings').update(row).eq('id', b.id));
@@ -385,11 +457,14 @@ function openCost(c) {
 async function drawSettings(body) {
   let rooms = D.rooms.map((r) => ({ ...r }));
   let st = JSON.parse(JSON.stringify(D.settings));
+  // the rooms of the Team app (used on quotes): link each of hers, so events and her list find each other
+  let teamRooms = []; try { teamRooms = (await loadRooms()).rooms.filter((r) => r.owner !== 'restaurant'); } catch { /* none */ }
+  const teamMatch = (r) => r.team_room_id || (teamRooms.find((t) => t.name.toLowerCase() === String(r.name || '').toLowerCase()) || {}).id || '';
   const owner = state.hireRole === 'owner';
   const draw2 = () => {
     body.innerHTML = `
     <div class="card"><h2>${L({ en: 'Rooms and spaces', nl: 'Zalen en ruimtes' })}</h2>
-      <p class="small muted">${L({ en: `Your rooms with the price per daypart and per day (${inclLabel()}). A room with bookings cannot be deleted; switch it off instead.`, nl: `Je zalen en ruimtes, met de prijs per dagdeel en per dag (${inclLabel()}). Een zaal met verhuur kun je niet verwijderen; zet hem dan uit.` })}</p>
+      <p class="small muted">${L({ en: `Your rooms with the price per daypart and per day (${inclLabel()}). A room with bookings cannot be deleted; switch it off instead. "Team app" links the room to the same room on the restaurant's quotes, so their events show up here.`, nl: `Je zalen en ruimtes, met de prijs per dagdeel en per dag (${inclLabel()}). Een zaal met verhuur kun je niet verwijderen; zet hem dan uit. Bij "Team-app" koppel je de zaal aan dezelfde ruimte op de offertes van het restaurant, zodat hun events hier vanzelf verschijnen.` })}</p>
       <div id="mt-rooms">${rooms.map((r, i) => `<div class="mt-room" data-i="${i}">
         <span class="mt-dot" style="background:${SERIES[i % SERIES.length]}"></span>
         <input name="name" value="${esc(r.name || '')}" placeholder="${L({ en: 'Name', nl: 'Naam, bijv. De kas' })}" aria-label="${L({ en: 'Name', nl: 'Naam' })}">
@@ -397,6 +472,7 @@ async function drawSettings(body) {
         <label class="mt-in"><span class="tiny muted">${L({ en: 'Daypart', nl: 'Dagdeel' })}</span><input name="price_daypart" value="${esc(showMoney(typed(r.price_daypart, r.vat_rate)))}" inputmode="decimal" placeholder="€"></label>
         <label class="mt-in"><span class="tiny muted">${L({ en: 'Day', nl: 'Dag' })}</span><input name="price_day" value="${esc(showMoney(typed(r.price_day, r.vat_rate)))}" inputmode="decimal" placeholder="€"></label>
         <select name="vat_rate" aria-label="${L({ en: 'VAT', nl: 'Btw' })}">${vatOptions(r.vat_rate ?? st.vat_rates[0] ?? 21)}</select>
+        <select name="team_room_id" class="mt-team" aria-label="${L({ en: 'Same room in the Team app', nl: 'Zelfde ruimte in de Team-app' })}" title="${L({ en: 'Same room in the Team app (for events)', nl: 'Zelfde ruimte in de Team-app (voor events)' })}"><option value="">${L({ en: 'Team app: none', nl: 'Team-app: geen' })}</option>${teamRooms.map((t) => `<option value="${esc(t.id)}" ${teamMatch(r) === t.id ? 'selected' : ''}>${L({ en: 'Team app', nl: 'Team-app' })}: ${esc(t.name)}</option>`).join('')}</select>
         <label class="switch" title="${L({ en: 'Active', nl: 'Actief' })}"><input type="checkbox" name="active" ${r.active !== false ? 'checked' : ''} aria-label="${L({ en: 'Active', nl: 'Actief' })}"><span></span></label>
         <button type="button" class="btn-sm btn-ghost" data-rdel="${i}" aria-label="${L({ en: 'Delete', nl: 'Verwijderen' })}">&#10005;</button></div>`).join('')}</div>
       <div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><button type="button" class="btn-sm" id="mt-radd">+ ${L({ en: 'Room', nl: 'Zaal of ruimte' })}</button>
@@ -423,7 +499,7 @@ async function drawSettings(body) {
 
     const readRooms = () => { rooms = $$('#mt-rooms [data-i]', body).map((el) => { const r = rooms[Number(el.dataset.i)]; const vat = Number(el.querySelector('[name=vat_rate]').value);
       return { ...r, name: el.querySelector('[name=name]').value.trim(), capacity: el.querySelector('[name=capacity]').value.trim() ? Number(el.querySelector('[name=capacity]').value) : null,
-        price_daypart: fromTyped(parseMoney(el.querySelector('[name=price_daypart]').value), vat), price_day: fromTyped(parseMoney(el.querySelector('[name=price_day]').value), vat), vat_rate: vat, active: el.querySelector('[name=active]').checked }; }); };
+        price_daypart: fromTyped(parseMoney(el.querySelector('[name=price_daypart]').value), vat), price_day: fromTyped(parseMoney(el.querySelector('[name=price_day]').value), vat), vat_rate: vat, active: el.querySelector('[name=active]').checked, team_room_id: el.querySelector('[name=team_room_id]').value || null }; }); };
     const readSt = () => {
       st.dayparts = $$('#mt-dps [data-d]', body).map((el) => { const d = st.dayparts[Number(el.dataset.d)] || {}; const name = el.querySelector('[name=dname]').value.trim();
         return { id: d.id || `dp${Date.now().toString(36)}${el.dataset.d}`, name: name || d.name || '?', from: el.querySelector('[name=dfrom]').value, to: el.querySelector('[name=dto]').value }; });
@@ -440,7 +516,7 @@ async function drawSettings(body) {
     const imp = $('#mt-rimport', body);
     if (imp) imp.onclick = async () => { const { rooms: tr } = await loadRooms(); const mine = tr.filter((r) => r.owner !== 'restaurant');
       if (!mine.length) return toast(L({ en: 'No rooms of the landlord in the Team app.', nl: 'Geen ruimtes van de verhuurder in de Team-app.' }));
-      keep(); mine.forEach((r) => rooms.push({ name: r.name, capacity: r.capacity || null, active: true, vat_rate: 21 })); draw2();
+      keep(); mine.forEach((r) => rooms.push({ name: r.name, capacity: r.capacity || null, active: true, vat_rate: 21, team_room_id: r.id })); draw2();
       toast(L({ en: 'Rooms taken over; fill in your prices and save.', nl: 'Ruimtes overgenomen; vul je prijzen in en sla op.' })); };
     $('#mt-rsave', body).onclick = async () => {
       keep();
@@ -449,7 +525,7 @@ async function drawSettings(body) {
         const gone = D.rooms.filter((r) => !rooms.some((x) => x.id === r.id));
         for (const r of gone) check(await sb.from('hire_rooms').delete().eq('id', r.id));
         for (const [i, r] of rooms.entries()) {
-          const row = { name: r.name, capacity: r.capacity, price_daypart: r.price_daypart, price_day: r.price_day, vat_rate: r.vat_rate, active: r.active, sort_order: (i + 1) * 10 };
+          const row = { name: r.name, capacity: r.capacity, price_daypart: r.price_daypart, price_day: r.price_day, vat_rate: r.vat_rate, active: r.active, team_room_id: r.team_room_id || null, sort_order: (i + 1) * 10 };
           if (r.id) check(await sb.from('hire_rooms').update(row).eq('id', r.id)); else check(await sb.from('hire_rooms').insert(row));
         }
         toast(L({ en: 'Rooms saved', nl: 'Zalen opgeslagen' })); await load(); rooms = D.rooms.map((r) => ({ ...r })); draw2();

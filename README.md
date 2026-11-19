@@ -58,6 +58,8 @@ GitHub Actions: daily keepalive ping
 bookings (daypart or whole day, via Wintertuin or direct, option to paid), costs (one-off or monthly) and a dashboard
 (revenue, costs, result, occupancy, per room, per month, CSV for the accountant). Tables `hire_*` (migration `025_mette_hire.sql`),
 separate from the restaurant and Finance: only people in `hire_access` see it; Mette (owner) decides who. Settings > Mette links to it.
+Phase 2 (`026_mette_events_link.sql`): events with one of her rooms appear in her list by themselves; her bookings with food and drinks
+become an event (option) with a follow-up pop-up for managers (`js/followup.js`); `hire_busy()` warns for double bookings in the event form.
 
 ## Roles
 
