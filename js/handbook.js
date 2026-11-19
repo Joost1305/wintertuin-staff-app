@@ -1,7 +1,7 @@
 // The handbook: how every part of the Team app and Wintertuin Finance works.
 // KEEP THIS UP TO DATE: every change to a feature also changes the matching chapter here (and UPDATED).
 // Format per section: [title, html]. Keep the language plain: what you see, what you tap, what happens.
-export const UPDATED = '2026-11-11';
+export const UPDATED = '2026-11-19';
 
 const ul = (...items) => `<ul>${items.map((x) => `<li>${x}</li>`).join('')}</ul>`;
 const ol = (...items) => `<ol>${items.map((x) => `<li>${x}</li>`).join('')}</ol>`;
@@ -84,6 +84,14 @@ export const CHAPTERS = [
     ['Gastenlijst (managers)', p('Gasten uit events en losse aanmeldingen, met wie ja zei tegen de nieuwsbrief en wanneer. Met <strong>Deze gast vergeten</strong> haal je iemand weg (AVG). Exporteer de nieuwsbrieflijst als csv voor Brevo of Mailchimp.')],
     ['Nieuwsbrief maken', ol('Ga naar Nieuwsbrief.', 'Elk blok is te bewerken: titel, tekst, foto. Voeg blokken en categorieën toe of haal ze weg.', '<strong>Nu op de kaart</strong>: kies gerechten uit het menu, standaard zonder prijs.', 'Tik op <strong>HTML kopiëren</strong> en plak het in je mailprogramma (Brevo, Mailchimp of Gmail).') + p('Het concept wordt gedeeld door alle managers.')],
   ] },
+  { id: 'mette', app: 'team', title: 'Mette (zaalverhuur)', routes: ['mette'], sections: [
+    ['Wat is het', p('Het financegedeelte voor de zaalverhuur van Mette te Velde: haar zalen en ruimtes, wat ze verhuurd heeft, haar kosten en een dashboard. Het staat helemaal los van het restaurant en van Finance.')],
+    ['Wie ziet het', p('Alleen Mette en de mensen aan wie zij toegang geeft. Manager zijn in de Team-app is niet genoeg. Mette regelt dat onder <strong>Mette, Instellingen, Wie heeft toegang</strong>. Managers vinden de weg erheen ook onder Instellingen, Mette.')],
+    ['Beginnen', ol('Open <strong>Mette</strong> in het menu en ga naar <strong>Instellingen</strong>.', 'Vul je zalen en ruimtes in, met de prijs per dagdeel en per dag en het btw-tarief. <strong>Ruimtes overnemen uit de Team-app</strong> zet de namen al klaar.', 'Controleer de dagdelen (standaard ochtend, middag, avond), de btw-tarieven en of je prijzen incl. of excl. btw invoert.', 'Zet je kostencategorieën goed en sla op.') + tip('Welk btw-tarief voor zaalverhuur geldt, bepaalt je boekhouder. Je kunt het per zaal en per boeking instellen.')],
+    ['Verhuur invoeren', ol('Ga naar <strong>Verhuur</strong> en tik op <strong>+ Verhuur</strong>.', 'Kies de zaal, de datum en <strong>Dagdeel</strong> (een of meer) of <strong>Hele dag</strong>. Het bedrag rekent de app uit de zaalprijs; je kunt het overschrijven.', 'Kies <strong>Via Wintertuin</strong> (jij factureert het restaurant) of <strong>Direct</strong> (alleen zaal, jij factureert de gast).', 'Zet de status: optie, bevestigd, gefactureerd, betaald of geannuleerd. Vul bij facturen het factuurnummer in.') + p('Met <strong>Kopiëren</strong> maak je snel dezelfde verhuur op een andere datum. Het filter <strong>Te factureren</strong> laat zien wat geweest is maar nog geen factuur heeft.')],
+    ['Kosten', p('Onder <strong>Kosten</strong> zet je wat eruit gaat: datum, categorie, bedrag, btw en eventueel voor welke zaal. Vaste kosten vink je aan als <strong>Komt elke maand terug</strong>; die tellen dan elke maand mee, eventueel tot een einddatum.')],
+    ['Overzicht', ul('Omzet, kosten en resultaat (excl. btw), en de bezetting: hoeveel dagdelen verhuurd zijn van alle dagdelen.', 'Opties, wat je nog aan Wintertuin moet factureren, wat nog betaald moet worden en de btw over de omzet.', 'In en uit per maand, omzet en bezetting per zaal. Beweeg of tik op een balk voor de bedragen; <strong>Als tabel</strong> toont de cijfers.', 'Kies een jaar of een maand bovenaan. De knoppen onderaan geven de verhuur en kosten van het jaar als csv voor je boekhouder.') + p('Omzet telt bevestigd, gefactureerd en betaald. Opties en geannuleerd tellen niet mee.')],
+  ] },
   { id: 'about', app: 'team', title: 'Over ons en Links', routes: ['about', 'links'], sections: [
     ['Over ons', p('Het verhaal van de Wintertuin, het team en <strong>Over deze app</strong>. Managers passen de teksten aan en slepen de blokken in een andere volgorde (in de bewerkmodus).')],
     ['Links', p('Handige links voor iedereen, zoals de receptendatabase en Finance. Managers beheren ze onder Instellingen, Links.')],
@@ -97,6 +105,7 @@ export const CHAPTERS = [
   { id: 'settings', app: 'team', title: 'Instellingen (managers)', routes: ['settings'], sections: [
     ['Stappenplan', p('Wat er nog moet gebeuren voor de app helemaal klaar is: KVK- en btw-gegevens, KHN, UVH, Moneybird. Vinkt deels vanzelf af.')],
     ['Team en accounts', p('Accounts maken, rol kiezen (medewerker of manager), Finance-toegang, foto, nieuw wachtwoord. Met <strong>Account verwijderen</strong> verdwijnt een account zonder geschiedenis helemaal; met geschiedenis (HACCP, uren) wordt het gesloten en blijven de registraties bewaard. Met <strong>Medewerkersweergave</strong> zie je de app zoals een medewerker.')],
+    ['Mette', p('Onder Instellingen, Mette staat de weg naar het zaalverhuurdeel van Mette. Alleen wie van Mette toegang heeft, kan het openen.')],
     ['Bedrijfsgegevens', p('Naam, adres, KVK, btw-nummer, IBAN, telefoon, e-mail, website, huisregels, geldigheid van offertes, betaaltermijn en de UVH-pdf. Dit komt op de offertes.')],
     ['Vaste diensten', p('Diensten die je vaak plant, met tijden en afdeling.')],
     ['Volgorde gerechten', p('Volgorde op de menupagina en het gerecht van de maand.')],

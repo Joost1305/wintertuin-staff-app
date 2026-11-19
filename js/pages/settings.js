@@ -83,6 +83,7 @@ import { loadDishOfMonth, saveDishOfMonth } from './menu.js';
 import { lang } from '../i18n.js';
 import { renderCompanySettings } from '../uvh.js';
 import { renderStartList } from './startlist.js';
+import { renderMetteSettings } from './mette.js';
 const L = (o) => o[lang()] || o.en;
 
 const SECTIONS = [
@@ -93,6 +94,7 @@ const SECTIONS = [
   { id: 'menuorder', label: 'set_menu_order' },
   { id: 'courses', label: 'set_courses' },
   { id: 'rooms', label: 'set_rooms' },
+  { id: 'mette', label: 'set_mette' },
   { id: 'quotetexts', label: 'set_quote_texts' },
   { id: 'handbook', label: 'set_handbook' },
   { id: 'haccp', label: 'set_haccp' },
@@ -115,7 +117,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/sops'; };
   if (!current) return;
-  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, quotetexts: quoteTextsSection, handbook: (el) => { location.hash = '#/help'; }, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
+  try { await ({ start: renderStartList, team, company: renderCompanySettings, templates, menuorder, courses: coursesSection, rooms: roomsSection, mette: renderMetteSettings, quotetexts: quoteTextsSection, handbook: (el) => { location.hash = '#/help'; }, haccp: renderHaccpSettings, navorder, links, password, system: async (el) => { await renderSystemCheck(el); el.insertAdjacentHTML('beforeend', backupCards()); } })[current.id]($('#sec')); } catch (e) { toastError(e); }
 }
 const again = () => renderSettings(location.hash.replace(/^#\/settings\/?/, '').split('/'));
 

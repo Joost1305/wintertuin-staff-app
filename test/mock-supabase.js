@@ -127,6 +127,9 @@
       if (name === 'delete_account') { const p = db.profiles.find((x) => x.id === args.target); if (!p) return { data: null, error: { message: 'not found' } };
         if (db.shifts.some((x) => x.staff_id === p.id) || db.checkins.some((x) => x.staff_id === p.id)) { p.active = false; p.archived_at = new Date().toISOString(); return { data: 'archived', error: null }; }
         db.profiles.splice(db.profiles.indexOf(p), 1); return { data: 'deleted', error: null }; }
+      // Mette's room hire: in the mock the signed-in manager helps (owner with window.__MOCK_HIRE = 'owner')
+      if (name === 'hire_role') return { data: role === 'manager' ? (window.__MOCK_HIRE || 'helper') : null, error: null };
+      if (name === 'hire_people') return { data: db.profiles.map((p) => ({ id: p.id, full_name: p.full_name, email: p.email })), error: null };
       if (name === 'check_my_kiosk_pin') return { data: args.p_pin === '1234', error: null };
       if (name === 'has_kiosk_pin') return { data: !!db.__pinSet, error: null };
       if (name === 'set_my_kiosk_pin') { db.__pinSet = true; return { data: null, error: null }; }

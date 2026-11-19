@@ -1632,3 +1632,41 @@ body.sheet-open { overflow: hidden; }
 
 .home-nudges { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .home-nudges .home-nudge { margin: 0; }
+
+/* Mette: room hire dashboard */
+.mt-tabs { margin: 0 0 14px; }
+.mt-tabs a { padding: 7px 14px; border-radius: 999px; font-weight: 600; color: var(--ink-2); text-decoration: none; }
+.mt-tabs a.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.mt-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.mt-filters .chip { padding: 6px 11px; }
+.mt-legend { display: flex; gap: 14px; font-size: .82rem; color: var(--ink-2); }
+.mt-legend i, .mt-hname i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.mt-cols { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; height: 190px; margin-top: 14px; border-bottom: 1px solid var(--line); }
+.mt-col { display: flex; flex-direction: column; justify-content: flex-end; cursor: pointer; border-radius: 6px; padding: 0 2px; }
+.mt-col:hover, .mt-col.on { background: var(--glaze); }
+.mt-bars { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; }
+.mt-bar { width: min(14px, 40%); min-height: 0; border-radius: 4px 4px 0 0; }
+.mt-x { text-align: center; font-size: .72rem; color: var(--ink-3); padding: 4px 0 2px; }
+.mt-table { margin-top: 10px; }
+.mt-table td.num, .mt-table th.num, .mt-list .num { text-align: right; white-space: nowrap; }
+.mt-hrow { display: grid; grid-template-columns: minmax(90px, 1fr) 2fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.mt-hrow:last-child { border-bottom: 0; }
+.mt-hname { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-htrack { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+.mt-htrack span { display: block; height: 100%; border-radius: 999px; }
+.mt-hval { font-variant-numeric: tabular-nums; text-align: right; min-width: 80px; }
+.mt-tip { position: fixed; z-index: 2000; display: none; pointer-events: none; max-width: 280px; background: var(--ink); color: var(--surface); font-size: .8rem; padding: 6px 10px; border-radius: 8px; box-shadow: var(--shadow); }
+.mt-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; flex: none; }
+.mt-click { cursor: pointer; }
+.mt-click:hover td { background: var(--glaze); }
+.mt-monthnav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.mt-monthnav strong { min-width: 150px; text-align: center; text-transform: capitalize; }
+.mt-room { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.mt-room input[name=name], .mt-room input[name=dname] { flex: 2 1 180px; }
+.mt-room input[name=capacity] { width: 110px; }
+.mt-room .mt-in { display: flex; flex-direction: column; gap: 2px; width: 110px; }
+.mt-room select { width: 90px; }
+.mt-dp { cursor: pointer; user-select: none; }
+@media (max-width: 600px) { .mt-cols { height: 150px; gap: 1px; } .mt-x { font-size: .62rem; } .mt-hrow { grid-template-columns: 1fr 1fr auto; } }
+.mt-filters select { width: auto; }
+.mt-room input[type=time] { width: 130px; flex: 0 0 auto; }

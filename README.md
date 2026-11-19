@@ -52,6 +52,13 @@ GitHub Actions: daily keepalive ping
   and registers the lunch, dinner and allergen PDFs in `demo/`. A dish of the month is chosen there too.
 - **Database updates**: Actions > Database update runs files from `supabase/migrations` (uses the backup secret).
 
+## Mette (room hire)
+
+`#/mette` (`js/pages/mette.js`): the finance part for the room hire of Mette te Velde. Rooms with a price per daypart and per day,
+bookings (daypart or whole day, via Wintertuin or direct, option to paid), costs (one-off or monthly) and a dashboard
+(revenue, costs, result, occupancy, per room, per month, CSV for the accountant). Tables `hire_*` (migration `025_mette_hire.sql`),
+separate from the restaurant and Finance: only people in `hire_access` see it; Mette (owner) decides who. Settings > Mette links to it.
+
 ## Roles
 
 | | Staff | Manager |

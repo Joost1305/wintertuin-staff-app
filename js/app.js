@@ -21,6 +21,7 @@ import { renderGuests } from './pages/guests.js';
 import { renderNewsletter } from './pages/newsletter.js';
 import { renderMenuCard } from './pages/menucard.js';
 import { renderHelp } from './pages/help.js';
+import { renderMette, loadHireRole, hasHire } from './pages/mette.js';
 import { chapterFor } from './handbook.js';
 import { loadNavOrder, orderPaths } from './nav.js';
 import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
@@ -62,6 +63,8 @@ const routes = [
   { icon: 'swap', path: 'swap', render: renderSwap, nav: 'nav_swap', show: () => true, badge: true },
   { icon: 'settings', path: 'settings', render: renderSettings, nav: 'nav_settings', show: isManager },
   { icon: 'user', path: 'guests', render: renderGuests, nav: 'nav_guests', show: isManager },
+  // Mette's room hire: only for the people in hire_access (not for every manager)
+  { icon: 'euro', path: 'mette', render: renderMette, nav: 'nav_mette', show: hasHire },
   { path: 'newsletter', render: renderNewsletter, nav: null, show: isManager },
   { path: 'menucard', render: renderMenuCard, nav: null, show: () => true },
   { path: 'kiosk', render: renderKiosk, nav: null, show: isManager, bare: true },
@@ -81,7 +84,7 @@ async function ensureSession() {
     const me = await loadMe();
     state.me = me;
     setLang(me.language || 'en');
-    await Promise.all([refreshProfiles(), loadNavOrder()]);
+    await Promise.all([refreshProfiles(), loadNavOrder(), loadHireRole()]);
     refreshBadge();
     clearInterval(badgeTimer);
     badgeTimer = setInterval(refreshBadge, 60000);
@@ -113,6 +116,8 @@ function renderShell() {
   const nav = $('#nav');
   const visible = routes.filter((r) => r.nav && r.show());
   const sorted = orderPaths(visible.map((r) => r.path), state.navOrder).map((p) => visible.find((r) => r.path === p));
+  // Mette (the owner of the room hire) gets her part straight after Today, also in the phone tabs
+  if (state.hireRole === 'owner') { const i = sorted.findIndex((r) => r.path === 'mette'); if (i > 1) sorted.splice(1, 0, ...sorted.splice(i, 1)); }
   const link = (r) => `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${r.icon ? `<i class="ic ic-${r.icon} nav-ic" aria-hidden="true"></i>` : ''}${t(r.nav)}${r.badge ? `<span class="badge-count" ${badge ? '' : 'hidden'}>${badge > 9 ? '9+' : badge}</span>` : ''}</a>`;
   // Computer: the first seven in the bar, the rest under More. Phone: everything in the More sheet.
   const MAIN = 7;
@@ -250,7 +255,7 @@ window.addEventListener('wt:badge', () => refreshBadge());
 sb.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; }
 });
-const known = /^#\/(login|home|today|kiosk|guests|newsletter|menucard|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
+const known = /^#\/(login|home|today|kiosk|guests|mette|newsletter|menucard|about|sops|menu|links|roster|events|haccp|checkin|swap|settings|password)/;
 // unknown or empty address: open the start page once we know who is signed in (it depends on the menu order)
 if (!authLink && !known.test(location.hash)) history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 route();
