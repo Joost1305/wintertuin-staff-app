@@ -1692,3 +1692,19 @@ body.sheet-open { overflow: hidden; }
 .mt-cp { display: block; width: 14px; height: 6px; border-radius: 2px; background: var(--surface-2); }
 .mt-cp.on { background: var(--c); }
 .mt-cp.opt { background: var(--c); opacity: .4; }
+/* Mette: tabs and controls always fit on a phone */
+.mt-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; max-width: 560px; box-sizing: border-box; }
+.mt-tabs a { text-align: center; padding: 7px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-filters .chips { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.mt-filters { flex-wrap: wrap; min-width: 0; }
+.mt-filters > * { min-width: 0; }
+#mt-body, #mt-body .card { min-width: 0; max-width: 100%; }
+.mt-room > * { min-width: 0; }
+@media (max-width: 600px) {
+  .mt-tabs a { font-size: .82rem; }
+  .mt-room input[name=name], .mt-room input[name=dname] { flex: 1 1 100%; }
+  .mt-room .mt-team { width: auto; flex: 1 1 100%; }
+  .mt-monthnav strong { min-width: 0; flex: 1; }
+  .mt-hrow { grid-template-columns: minmax(70px, 1fr) 1fr auto; gap: 6px; }
+  .mt-hval { min-width: 64px; font-size: .85rem; }
+}

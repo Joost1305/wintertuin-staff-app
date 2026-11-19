@@ -123,7 +123,8 @@ function stats() {
 
 function drawOverview(body) {
   const s = stats(); const M = MONTHS();
-  const years = [...new Set([new Date().getFullYear(), ...D.bookings.map((b) => Number(String(b.booking_date).slice(0, 4))), ...D.costs.map((c) => Number(String(c.cost_date).slice(0, 4)))])].sort();
+  const cy = new Date().getFullYear();
+  const years = [...new Set([cy - 1, cy, cy + 1, ...D.bookings.map((b) => Number(String(b.booking_date).slice(0, 4))), ...D.costs.map((c) => Number(String(c.cost_date).slice(0, 4)))])].sort();
   const result = s.revenue - s.costs;
   const period = view.month == null ? String(view.year) : `${M[view.month]} ${view.year}`;
   const max = Math.max(1, ...s.revByMonth, ...s.costByM);
